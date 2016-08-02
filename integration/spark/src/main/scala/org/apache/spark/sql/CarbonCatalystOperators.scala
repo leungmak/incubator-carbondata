@@ -17,12 +17,9 @@
 
 package org.apache.spark.sql
 
-import org.apache.spark.sql.catalyst.{InternalRow, TableIdentifier}
-import org.apache.spark.sql.catalyst.analysis.TypeCheckResult
+import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.expressions._
-import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
 import org.apache.spark.sql.catalyst.plans.logical.{UnaryNode, _}
-import org.apache.spark.sql.hive.HiveContext
 import org.apache.spark.sql.optimizer.{CarbonAliasDecoderRelation, CarbonDecoderRelation}
 import org.apache.spark.sql.types._
 
@@ -41,8 +38,8 @@ case class Top(count: Int, topOrBottom: Int, dim: NamedExpression, msr: NamedExp
 
 object getDB {
 
-  def getDatabaseName(dbName: Option[String], sqlContext: SQLContext): String = {
-    dbName.getOrElse(sqlContext.asInstanceOf[HiveContext].catalog.client.currentDatabase)
+  def getDatabaseName(dbName: Option[String], sparkSession: SparkSession): String = {
+    dbName.getOrElse(sparkSession.catalog.currentDatabase)
   }
 
 }

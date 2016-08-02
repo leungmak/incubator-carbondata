@@ -25,7 +25,7 @@
   <name>carbondata</name>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <spark.version>1.5.2</spark.version>
+    <spark.version>2.0.0</spark.version>
     <scala.binary.version>2.10</scala.binary.version>
     <snappy.version>1.1.1.7</snappy.version>
     <hadoop.version>2.2.0</hadoop.version>
@@ -124,6 +124,12 @@
       <id>spark-1.6</id>
       <properties>
         <spark.version>1.6.2</spark.version>
+      </properties>
+    </profile>
+    <profile>
+      <id>spark-2.0</id>
+      <properties>
+        <spark.version>2.0.0</spark.version>
       </properties>
     </profile>
     <profile>

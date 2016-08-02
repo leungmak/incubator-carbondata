@@ -19,30 +19,25 @@ package org.apache.spark.sql
 
 import java.io.File
 
+import org.apache.spark.sql.internal.SQLConf
+
 import scala.language.implicitConversions
 
-import org.apache.spark.{Logging, SparkContext}
+import org.apache.spark.SparkContext
 import org.apache.spark.scheduler.cluster.CoarseGrainedSchedulerBackend
-import org.apache.spark.sql.catalyst.{CatalystConf, ParserDialect}
-import org.apache.spark.sql.catalyst.analysis.{Analyzer, OverrideCatalog}
-import org.apache.spark.sql.catalyst.optimizer.Optimizer
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
-import org.apache.spark.sql.execution.ExtractPythonUDFs
+import org.apache.spark.sql.catalyst.ParserDialect
 import org.apache.spark.sql.execution.command.PartitionData
-import org.apache.spark.sql.execution.datasources.{PreInsertCastAndRename, PreWriteCheck}
 import org.apache.spark.sql.hive._
-import org.apache.spark.sql.optimizer.CarbonOptimizer
-import org.apache.spark.util.Utils
+import org.apache.spark.sql.optimizer.LazyProjection
 
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.util.CarbonProperties
-import org.carbondata.spark.rdd.CarbonDataFrameRDD
 
 class CarbonContext(
     val sc: SparkContext,
     val storePath: String,
-    metaStorePath: String) extends HiveContext(sc) with Logging {
+    metaStorePath: String) extends HiveContext(sc) {
   self =>
 
   def this (sc: SparkContext) = {
@@ -64,76 +59,74 @@ class CarbonContext(
 
   protected[sql] override lazy val conf: SQLConf = new CarbonSQLConf
 
-  @transient
-  override lazy val catalog = {
-    CarbonProperties.getInstance()
-      .addProperty(CarbonCommonConstants.STORE_LOCATION, storePath)
-    new CarbonMetastoreCatalog(this, storePath, metadataHive) with OverrideCatalog
-  }
+//  @transient
+//  override lazy val catalog = {
+//    CarbonProperties.getInstance()
+//      .addProperty(CarbonCommonConstants.STORE_LOCATION, storePath)
+//    new CarbonMetastoreCatalog(this, storePath, metadataHive) with OverrideCatalog
+//  }
 
-  @transient
-  override protected[sql] lazy val analyzer =
-    new Analyzer(catalog, functionRegistry, conf) {
-      override val extendedResolutionRules =
-        catalog.ParquetConversions ::
-        catalog.CreateTables ::
-        catalog.PreInsertionCasts ::
-        ExtractPythonUDFs ::
-        ResolveHiveWindowFunction ::
-        PreInsertCastAndRename ::
-        Nil
-
-      override val extendedCheckRules = Seq(
-        PreWriteCheck(catalog)
-      )
-    }
-
-  @transient
-  override protected[sql] lazy val optimizer: Optimizer =
-    CarbonOptimizer.optimizer(
-      CodeGenerateFactory.createDefaultOptimizer(conf, sc),
-      conf.asInstanceOf[CarbonSQLConf],
-      sc.version)
+//  @transient
+//  override protected[sql] lazy val analyzer =
+//    new Analyzer(catalog, conf) {
+//      override val extendedResolutionRules =
+//        PreprocessTableInsertion(conf) ::
+//            new FindDataSourceTable(sparkSession) ::
+//            DataSourceAnalysis(conf) ::
+//            (if (conf.runSQLonFile) new ResolveDataSource(sparkSession) :: Nil else Nil)
+//
+//      override val extendedCheckRules = Seq(datasources.PreWriteCheck(conf, catalog))
+//    }
+//
+//    new Analyzer(catalog, functionRegistry, conf) {
+//      override val extendedResolutionRules =
+//        catalog.ParquetConversions ::
+//        catalog.CreateTables ::
+//        catalog.PreInsertionCasts ::
+//        ExtractPythonUDFs ::
+//        ResolveHiveWindowFunction ::
+//        PreInsertCastAndRename ::
+//        Nil
+//
+//      override val extendedCheckRules = Seq(
+//        PreWriteCheck(catalog)
+//      )
+//    }
 
   protected[sql] override def getSQLDialect(): ParserDialect = new CarbonSQLDialect(this)
+
+  sparkSession.conf.set("spark.sql.dialect", "CarbonSQLDialect")
+
+  experimental.extraOptimizations = Seq(LazyProjection)
 
   experimental.extraStrategies = {
     val carbonStrategy = new CarbonStrategies(self)
     Seq(carbonStrategy.CarbonTableScan, carbonStrategy.DDLStrategies)
   }
 
-  override protected def configure(): Map[String, String] = {
-    sc.hadoopConfiguration.addResource("hive-site.xml")
-    if (sc.hadoopConfiguration.get(CarbonCommonConstants.HIVE_CONNECTION_URL) == null) {
-      val metaStorePathAbsolute = new File(metaStorePath).getCanonicalPath
-      val hiveMetaStoreDB = metaStorePathAbsolute + "/metastore_db"
-      logDebug(s"metastore db is going to be created in location : $hiveMetaStoreDB")
-      super.configure() ++ Map((CarbonCommonConstants.HIVE_CONNECTION_URL,
-              s"jdbc:derby:;databaseName=$hiveMetaStoreDB;create=true"),
-        ("hive.metastore.warehouse.dir", metaStorePathAbsolute + "/hivemetadata"))
-    } else {
-      super.configure()
-    }
+  sc.hadoopConfiguration.addResource("hive-site.xml")
+  if (sc.hadoopConfiguration.get(CarbonCommonConstants.HIVE_CONNECTION_URL) == null) {
+    val metaStorePathAbsolute = new File(metaStorePath).getCanonicalPath
+    val hiveMetaStoreDB = metaStorePathAbsolute + "/metastore_db"
+    logDebug(s"metastore db is going to be created in location : $hiveMetaStoreDB")
+    sparkSession.conf.set(CarbonCommonConstants.HIVE_CONNECTION_URL,
+            s"jdbc:derby:;databaseName=$hiveMetaStoreDB;create=true")
+    sparkSession.conf.set("hive.metastore.warehouse.dir",
+      metaStorePathAbsolute + "/hivemetadata")
   }
 
   @transient
   val LOGGER = LogServiceFactory.getLogService(CarbonContext.getClass.getName)
 
-  override def sql(sql: String): SchemaRDD = {
+  override def sql(sqlText: String): DataFrame = {
     // queryId will be unique for each query, creting query detail holder
     val queryId: String = System.nanoTime() + ""
     this.setConf("queryId", queryId)
 
     CarbonContext.updateCarbonPorpertiesPath(this)
-    val sqlString = sql.toUpperCase
+    val sqlString = sqlText.toUpperCase()
     LOGGER.info(s"Query [$sqlString]")
-    val logicPlan: LogicalPlan = parseSql(sql)
-    val result = new CarbonDataFrameRDD(this, logicPlan)
-
-    // We force query optimization to happen right away instead of letting it happen lazily like
-    // when using the query DSL.  This is so DDL commands behave as expected.  This is only
-    // generates the RDD lineage for DML queries, but do not perform any execution.
-    result
+    super.sql(sqlString)
   }
 
 }
@@ -174,7 +167,7 @@ object CarbonContext {
       quoteChar: String = "\"",
       fileHeader: String = null,
       escapeChar: String = null,
-      multiLine: Boolean = false)(hiveContext: HiveContext): String = {
+      multiLine: Boolean = false)(sparkSession: SparkSession): String = {
     updateCarbonPorpertiesPath(hiveContext)
     var databaseNameLocal = databaseName
     if (databaseNameLocal == null) {
@@ -182,7 +175,7 @@ object CarbonContext {
     }
     val partitionDataClass = PartitionData(databaseName, tableName, factPath, targetPath, delimiter,
       quoteChar, fileHeader, escapeChar, multiLine)
-    partitionDataClass.run(hiveContext)
+    partitionDataClass.run(sparkSession)
     partitionDataClass.partitionStatus
   }
 
@@ -219,18 +212,18 @@ object CarbonContext {
   /**
    *
    * Requesting the extra executors other than the existing ones.
-   * @param sc
+    *
+    * @param sc
    * @param numExecutors
    * @return
    */
   final def ensureExecutors(sc: SparkContext, numExecutors: Int): Boolean = {
     sc.schedulerBackend match {
       case b: CoarseGrainedSchedulerBackend =>
-        val requiredExecutors = numExecutors -  b.numExistingExecutors
-        LOGGER
-          .info("number of executors is =" + numExecutors + " existing executors are =" + b
-            .numExistingExecutors
-          )
+        val requiredExecutors = numExecutors // -  b.numExistingExecutors
+//        LOGGER.info("number of executors is =" + numExecutors + " existing executors are =" + b
+//            .numExistingExecutors
+//          )
         if(requiredExecutors > 0) {
           b.requestExecutors(requiredExecutors)
         }

@@ -19,6 +19,8 @@ package org.apache.spark.sql
 
 import java.util.LinkedHashSet
 
+import org.apache.spark.sql.execution.datasources.HadoopFsRelation
+
 import scala.collection.JavaConverters._
 import scala.language.implicitConversions
 
@@ -136,7 +138,7 @@ private[sql] case class CarbonDatasourceRelation(
     tableIdentifier: TableIdentifier,
     alias: Option[String])
   (@transient context: SQLContext)
-  extends BaseRelation with Serializable with Logging {
+  extends BaseRelation with Serializable {
 
   def carbonRelation: CarbonRelation = {
     CarbonEnv.getInstance(context)

@@ -17,20 +17,8 @@
 
 package org.apache.spark.sql
 
-import org.apache.spark.sql.SQLConf.SQLConfEntry
-import org.apache.spark.sql.hive.CarbonSQLDialect
+import org.apache.spark.sql.internal.SQLConf
 
- /**
-  * A trait that enables the setting and getting of mutable config parameters/hints.
-  *
-  */
 class CarbonSQLConf extends SQLConf {
-
-  override def dialect: String = {
-    getConf(SQLConf.DIALECT,
-      classOf[CarbonSQLDialect].getCanonicalName)
-  }
-
   override def caseSensitiveAnalysis: Boolean = getConf(SQLConf.CASE_SENSITIVE, false)
-
 }

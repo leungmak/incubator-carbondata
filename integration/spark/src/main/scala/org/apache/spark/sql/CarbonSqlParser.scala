@@ -19,6 +19,8 @@ package org.apache.spark.sql
 
 import java.util.regex.{Matcher, Pattern}
 
+import org.apache.spark.sql.catalyst.parser.AbstractSqlParser
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable.LinkedHashSet
 import scala.language.implicitConversions
@@ -26,7 +28,6 @@ import scala.util.matching.Regex
 
 import org.apache.hadoop.hive.ql.lib.Node
 import org.apache.hadoop.hive.ql.parse._
-import org.apache.spark.Logging
 import org.apache.spark.sql.catalyst.{SqlLexical, _}
 import org.apache.spark.sql.catalyst.analysis._
 import org.apache.spark.sql.catalyst.plans.logical._
@@ -44,8 +45,7 @@ import org.carbondata.spark.util.CommonUtil
 /**
  * Parser for All Carbon DDL, DML cases in Unified context
  */
-class CarbonSqlParser()
-  extends AbstractSparkSQLParser with Logging {
+class CarbonSqlParser() extends AbstractSqlParser {
 
   protected val AGGREGATE = carbonKeyWord("AGGREGATE")
   protected val AS = carbonKeyWord("AS")
@@ -189,6 +189,7 @@ class CarbonSqlParser()
 
   /**
    * This will convert key word to regular expression.
+ *
    * @param keys
    * @return
    */

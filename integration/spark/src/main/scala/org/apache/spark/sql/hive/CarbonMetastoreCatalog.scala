@@ -99,10 +99,8 @@ case class DictionaryMap(dictionaryMap: Map[String, Boolean]) {
   }
 }
 
-class CarbonMetastoreCatalog(hiveContext: HiveContext, val storePath: String,
-    client: ClientInterface)
-  extends HiveMetastoreCatalog(client, hiveContext)
-    with spark.Logging {
+class CarbonMetastoreCatalog(sparkSession: SparkSession, val storePath: String)
+  extends HiveMetastoreCatalog(sparkSession) {
 
   @transient val LOGGER = LogServiceFactory
     .getLogService("org.apache.spark.sql.CarbonMetastoreCatalog")
@@ -129,7 +127,7 @@ class CarbonMetastoreCatalog(hiveContext: HiveContext, val storePath: String,
   def lookupRelation1(tableIdentifier: TableIdentifier,
       alias: Option[String] = None)(sqlContext: SQLContext): LogicalPlan = {
     checkSchemasModifiedTimeAndReloadTables()
-    val database = tableIdentifier.database.getOrElse(getDB.getDatabaseName(None, sqlContext))
+    val database = tableIdentifier.database.getOrElse(getDB.getDatabaseName(None, sparkSession))
     val tables = metadata.tablesMeta.filter(
       c => c.carbonTableIdentifier.getDatabaseName.equalsIgnoreCase(database) &&
            c.carbonTableIdentifier.getTableName.equalsIgnoreCase(tableIdentifier.table))
@@ -138,13 +136,13 @@ class CarbonMetastoreCatalog(hiveContext: HiveContext, val storePath: String,
         CarbonSparkUtil.createSparkMeta(tables.head.carbonTable), tables.head, alias)(sqlContext)
     } else {
       LOGGER.audit(s"Table Not Found: ${tableIdentifier.table}")
-      throw new NoSuchTableException
+      throw new NoSuchTableException(database, tableIdentifier.table)
     }
   }
 
   def tableExists(tableIdentifier: TableIdentifier)(sqlContext: SQLContext): Boolean = {
     checkSchemasModifiedTimeAndReloadTables()
-    val database = tableIdentifier.database.getOrElse(getDB.getDatabaseName(None, sqlContext))
+    val database = tableIdentifier.database.getOrElse(getDB.getDatabaseName(None, sparkSession))
     val tables = metadata.tablesMeta.filter(
       c => c.carbonTableIdentifier.getDatabaseName.equalsIgnoreCase(database) &&
            c.carbonTableIdentifier.getTableName.equalsIgnoreCase(tableIdentifier.table))
@@ -158,7 +156,8 @@ class CarbonMetastoreCatalog(hiveContext: HiveContext, val storePath: String,
     if (CarbonProperties.getInstance()
       .getProperty(CarbonCommonConstants.LOCK_TYPE, CarbonCommonConstants.LOCK_TYPE_DEFAULT)
       .equalsIgnoreCase(CarbonCommonConstants.CARBON_LOCK_TYPE_ZOOKEEPER)) {
-      val zookeeperUrl = hiveContext.getConf("spark.deploy.zookeeper.url", "127.0.0.1:2181")
+      val zookeeperUrl = sparkSession.sqlContext
+          .getConf("spark.deploy.zookeeper.url", "127.0.0.1:2181")
       ZookeeperInit.getInstance(zookeeperUrl)
     }
 

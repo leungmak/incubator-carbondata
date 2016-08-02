@@ -34,6 +34,21 @@ import org.apache.spark.sql.types.{IntegerType, StringType}
 import org.carbondata.spark.CarbonFilters
 
 /**
+  * Delay the dictionary decode as late as possible.
+  * Added for spark 2.0
+  */
+object LazyProjection extends Rule[LogicalPlan] {
+  def apply(plan: LogicalPlan): LogicalPlan = {
+    val relations = CarbonOptimizer.collectCarbonRelation(plan)
+    if (relations.nonEmpty) {
+      new ResolveCarbonFunctions(relations).apply(plan)
+    } else {
+      plan
+    }
+  }
+}
+
+/**
  * Carbon Optimizer to add dictionary decoder.
  */
 object CarbonOptimizer {

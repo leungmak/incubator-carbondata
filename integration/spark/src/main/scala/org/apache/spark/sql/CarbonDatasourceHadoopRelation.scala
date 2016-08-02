@@ -20,6 +20,8 @@ package org.apache.spark.sql
 import java.text.SimpleDateFormat
 import java.util.Date
 
+import org.apache.spark.sql.execution.datasources.HadoopFsRelation
+
 import scala.reflect.ClassTag
 
 import org.apache.hadoop.conf.Configuration
