@@ -20,7 +20,8 @@ import java.io.File
 
 import scala.collection.JavaConverters._
 
-import org.apache.spark.{Logging, SparkConf, SparkContext}
+import org.apache.spark.internal.Logging
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.scheduler.StatsReportListener
 import org.apache.spark.sql.CarbonContext
 import org.apache.spark.sql.hive.HiveContext

@@ -19,52 +19,63 @@ package org.apache.spark.sql
 
 import java.io.File
 
-import org.apache.spark.sql.internal.SQLConf
-
-import scala.language.implicitConversions
-
 import org.apache.spark.SparkContext
 import org.apache.spark.scheduler.cluster.CoarseGrainedSchedulerBackend
-import org.apache.spark.sql.catalyst.ParserDialect
+import org.apache.spark.sql.catalyst.parser.ParserInterface
 import org.apache.spark.sql.execution.command.PartitionData
 import org.apache.spark.sql.hive._
+import org.apache.spark.sql.internal.{SQLConf, SessionState}
 import org.apache.spark.sql.optimizer.LazyProjection
-
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.util.CarbonProperties
 
+import scala.language.implicitConversions
+
+class CarbonSessionState(
+    val sparkSession: SparkSession,
+    val storePath: String)
+    extends SessionState(sparkSession) {
+  override lazy val sqlParser: ParserInterface = new CarbonSpark2Parser
+  override lazy val catalog = {
+    CarbonProperties.getInstance()
+        .addProperty(CarbonCommonConstants.STORE_LOCATION, storePath)
+    new CarbonMetastoreCatalog(sparkSession, storePath)
+  }
+}
+
 class CarbonContext(
     val sc: SparkContext,
     val storePath: String,
-    metaStorePath: String) extends HiveContext(sc) {
+    metaStorePath: String)
+    extends SparkSession(sc) {
   self =>
 
-  def this (sc: SparkContext) = {
+  def this(sc: SparkContext) = {
     this (sc,
       new File(CarbonCommonConstants.STORE_LOCATION_DEFAULT_VAL).getCanonicalPath,
       new File(CarbonCommonConstants.METASTORE_LOCATION_DEFAULT_VAL).getCanonicalPath)
   }
 
-  def this (sc: SparkContext, storePath: String) = {
-    this (sc,
+  def this(sc: SparkContext, storePath: String) = {
+    this(
+      sc,
       storePath,
       new File(CarbonCommonConstants.METASTORE_LOCATION_DEFAULT_VAL).getCanonicalPath)
   }
 
   CarbonContext.addInstance(sc, this)
   CodeGenerateFactory.init(sc.version)
+  CarbonEnv.getInstance(this.sqlContext).carbonCatalog =
+      sessionState.asInstanceOf[CarbonSessionState].catalog
 
   var lastSchemaUpdatedTime = System.currentTimeMillis()
 
   protected[sql] override lazy val conf: SQLConf = new CarbonSQLConf
 
-//  @transient
-//  override lazy val catalog = {
-//    CarbonProperties.getInstance()
-//      .addProperty(CarbonCommonConstants.STORE_LOCATION, storePath)
-//    new CarbonMetastoreCatalog(this, storePath, metadataHive) with OverrideCatalog
-//  }
+  override private[sql] lazy val sessionState: SessionState = {
+    new CarbonSessionState(this, storePath)
+  }
 
 //  @transient
 //  override protected[sql] lazy val analyzer =
@@ -93,14 +104,11 @@ class CarbonContext(
 //      )
 //    }
 
-  protected[sql] override def getSQLDialect(): ParserDialect = new CarbonSQLDialect(this)
-
-  sparkSession.conf.set("spark.sql.dialect", "CarbonSQLDialect")
 
   experimental.extraOptimizations = Seq(LazyProjection)
 
   experimental.extraStrategies = {
-    val carbonStrategy = new CarbonStrategies(self)
+    val carbonStrategy = new CarbonStrategies(this)
     Seq(carbonStrategy.CarbonTableScan, carbonStrategy.DDLStrategies)
   }
 
@@ -109,9 +117,9 @@ class CarbonContext(
     val metaStorePathAbsolute = new File(metaStorePath).getCanonicalPath
     val hiveMetaStoreDB = metaStorePathAbsolute + "/metastore_db"
     logDebug(s"metastore db is going to be created in location : $hiveMetaStoreDB")
-    sparkSession.conf.set(CarbonCommonConstants.HIVE_CONNECTION_URL,
+    sc.conf.set(CarbonCommonConstants.HIVE_CONNECTION_URL,
             s"jdbc:derby:;databaseName=$hiveMetaStoreDB;create=true")
-    sparkSession.conf.set("hive.metastore.warehouse.dir",
+    sc.conf.set("hive.metastore.warehouse.dir",
       metaStorePathAbsolute + "/hivemetadata")
   }
 
@@ -121,9 +129,9 @@ class CarbonContext(
   override def sql(sqlText: String): DataFrame = {
     // queryId will be unique for each query, creting query detail holder
     val queryId: String = System.nanoTime() + ""
-    this.setConf("queryId", queryId)
+    sc.conf.set("queryId", queryId)
 
-    CarbonContext.updateCarbonPorpertiesPath(this)
+    CarbonContext.updateCarbonPorpertiesPath(sc)
     val sqlString = sqlText.toUpperCase()
     LOGGER.info(s"Query [$sqlString]")
     super.sql(sqlString)
@@ -168,7 +176,7 @@ object CarbonContext {
       fileHeader: String = null,
       escapeChar: String = null,
       multiLine: Boolean = false)(sparkSession: SparkSession): String = {
-    updateCarbonPorpertiesPath(hiveContext)
+    updateCarbonPorpertiesPath(sparkSession.sparkContext)
     var databaseNameLocal = databaseName
     if (databaseNameLocal == null) {
       databaseNameLocal = "default"
@@ -179,15 +187,15 @@ object CarbonContext {
     partitionDataClass.partitionStatus
   }
 
-  final def updateCarbonPorpertiesPath(hiveContext: HiveContext) {
-    val carbonPropertiesFilePath = hiveContext.getConf("carbon.properties.filepath", null)
+  final def updateCarbonPorpertiesPath(sc: SparkContext) {
+    val carbonPropertiesFilePath = sc.conf.set("carbon.properties.filepath", null)
     val systemcarbonPropertiesFilePath = System.getProperty("carbon.properties.filepath", null)
     if (null != carbonPropertiesFilePath && null == systemcarbonPropertiesFilePath) {
       System.setProperty("carbon.properties.filepath",
         carbonPropertiesFilePath + "/" + "carbon.properties")
     }
     // configuring the zookeeper URl .
-    val zooKeeperUrl = hiveContext.getConf("spark.deploy.zookeeper.url", "127.0.0.1:2181")
+    val zooKeeperUrl = sc.conf.get("spark.deploy.zookeeper.url", "127.0.0.1:2181")
 
     CarbonProperties.getInstance().addProperty("spark.deploy.zookeeper.url", zooKeeperUrl)
 

@@ -24,15 +24,13 @@ import scala.collection.JavaConverters._
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.TableIdentifier._
 import org.apache.spark.sql.catalyst.expressions
 import org.apache.spark.sql.catalyst.expressions.{AttributeSet, _}
 import org.apache.spark.sql.catalyst.planning.{PhysicalOperation, QueryPlanner}
 import org.apache.spark.sql.catalyst.plans.logical.{Filter => LogicalFilter, LogicalPlan}
-import org.apache.spark.sql.execution.{DescribeCommand => RunnableDescribeCommand, ExecutedCommand, Filter, Project, SparkPlan}
+import org.apache.spark.sql.execution.{_}
 import org.apache.spark.sql.execution.command._
-import org.apache.spark.sql.execution.datasources.{DescribeCommand => LogicalDescribeCommand, LogicalRelation}
-import org.apache.spark.sql.hive.execution.{DescribeHiveTableCommand, DropTable, HiveNativeCommand}
+import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.optimizer.{CarbonAliasDecoderRelation, CarbonDecoderRelation}
 import org.apache.spark.sql.types.IntegerType
 
@@ -40,14 +38,16 @@ import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.spark.exception.MalformedCarbonCommandException
 
 
-class CarbonStrategies(sqlContext: SQLContext) extends QueryPlanner[SparkPlan] {
+class CarbonStrategies(carbonContext: CarbonContext) extends QueryPlanner[SparkPlan] {
 
   override def strategies: Seq[Strategy] = getStrategies
+
+  def sqlContext = carbonContext.sqlContext
 
   val LOGGER = LogServiceFactory.getLogService("CarbonStrategies")
 
   def getStrategies: Seq[Strategy] = {
-    val total = sqlContext.planner.strategies :+ CarbonTableScan
+    val total = carbonContext.sessionState.planner.strategies :+ CarbonTableScan
     total
   }
 
@@ -83,40 +83,51 @@ class CarbonStrategies(sqlContext: SQLContext) extends QueryPlanner[SparkPlan] {
       predicates: Seq[Expression],
       logicalRelation: LogicalRelation)(sc: SQLContext): SparkPlan = {
 
-      val relation = logicalRelation.relation.asInstanceOf[CarbonDatasourceRelation]
-      val tableName: String =
-        relation.carbonRelation.metaData.carbonTable.getFactTableName.toLowerCase
+      val identifier = logicalRelation.relation.asInstanceOf[CarbonDatasourceRelation].identifier
       // Check out any expressions are there in project list. if they are present then we need to
       // decode them as well.
       val projectSet = AttributeSet(projectList.flatMap(_.references))
+      val filterSet = AttributeSet(predicates.flatMap(_.references))
       val scan = CarbonScan(projectSet.toSeq,
-        relation.carbonRelation,
+        logicalRelation,
         predicates)(sqlContext)
       projectList.map {
         case attr: AttributeReference =>
         case Alias(attr: AttributeReference, _) =>
         case others =>
           others.references.map{f =>
-            val dictionary = relation.carbonRelation.metaData.dictionaryMap.get(f.name)
+            val dictionary = CarbonEnv.getMetaData(sqlContext, identifier).dictionaryMap.get(f.name)
             if (dictionary.isDefined && dictionary.get) {
               scan.attributesNeedToDecode.add(f.asInstanceOf[AttributeReference])
             }
           }
       }
-      if (scan.attributesNeedToDecode.size() > 0) {
-        val decoder = getCarbonDecoder(logicalRelation,
+      val scanWithDecoder = if (scan.attributesNeedToDecode.size() > 0) {
+        val decoder = getCarbonDecoder(
+          logicalRelation,
           sc,
-          tableName,
+          identifier.table,
           scan.attributesNeedToDecode.asScala.toSeq,
           scan)
         if (scan.unprocessedExprs.nonEmpty) {
           val filterCondToAdd = scan.unprocessedExprs.reduceLeftOption(expressions.And)
-          Project(projectList, filterCondToAdd.map(Filter(_, decoder)).getOrElse(decoder))
+          filterCondToAdd.map(FilterExec(_, decoder)).getOrElse(decoder)
         } else {
-          Project(projectList, decoder)
+          decoder
         }
       } else {
-        Project(projectList, scan)
+        scan
+      }
+      if (projectList.map(_.toAttribute) == projectList &&
+          projectSet.size == projectList.size &&
+          filterSet.subsetOf(projectSet)) {
+        // copied from spark pruneFilterProjectRaw
+        // When it is possible to just use column pruning to get the right projection and
+        // when the columns of this projection are enough to evaluate all filter conditions,
+        // just do a scan with no extra project.
+        scanWithDecoder
+      } else {
+        ProjectExec(projectList, scanWithDecoder)
       }
     }
 
@@ -127,13 +138,12 @@ class CarbonStrategies(sqlContext: SQLContext) extends QueryPlanner[SparkPlan] {
       predicates: Seq[Expression],
       logicalRelation: LogicalRelation)(sc: SQLContext): SparkPlan = {
       val relation = logicalRelation.relation.asInstanceOf[CarbonDatasourceRelation]
-      val tableName: String =
-        relation.carbonRelation.metaData.carbonTable.getFactTableName.toLowerCase
+      val tableName: String = relation.metadata.carbonTable.getFactTableName.toLowerCase
       // Check out any expressions are there in project list. if they are present then we need to
       // decode them as well.
       val projectExprsNeedToDecode = new java.util.HashSet[Attribute]()
       val scan = CarbonScan(projectList.map(_.toAttribute),
-        relation.carbonRelation,
+        logicalRelation,
         predicates,
         useUnsafeCoversion = false)(sqlContext)
       projectExprsNeedToDecode.addAll(scan.attributesNeedToDecode)
@@ -186,7 +196,7 @@ class CarbonStrategies(sqlContext: SQLContext) extends QueryPlanner[SparkPlan] {
         relation: CarbonDatasourceRelation): Boolean = {
       var isEncoded = false
       projectExprsNeedToDecode.foreach { attr =>
-        if (relation.carbonRelation.metaData.dictionaryMap.get(attr.name).getOrElse(false)) {
+        if (relation.metadata.dictionaryMap.get(attr.name).getOrElse(false)) {
           isEncoded = true
         }
       }
@@ -196,7 +206,7 @@ class CarbonStrategies(sqlContext: SQLContext) extends QueryPlanner[SparkPlan] {
     def updateDataType(attr: AttributeReference,
         relation: CarbonDatasourceRelation,
         allAttrsNotDecode: util.Set[Attribute]): AttributeReference = {
-      if (relation.carbonRelation.metaData.dictionaryMap.get(attr.name).getOrElse(false) &&
+      if (relation.metadata.dictionaryMap.get(attr.name).getOrElse(false) &&
         !allAttrsNotDecode.asScala.exists(p => p.name.equals(attr.name))) {
         AttributeReference(attr.name,
           IntegerType,

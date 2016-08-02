@@ -17,12 +17,13 @@
 
 package org.apache.spark.sql
 
-import org.apache.spark.sql.hive.{CarbonMetastoreCatalog, HiveContext}
+import org.apache.spark.sql.catalyst.TableIdentifier
+import org.apache.spark.sql.hive.{CarbonMetaData, CarbonMetastoreCatalog, TableMeta}
 
 /**
   * Carbon Environment for unified context
   */
-case class CarbonEnv(hiveContext: HiveContext, carbonCatalog: CarbonMetastoreCatalog)
+case class CarbonEnv(sqlContext: SQLContext, var carbonCatalog: CarbonMetastoreCatalog)
 
 object CarbonEnv {
   val className = classOf[CarbonEnv].getCanonicalName
@@ -30,10 +31,20 @@ object CarbonEnv {
 
   def getInstance(sqlContext: SQLContext): CarbonEnv = {
     if (carbonEnv == null) {
-      carbonEnv =
-          CarbonEnv(sqlContext.asInstanceOf[CarbonContext],
-            sqlContext.asInstanceOf[CarbonContext].catalog)
+      carbonEnv = CarbonEnv(sqlContext, null)
     }
     carbonEnv
+  }
+
+  def isExist(sqlContext: SQLContext, identifier: TableIdentifier): Boolean = {
+    getInstance(sqlContext).carbonCatalog.getTableMeta(identifier) != null
+  }
+
+  def getTableMeta(sqlContext: SQLContext, identifier: TableIdentifier): TableMeta = {
+    getInstance(sqlContext).carbonCatalog.getTableMeta(identifier)
+  }
+
+  def getMetaData(sqlContext: SQLContext, identifier: TableIdentifier): CarbonMetaData = {
+    getInstance(sqlContext).carbonCatalog.getMetaData(identifier)
   }
 }

@@ -17,20 +17,21 @@
 
 package org.carbondata.spark.util
 
-import java.io.{File, IOException}
+import java.io.IOException
 import java.nio.charset.Charset
 import java.util.regex.Pattern
 
+import org.apache.spark.sql.catalyst.TableIdentifier
+
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, HashMap, HashSet}
 import scala.language.implicitConversions
 import scala.util.control.Breaks.{break, breakable}
 
 import org.apache.commons.lang3.{ArrayUtils, StringUtils}
-import org.apache.spark.Logging
+import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{CarbonEnv, CarbonRelation, DataFrame}
+import org.apache.spark.sql.{CarbonEnv, DataFrame}
 import org.apache.spark.sql.hive.CarbonMetastoreCatalog
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.util.FileUtils
@@ -48,7 +49,6 @@ import org.carbondata.core.datastorage.store.impl.FileFactory
 import org.carbondata.core.reader.CarbonDictionaryReader
 import org.carbondata.core.util.CarbonProperties
 import org.carbondata.core.writer.CarbonDictionaryWriter
-import org.carbondata.core.writer.sortindex.{CarbonDictionarySortIndexWriter, CarbonDictionarySortInfo, CarbonDictionarySortInfoPreparator}
 import org.carbondata.processing.etl.DataLoadingException
 import org.carbondata.spark.load.CarbonLoaderUtil
 import org.carbondata.spark.load.CarbonLoadModel
@@ -395,11 +395,9 @@ object GlobalDictionaryUtil extends Logging {
         model.table.getDatabaseName, model.table.getTableName, carbonLoadModel.getStorePath)
 
     // update CarbonDataLoadSchema
-    val carbonTable = catalog.lookupRelation1(Option(model.table.getDatabaseName),
-          model.table.getTableName)(sqlContext)
-        .asInstanceOf[CarbonRelation].tableMeta.carbonTable
-    carbonLoadModel.setCarbonDataLoadSchema(new CarbonDataLoadSchema(carbonTable))
-
+    val identifier = TableIdentifier(model.table.getTableName, Option(model.table.getDatabaseName))
+    val tableMeta = CarbonEnv.getTableMeta(sqlContext, identifier)
+    carbonLoadModel.setCarbonDataLoadSchema(new CarbonDataLoadSchema(tableMeta.carbonTable))
   }
 
   /**

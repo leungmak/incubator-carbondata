@@ -19,6 +19,9 @@ package org.apache.spark.sql
 
 import java.util.ArrayList
 
+import org.apache.spark.sql.execution.LeafExecNode
+import org.apache.spark.sql.execution.datasources.LogicalRelation
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
@@ -26,9 +29,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
-import org.apache.spark.sql.execution.LeafNode
 import org.apache.spark.sql.hive.CarbonMetastoreCatalog
-import org.apache.spark.unsafe.types.UTF8String
 
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.util.CarbonProperties
@@ -38,10 +39,10 @@ import org.carbondata.spark.rdd.CarbonScanRDD
 
 case class CarbonScan(
     var attributesRaw: Seq[Attribute],
-    relationRaw: CarbonRelation,
+    relation: LogicalRelation,
     dimensionPredicatesRaw: Seq[Expression],
-    useUnsafeCoversion: Boolean = true)(@transient val ocRaw: SQLContext) extends LeafNode {
-  val carbonTable = relationRaw.metaData.carbonTable
+    useUnsafeCoversion: Boolean = true)(@transient val ocRaw: SQLContext) extends LeafExecNode {
+  val carbonTable = relation.relation.asInstanceOf[CarbonDatasourceRelation].metadata.carbonTable
   val selectedDims = scala.collection.mutable.MutableList[QueryDimension]()
   val selectedMsrs = scala.collection.mutable.MutableList[QueryMeasure]()
   @transient val carbonCatalog = ocRaw.catalog.asInstanceOf[CarbonMetastoreCatalog]
@@ -50,7 +51,11 @@ case class CarbonScan(
   val unprocessedExprs = new ArrayBuffer[Expression]()
 
   val buildCarbonPlan: CarbonQueryPlan = {
-    val plan: CarbonQueryPlan = new CarbonQueryPlan(relationRaw.databaseName, relationRaw.tableName)
+    val identifier = relation.relation.asInstanceOf[CarbonDatasourceRelation]
+        .tableMeta.carbonTableIdentifier
+    val plan: CarbonQueryPlan = new CarbonQueryPlan(
+      identifier.getDatabaseName,
+      identifier.getTableName)
 
     val dimensions = carbonTable.getDimensionByTableName(carbonTable.getFactTableName)
     val measures = carbonTable.getMeasureByTableName(carbonTable.getFactTableName)
@@ -168,10 +173,12 @@ case class CarbonScan(
     // setting queryid
     buildCarbonPlan.setQueryId(ocRaw.getConf("queryId", System.nanoTime() + ""))
 
+    val identifier = relation.relation.asInstanceOf[CarbonDatasourceRelation]
+        .tableMeta.carbonTableIdentifier
     val tableCreationTime = carbonCatalog
-      .getTableCreationTime(relationRaw.databaseName, relationRaw.tableName)
+      .getTableCreationTime(identifier.getDatabaseName, identifier.getTableName)
     val schemaLastUpdatedTime = carbonCatalog
-      .getSchemaLastUpdatedTime(relationRaw.databaseName, relationRaw.tableName)
+      .getSchemaLastUpdatedTime(identifier.getDatabaseName, identifier.getTableName)
     val big = new CarbonScanRDD(
       ocRaw.sparkContext,
       model,

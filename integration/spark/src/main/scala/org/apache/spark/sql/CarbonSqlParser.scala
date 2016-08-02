@@ -19,7 +19,8 @@ package org.apache.spark.sql
 
 import java.util.regex.{Matcher, Pattern}
 
-import org.apache.spark.sql.catalyst.parser.AbstractSqlParser
+import org.apache.spark.sql.catalyst.expressions.Expression
+import org.apache.spark.sql.catalyst.parser.{ParserInterface, AbstractSqlParser}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.LinkedHashSet
@@ -33,7 +34,6 @@ import org.apache.spark.sql.catalyst.analysis._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.trees.CurrentOrigin
 import org.apache.spark.sql.execution.command._
-import org.apache.spark.sql.execution.datasources.DescribeCommand
 import org.apache.spark.sql.hive.HiveQlWrapper
 
 import org.carbondata.core.carbon.metadata.datatype.DataType
@@ -45,7 +45,7 @@ import org.carbondata.spark.util.CommonUtil
 /**
  * Parser for All Carbon DDL, DML cases in Unified context
  */
-class CarbonSqlParser() extends AbstractSqlParser {
+class CarbonSqlParser() extends AbstractSparkSQLParser {
 
   protected val AGGREGATE = carbonKeyWord("AGGREGATE")
   protected val AS = carbonKeyWord("AS")
@@ -173,7 +173,8 @@ class CarbonSqlParser() extends AbstractSqlParser {
     s"identifier matching regex ${regex}",
     { case Identifier(str) if regex.unapplySeq(str).isDefined => str }
   )
-  override def parse(input: String): LogicalPlan = synchronized {
+
+  def parse(input: String): LogicalPlan = synchronized {
     // Initialize the Keywords.
     initLexical
     phrase(start)(new lexical.Scanner(input)) match {
@@ -189,7 +190,7 @@ class CarbonSqlParser() extends AbstractSqlParser {
 
   /**
    * This will convert key word to regular expression.
- *
+   *
    * @param keys
    * @return
    */
@@ -1158,7 +1159,8 @@ class CarbonSqlParser() extends AbstractSqlParser {
             tblIdentifier)
         }
         else {
-          new DescribeCommand(UnresolvedRelation(tblIdentifier, None), ef.isDefined)
+          new DescribeTableCommand(tblIdentifier, true,
+            (ef.isDefined && "FORMATTED".equalsIgnoreCase(ef.get)))
         }
     }
   private def normalizeType(field: Field): Field = {

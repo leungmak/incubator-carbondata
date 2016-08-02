@@ -17,7 +17,7 @@
 
 package org.apache.spark.util
 
-import org.apache.spark.Logging
+import org.apache.spark.internal.Logging
 
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.datastorage.store.filesystem.CarbonFile

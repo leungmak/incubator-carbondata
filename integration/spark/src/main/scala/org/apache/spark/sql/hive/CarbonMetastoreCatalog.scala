@@ -110,7 +110,6 @@ class CarbonMetastoreCatalog(sparkSession: SparkSession, val storePath: String)
 
   val metadata = loadMetadata(storePath)
 
-
   def getTableCreationTime(databaseName: String, tableName: String): Long = {
     val tableMeta = metadata.tablesMeta.filter(
       c => c.carbonTableIdentifier.getDatabaseName.equalsIgnoreCase(databaseName) &&
@@ -120,43 +119,56 @@ class CarbonMetastoreCatalog(sparkSession: SparkSession, val storePath: String)
   }
 
 
-  def lookupRelation1(dbName: Option[String],
-      tableName: String)(sqlContext: SQLContext): LogicalPlan = {
-    lookupRelation1(TableIdentifier(tableName, dbName))(sqlContext)
-  }
+//  def lookupRelation1(dbName: Option[String],
+//      tableName: String)(sqlContext: SQLContext): LogicalPlan = {
+//    lookupRelation1(TableIdentifier(tableName, dbName))(sqlContext)
+//  }
+//
+//  def lookupRelation1(tableIdentifier: TableIdentifier,
+//      alias: Option[String] = None)(sqlContext: SQLContext): LogicalPlan = {
+//    checkSchemasModifiedTimeAndReloadTables()
+//    val database = tableIdentifier.database.getOrElse(getDB.getDatabaseName(None, sparkSession))
+//    val tables = metadata.tablesMeta.filter(
+//      c => c.carbonTableIdentifier.getDatabaseName.equalsIgnoreCase(database) &&
+//           c.carbonTableIdentifier.getTableName.equalsIgnoreCase(tableIdentifier.table))
+//    if (tables.nonEmpty) {
+//      CarbonRelation(database, tableIdentifier.table,
+//        CarbonSparkUtil.createSparkMeta(tables.head.carbonTable), tables.head, alias)(sqlContext)
+//    } else {
+//      LOGGER.audit(s"Table Not Found: ${tableIdentifier.table}")
+//      throw new NoSuchTableException(database, tableIdentifier.table)
+//    }
+//  }
 
-  def lookupRelation1(tableIdentifier: TableIdentifier,
-      alias: Option[String] = None)(sqlContext: SQLContext): LogicalPlan = {
+  def getMetaData(identifier: TableIdentifier): CarbonMetaData = {
     checkSchemasModifiedTimeAndReloadTables()
-    val database = tableIdentifier.database.getOrElse(getDB.getDatabaseName(None, sparkSession))
+    val database = identifier.database.getOrElse(getDB.getDatabaseName(None, sparkSession))
     val tables = metadata.tablesMeta.filter(
       c => c.carbonTableIdentifier.getDatabaseName.equalsIgnoreCase(database) &&
-           c.carbonTableIdentifier.getTableName.equalsIgnoreCase(tableIdentifier.table))
+          c.carbonTableIdentifier.getTableName.equalsIgnoreCase(identifier.table))
     if (tables.nonEmpty) {
-      CarbonRelation(database, tableIdentifier.table,
-        CarbonSparkUtil.createSparkMeta(tables.head.carbonTable), tables.head, alias)(sqlContext)
+      CarbonSparkUtil.createSparkMeta(tables.head.carbonTable)
     } else {
-      LOGGER.audit(s"Table Not Found: ${tableIdentifier.table}")
-      throw new NoSuchTableException(database, tableIdentifier.table)
+      LOGGER.error(s"Table Not Found: ${identifier.table}")
+      throw new NoSuchTableException(database, identifier.table)
     }
   }
 
-  def getAllMeta(tableIdentifier: TableIdentifier,
-      alias: Option[String] = None)(sqlContext: SQLContext): (CarbonMetaData, TableMeta) = {
+  def getTableMeta(identifier: TableIdentifier): TableMeta = {
     checkSchemasModifiedTimeAndReloadTables()
-    val database = tableIdentifier.database.getOrElse(getDB.getDatabaseName(None, sparkSession))
+    val database = identifier.database.getOrElse(getDB.getDatabaseName(None, sparkSession))
     val tables = metadata.tablesMeta.filter(
       c => c.carbonTableIdentifier.getDatabaseName.equalsIgnoreCase(database) &&
-          c.carbonTableIdentifier.getTableName.equalsIgnoreCase(tableIdentifier.table))
+          c.carbonTableIdentifier.getTableName.equalsIgnoreCase(identifier.table))
     if (tables.nonEmpty) {
-      (CarbonSparkUtil.createSparkMeta(tables.head.carbonTable), tables.head)
+      tables.head
     } else {
-      LOGGER.audit(s"Table Not Found: ${tableIdentifier.table}")
-      throw new NoSuchTableException(database, tableIdentifier.table)
+      LOGGER.error(s"Table Not Found: ${identifier.table}")
+      throw new NoSuchTableException(database, identifier.table)
     }
   }
 
-  def tableExists(tableIdentifier: TableIdentifier)(sqlContext: SQLContext): Boolean = {
+  def tableExists(tableIdentifier: TableIdentifier): Boolean = {
     checkSchemasModifiedTimeAndReloadTables()
     val database = tableIdentifier.database.getOrElse(getDB.getDatabaseName(None, sparkSession))
     val tables = metadata.tablesMeta.filter(
@@ -271,11 +283,14 @@ class CarbonMetastoreCatalog(sparkSession: SparkSession, val storePath: String)
    * Load CarbonTable from wrapper tableinfo
    *
    */
-  def createTableFromThrift(tableInfo: org.carbondata.core.carbon.metadata.schema.table.TableInfo,
-      dbName: String, tableName: String, partitioner: Partitioner)
+  def createTableFromThrift(
+      tableInfo: TableInfo,
+      dbName: String,
+      tableName: String,
+      partitioner: Partitioner)
     (sqlContext: SQLContext): String = {
 
-    if (tableExists(TableIdentifier(tableName, Some(dbName)))(sqlContext)) {
+    if (tableExists(TableIdentifier(tableName, Some(dbName)))) {
       sys.error(s"Table [$tableName] already exists under Database [$dbName]")
     }
 
@@ -300,7 +315,7 @@ class CarbonMetastoreCatalog(sparkSession: SparkSession, val storePath: String)
       storePath,
       CarbonMetadata.getInstance().getCarbonTable(dbName + "_" + tableName),
       Partitioner("org.carbondata.spark.partition.api.impl.SampleDataPartitionerImpl",
-        Array(""), 1, DistributionUtil.getNodeList(hiveContext.sparkContext)))
+        Array(""), 1, DistributionUtil.getNodeList(sparkSession.sparkContext)))
 
     val fileType = FileFactory.getFileType(schemaMetadataPath)
     if (!FileFactory.isFileExist(schemaMetadataPath, fileType)) {

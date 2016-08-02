@@ -21,8 +21,8 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.errors.attachTree
 import org.apache.spark.sql.catalyst.expressions._
-import org.apache.spark.sql.execution.{SparkPlan, UnaryNode}
-import org.apache.spark.sql.hive.{CarbonMetastoreCatalog, CarbonMetastoreTypes}
+import org.apache.spark.sql.execution.{UnaryExecNode, SparkPlan}
+import org.apache.spark.sql.hive.CarbonMetastoreTypes
 import org.apache.spark.sql.optimizer.{CarbonAliasDecoderRelation, CarbonDecoderRelation}
 import org.apache.spark.sql.types._
 
@@ -44,8 +44,7 @@ case class CarbonDictionaryDecoder(
     aliasMap: CarbonAliasDecoderRelation,
     child: SparkPlan)
   (@transient sqlContext: SQLContext)
-  extends UnaryNode {
-
+  extends UnaryExecNode {
 
   override def otherCopyArgs: Seq[AnyRef] = sqlContext :: Nil
 
@@ -54,18 +53,18 @@ case class CarbonDictionaryDecoder(
       val attr = aliasMap.getOrElse(a, a)
       val relation = relations.find(p => p.contains(attr))
       if(relation.isDefined && canBeDecoded(attr)) {
-        val carbonTable = relation.get.carbonRelation.carbonRelation.metaData.carbonTable
+        val carbonTable = relation.get.carbonRelation.metadata.carbonTable
         val carbonDimension = carbonTable
           .getDimensionByName(carbonTable.getFactTableName, attr.name)
         if (carbonDimension != null &&
             carbonDimension.hasEncoding(Encoding.DICTIONARY) &&
             !carbonDimension.hasEncoding(Encoding.DIRECT_DICTIONARY)) {
-          val newAttr = AttributeReference(a.name,
-            convertCarbonToSparkDataType(carbonDimension,
-              relation.get.carbonRelation.carbonRelation),
+          val newAttr = AttributeReference (
+            a.name,
+            convertCarbonToSparkDataType(carbonDimension, relation.get.carbonRelation),
             a.nullable,
             a.metadata)(a.exprId,
-            a.qualifiers).asInstanceOf[Attribute]
+            a.qualifier).asInstanceOf[Attribute]
           newAttr
         } else {
           a
@@ -75,7 +74,6 @@ case class CarbonDictionaryDecoder(
       }
     }
   }
-
 
   def canBeDecoded(attr: Attribute): Boolean = {
     profile match {
@@ -89,8 +87,9 @@ case class CarbonDictionaryDecoder(
     }
   }
 
-  def convertCarbonToSparkDataType(carbonDimension: CarbonDimension,
-      relation: CarbonRelation): types.DataType = {
+  def convertCarbonToSparkDataType(
+    carbonDimension: CarbonDimension,
+    relation: CarbonDatasourceRelation): types.DataType = {
     carbonDimension.getDataType match {
       case DataType.STRING => StringType
       case DataType.SHORT => ShortType
@@ -105,10 +104,12 @@ case class CarbonDictionaryDecoder(
       case DataType.TIMESTAMP => TimestampType
       case DataType.STRUCT =>
         CarbonMetastoreTypes
-        .toDataType(s"struct<${ relation.getStructChildren(carbonDimension.getColName) }>")
+        .toDataType(s"struct<${ relation.asInstanceOf[CarbonDatasourceRelation]
+            .getStructChildren(carbonDimension.getColName) }>")
       case DataType.ARRAY =>
         CarbonMetastoreTypes
-        .toDataType(s"array<${ relation.getArrayChildren(carbonDimension.getColName) }>")
+        .toDataType(s"array<${ relation.asInstanceOf[CarbonDatasourceRelation]
+            .getArrayChildren(carbonDimension.getColName) }>")
     }
   }
 
@@ -118,7 +119,7 @@ case class CarbonDictionaryDecoder(
       val attr = aliasMap.getOrElse(a, a)
       val relation = relations.find(p => p.contains(attr))
       if(relation.isDefined) {
-        val carbonTable = relation.get.carbonRelation.carbonRelation.metaData.carbonTable
+        val carbonTable = relation.get.carbonRelation.metadata.carbonTable
         val carbonDimension =
           carbonTable.getDimensionByName(carbonTable.getFactTableName, attr.name)
         if (carbonDimension != null &&
@@ -138,14 +139,12 @@ case class CarbonDictionaryDecoder(
     dictIds
   }
 
-
-  override def outputsUnsafeRows: Boolean = true
+//  override def outputsUnsafeRows: Boolean = true
 
   override def doExecute(): RDD[InternalRow] = {
     attachTree(this, "execute") {
-      val storePath = sqlContext.catalog.asInstanceOf[CarbonMetastoreCatalog].storePath
       val absoluteTableIdentifiers = relations.map { relation =>
-        val carbonTable = relation.carbonRelation.carbonRelation.metaData.carbonTable
+        val carbonTable = relation.carbonRelation.metadata.carbonTable
         (carbonTable.getFactTableName, carbonTable.getAbsoluteTableIdentifier)
       }.toMap
 
@@ -153,6 +152,7 @@ case class CarbonDictionaryDecoder(
         val dataTypes = child.output.map { attr => attr.dataType }
         child.execute().mapPartitions { iter =>
           val cacheProvider: CacheProvider = CacheProvider.getInstance
+          val storePath = relations.head.carbonRelation.tableMeta.storePath
           val forwardDictionaryCache: Cache[DictionaryColumnUniqueIdentifier, Dictionary] =
             cacheProvider
               .createCache(CacheType.FORWARD_DICTIONARY, storePath)

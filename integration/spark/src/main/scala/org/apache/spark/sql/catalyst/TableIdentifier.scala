@@ -17,8 +17,6 @@
 
 package org.apache.spark.sql.catalyst
 
-import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
-
 /**
  * Identifies a `table` in `database`.  If `database` is not defined, the current database is used.
  */
@@ -44,7 +42,7 @@ private[sql] object TableIdentifier {
     tableIdentifier match {
       case Seq(dbName, tableName) => TableIdentifier(tableName, Some(dbName))
       case Seq(tableName) => TableIdentifier(tableName, None)
-      case _ => throw new NoSuchTableException
+      case _ => throw new IllegalArgumentException
     }
   }
 

@@ -22,6 +22,8 @@ import java.text.SimpleDateFormat
 import java.util
 import java.util.UUID
 
+import org.apache.spark.sql.execution.datasources.LogicalRelation
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.language.implicitConversions
@@ -30,10 +32,8 @@ import scala.util.Random
 import org.apache.spark.SparkEnv
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.TableIdentifier._
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference, Cast, Literal}
 import org.apache.spark.sql.execution.SparkPlan
-import org.apache.spark.sql.hive.HiveContext
 import org.apache.spark.sql.types.TimestampType
 import org.apache.spark.util.FileUtils
 import org.codehaus.jackson.map.ObjectMapper
@@ -751,9 +751,9 @@ private[sql] case class AlterTable(
     dropCols: Seq[String],
     defaultVals: Seq[Default]) extends RunnableCommand {
 
-  def run(sqlContext: SQLContext): Seq[Row] = {
+  def run(sparkSession: SparkSession): Seq[Row] = {
     // TODO : Implement it.
-    Seq.empty
+    throw new UnsupportedOperationException("AlterTable is not supported yet")
   }
 }
 
@@ -762,8 +762,8 @@ private[sql] case class AlterTable(
  *
  * @param alterTableModel
  */
-private[sql] case class AlterTableCompaction(alterTableModel: AlterTableModel) extends
-  RunnableCommand {
+private[sql] case class AlterTableCompaction(alterTableModel: AlterTableModel)
+  extends RunnableCommand {
 
   def run(sparkSession: SparkSession): Seq[Row] = {
     val sqlContext = sparkSession.sqlContext
@@ -775,27 +775,23 @@ private[sql] case class AlterTableCompaction(alterTableModel: AlterTableModel) e
       sys.error("alter table failed. table not found: " + databaseName + "." + tableName)
     }
 
-    val relation =
-      CarbonEnv.getInstance(sqlContext).carbonCatalog
-        .lookupRelation1(Option(databaseName), tableName)(sqlContext)
-        .asInstanceOf[CarbonRelation]
-    if (relation == null) {
+    val tableMeta =
+      CarbonEnv.getTableMeta(sqlContext, TableIdentifier(tableName, Option(databaseName)))
+    if (tableMeta == null) {
       sys.error(s"Table $databaseName.$tableName does not exist")
     }
     val carbonLoadModel = new CarbonLoadModel()
-
-
-    val table = relation.tableMeta.carbonTable
+    val table = tableMeta.carbonTable
     carbonLoadModel.setAggTables(table.getAggregateTablesName.asScala.toArray)
     carbonLoadModel.setTableName(table.getFactTableName)
     val dataLoadSchema = new CarbonDataLoadSchema(table)
     // Need to fill dimension relation
     carbonLoadModel.setCarbonDataLoadSchema(dataLoadSchema)
-    carbonLoadModel.setTableName(relation.tableMeta.carbonTableIdentifier.getTableName)
-    carbonLoadModel.setDatabaseName(relation.tableMeta.carbonTableIdentifier.getDatabaseName)
-    carbonLoadModel.setStorePath(relation.tableMeta.storePath)
+    carbonLoadModel.setTableName(tableMeta.carbonTableIdentifier.getTableName)
+    carbonLoadModel.setDatabaseName(tableMeta.carbonTableIdentifier.getDatabaseName)
+    carbonLoadModel.setStorePath(tableMeta.storePath)
 
-    val partitioner = relation.tableMeta.partitioner
+    val partitioner = tableMeta.partitioner
 
     val kettleHomePath = CarbonScalaUtil.getKettleHomePath(sqlContext)
     if (kettleHomePath == null) {
@@ -807,12 +803,12 @@ private[sql] case class AlterTableCompaction(alterTableModel: AlterTableModel) e
       )
     storeLocation = storeLocation + "/carbonstore/" + System.nanoTime()
 
-    CarbonDataRDDFactory
-      .alterTableForCompaction(sqlContext,
+    CarbonDataRDDFactory.alterTableForCompaction(
+      sqlContext,
         alterTableModel,
         carbonLoadModel,
         partitioner,
-        relation.tableMeta.storePath,
+        tableMeta.storePath,
         kettleHomePath,
         storeLocation
       )
@@ -860,15 +856,14 @@ private[sql] case class CreateTable(cm: tableModel) extends RunnableCommand {
         case e: Exception =>
 
           val identifier: TableIdentifier = TableIdentifier(tbName, Some(dbName))
-          val relation = CarbonEnv.getInstance(sqlContext).carbonCatalog
-            .lookupRelation1(identifier)(sqlContext).asInstanceOf[CarbonRelation]
-          if (relation != null) {
+          val tableMeta = CarbonEnv.getTableMeta(sqlContext, identifier)
+          if (tableMeta != null) {
             LOGGER.audit(s"Deleting Table [$tbName] under Database [$dbName]" +
                          "as create TABLE failed")
-            CarbonEnv.getInstance(sqlContext).carbonCatalog
-              .dropTable(relation.tableMeta.partitioner.partitionCount,
-                relation.tableMeta.storePath,
-                identifier)(sqlContext)
+            CarbonEnv.getInstance(sqlContext).carbonCatalog.dropTable(
+              tableMeta.partitioner.partitionCount,
+              tableMeta.storePath,
+              identifier)(sqlContext)
           }
 
           LOGGER.audit(s"Table creation with Database name [$dbName] " +
@@ -896,7 +891,6 @@ private[sql] case class DeleteLoadsById(
   val LOGGER = LogServiceFactory.getLogService(this.getClass.getCanonicalName)
 
   def run(sparkSession: SparkSession): Seq[Row] = {
-    val sqlContext = sparkSession.sqlContext
     val databaseName = getDB.getDatabaseName(databaseNameOp, sparkSession)
     LOGGER.audit(s"Delete load by Id request has been received for $databaseName.$tableName")
 
@@ -905,19 +899,12 @@ private[sql] case class DeleteLoadsById(
     val dbName = getDB.getDatabaseName(databaseNameOp, sparkSession)
 
     val identifier = TableIdentifier(tableName, Option(dbName))
-    val relation = CarbonEnv.getInstance(sqlContext).carbonCatalog.lookupRelation1(
-      identifier, None)(sqlContext).asInstanceOf[CarbonRelation]
-    if (relation == null) {
+    if (!CarbonEnv.isExist(sparkSession.sqlContext, identifier)) {
       LOGGER.audit(s"Delete load by Id is failed. Table $dbName.$tableName does not exist")
       sys.error(s"Table $dbName.$tableName does not exist")
     }
 
     val carbonTable = CarbonMetadata.getInstance().getCarbonTable(dbName + '_' + tableName)
-
-    if (null == carbonTable) {
-      CarbonEnv.getInstance(sqlContext).carbonCatalog
-        .lookupRelation1(identifier, None)(sqlContext).asInstanceOf[CarbonRelation]
-    }
     val path = carbonTable.getMetaDataFilepath
     val segmentStatusManager = new SegmentStatusManager(carbonTable.getAbsoluteTableIdentifier)
     val invalidLoadIds = segmentStatusManager.updateDeletionStatus(loadids.asJava, path).asScala
@@ -949,16 +936,11 @@ private[sql] case class DeleteLoadsByLoadDate(
   val LOGGER = LogServiceFactory.getLogService("org.apache.spark.sql.tablemodel.tableSchema")
 
   def run(sparkSession: SparkSession): Seq[Row] = {
-    val sqlContext = sparkSession.sqlContext
     LOGGER.audit("The delete load by load date request has been received.")
     val dbName = getDB.getDatabaseName(databaseNameOp, sparkSession)
     val identifier = TableIdentifier(tableName, Option(dbName))
-    val relation = CarbonEnv.getInstance(sqlContext).carbonCatalog
-      .lookupRelation1(identifier, None)(sqlContext).asInstanceOf[CarbonRelation]
-    if (relation == null) {
-      LOGGER
-        .audit(s"Delete load by load date is failed. Table $dbName.$tableName does not " +
-         s"exist")
+    if (!CarbonEnv.isExist(sparkSession.sqlContext, identifier)) {
+      LOGGER.audit(s"Delete load by load date is failed. Table $dbName.$tableName does not exist")
       sys.error(s"Table $dbName.$tableName does not exist")
     }
 
@@ -971,10 +953,6 @@ private[sql] case class DeleteLoadsByLoadDate(
     val carbonTable = org.carbondata.core.carbon.metadata.CarbonMetadata.getInstance()
       .getCarbonTable(dbName + '_' + tableName)
     val segmentStatusManager = new SegmentStatusManager(carbonTable.getAbsoluteTableIdentifier)
-    if (null == carbonTable) {
-      var relation = CarbonEnv.getInstance(sqlContext).carbonCatalog
-        .lookupRelation1(identifier, None)(sqlContext).asInstanceOf[CarbonRelation]
-    }
     val path = carbonTable.getMetaDataFilepath()
     val invalidLoadTimestamps = segmentStatusManager
       .updateDeletionStatus(loadDate, path, timeObj.asInstanceOf[java.lang.Long]).asScala
@@ -1007,22 +985,19 @@ private[sql] case class LoadTable(
     if (isOverwriteExist) {
       sys.error("Overwrite is not supported for carbon table with " + dbName + "." + tableName)
     }
-    if (null == org.carbondata.core.carbon.metadata.CarbonMetadata.getInstance
-      .getCarbonTable(dbName + "_" + tableName)) {
+    if (null == CarbonMetadata.getInstance.getCarbonTable(dbName + "_" + tableName)) {
       logError("Data loading failed. table not found: " + dbName + "." + tableName)
       LOGGER.audit("Data loading failed. table not found: " + dbName + "." + tableName)
       sys.error("Data loading failed. table not found: " + dbName + "." + tableName)
     }
 
-    val relation = CarbonEnv.getInstance(sqlContext).carbonCatalog
-        .lookupRelation1(Option(dbName), tableName)(sqlContext)
-        .asInstanceOf[CarbonRelation]
-    if (relation == null) {
+    val tableMeta = CarbonEnv.getTableMeta(sqlContext, TableIdentifier(tableName, Option(dbName)))
+    if (tableMeta == null) {
         sys.error(s"Table $dbName.$tableName does not exist")
     }
     CarbonProperties.getInstance().addProperty("zookeeper.enable.lock", "false")
     val carbonLock = CarbonLockFactory
-      .getCarbonLockObj(relation.tableMeta.carbonTable.getAbsoluteTableIdentifier
+      .getCarbonLockObj(tableMeta.carbonTable.getAbsoluteTableIdentifier
         .getCarbonTableIdentifier,
         LockUsage.METADATA_LOCK
       )
@@ -1035,9 +1010,9 @@ private[sql] case class LoadTable(
 
       val factPath = FileUtils.getPaths(CarbonUtil.checkAndAppendHDFSUrl(factPathFromUser))
       val carbonLoadModel = new CarbonLoadModel()
-      carbonLoadModel.setTableName(relation.tableMeta.carbonTableIdentifier.getTableName)
-      carbonLoadModel.setDatabaseName(relation.tableMeta.carbonTableIdentifier.getDatabaseName)
-      carbonLoadModel.setStorePath(relation.tableMeta.storePath)
+      carbonLoadModel.setTableName(tableMeta.carbonTableIdentifier.getTableName)
+      carbonLoadModel.setDatabaseName(tableMeta.carbonTableIdentifier.getDatabaseName)
+      carbonLoadModel.setStorePath(tableMeta.storePath)
       if (dimFilesPath.isEmpty) {
         carbonLoadModel.setDimFolderPath(null)
       } else {
@@ -1045,7 +1020,7 @@ private[sql] case class LoadTable(
         carbonLoadModel.setDimFolderPath(x.mkString(","))
       }
 
-      val table = relation.tableMeta.carbonTable
+      val table = tableMeta.carbonTable
       carbonLoadModel.setAggTables(table.getAggregateTablesName.asScala.toArray)
       carbonLoadModel.setTableName(table.getFactTableName)
       val dataLoadSchema = new CarbonDataLoadSchema(table)
@@ -1060,9 +1035,9 @@ private[sql] case class LoadTable(
         storeLocation = System.getProperty("java.io.tmpdir")
       }
 
-      var partitionLocation = relation.tableMeta.storePath + "/partition/" +
-                              relation.tableMeta.carbonTableIdentifier.getDatabaseName + "/" +
-                              relation.tableMeta.carbonTableIdentifier.getTableName + "/"
+      var partitionLocation = tableMeta.storePath + "/partition/" +
+                              tableMeta.carbonTableIdentifier.getDatabaseName + "/" +
+                              tableMeta.carbonTableIdentifier.getTableName + "/"
 
       storeLocation = storeLocation + "/carbonstore/" + System.nanoTime()
 
@@ -1110,8 +1085,8 @@ private[sql] case class LoadTable(
       var partitionStatus = CarbonCommonConstants.STORE_LOADSTATUS_SUCCESS
       try {
         // First system has to partition the data first and then call the load data
-        if (null == relation.tableMeta.partitioner.partitionColumn ||
-            relation.tableMeta.partitioner.partitionColumn(0).isEmpty) {
+        if (null == tableMeta.partitioner.partitionColumn ||
+            tableMeta.partitioner.partitionColumn(0).isEmpty) {
           LOGGER.info("Initiating Direct Load for the Table : (" +
                       dbName + "." + tableName + ")")
           carbonLoadModel.setFactFilePath(factPath)
@@ -1143,11 +1118,11 @@ private[sql] case class LoadTable(
           carbonLoadModel.setColDictFilePath(columnDict)
         }
         GlobalDictionaryUtil
-          .generateGlobalDictionary(sqlContext, carbonLoadModel, relation.tableMeta.storePath)
+          .generateGlobalDictionary(sqlContext, carbonLoadModel, tableMeta.storePath)
         CarbonDataRDDFactory
-          .loadCarbonData(sqlContext, carbonLoadModel, storeLocation, relation.tableMeta.storePath,
+          .loadCarbonData(sqlContext, carbonLoadModel, storeLocation, tableMeta.storePath,
             kettleHomePath,
-            relation.tableMeta.partitioner, columinar, isAgg = false, partitionStatus)
+            tableMeta.partitioner, columinar, isAgg = false, partitionStatus)
       }
       catch {
         case ex: Exception =>
@@ -1197,18 +1172,17 @@ private[sql] case class PartitionData(databaseName: String, tableName: String, f
   def run(sparkSession: SparkSession): Seq[Row] = {
     val sqlContext = sparkSession.sqlContext
     val identifier = TableIdentifier(tableName, Option(databaseName))
-    val relation = CarbonEnv.getInstance(sqlContext)
-      .carbonCatalog.lookupRelation1(identifier, None)(sqlContext).asInstanceOf[CarbonRelation]
-    val dimNames = relation.tableMeta.carbonTable
+    val tableMeta = CarbonEnv.getTableMeta(sqlContext, identifier)
+    val dimNames = tableMeta.carbonTable
       .getDimensionByTableName(tableName).asScala.map(_.getColName)
-    val msrNames = relation.tableMeta.carbonTable
+    val msrNames = tableMeta.carbonTable
       .getDimensionByTableName(tableName).asScala.map(_.getColName)
     val targetFolder = targetPath
     partitionStatus = CarbonDataRDDFactory.partitionCarbonData(
       sqlContext.sparkContext, databaseName,
       tableName, factPath, targetFolder, (dimNames ++ msrNames).toArray
       , fileHeader, delimiter,
-      quoteChar, escapeChar, multiLine, relation.tableMeta.partitioner)
+      quoteChar, escapeChar, multiLine, tableMeta.partitioner)
     if (partitionStatus == CarbonCommonConstants.STORE_LOADSTATUS_PARTIAL_SUCCESS) {
       logInfo("Bad Record Found while partitioning data")
     }
@@ -1237,8 +1211,7 @@ private[sql] case class DropTableCommand(ifExistsSet: Boolean, databaseNameOp: O
       if (sqlContext.tableNames(dbName).map(x => x.toLowerCase())
         .contains(tableName.toLowerCase())) {
         try {
-          sparkSession.catalog.client.
-            runSqlHive(s"DROP TABLE IF EXISTS $dbName.$tableName")
+          sparkSession.catalog.runSqlHive(s"DROP TABLE IF EXISTS $dbName.$tableName")
         } catch {
           case e: RuntimeException =>
             LOGGER.audit(
@@ -1262,25 +1235,23 @@ private[sql] case class DropTableCommand(ifExistsSet: Boolean, databaseNameOp: O
           sys.error("Table is locked for updation. Please try after some time")
         }
 
-        val relation = CarbonEnv.getInstance(sqlContext).carbonCatalog
-          .lookupRelation1(identifier)(sqlContext).asInstanceOf[CarbonRelation]
-
-        if (relation == null) {
+        val tableMeta = CarbonEnv.getTableMeta(sqlContext, identifier)
+        if (tableMeta == null) {
           if (!ifExistsSet) {
             sys.error(s"Table $dbName.$tableName does not exist")
           }
         } else {
           LOGGER.audit(s"Deleting table [$tableName] under database [$dbName]")
 
-          CarbonEnv.getInstance(sqlContext).carbonCatalog
-            .dropTable(relation.tableMeta.partitioner.partitionCount,
-              relation.tableMeta.storePath,
-              TableIdentifier(relation.tableMeta.carbonTableIdentifier.getTableName,
-                Some(relation.tableMeta.carbonTableIdentifier.getDatabaseName))
-              )(sqlContext)
-          CarbonDataRDDFactory
-            .dropTable(sqlContext.sparkContext, dbName, tableName,
-              relation.tableMeta.partitioner)
+          CarbonEnv.getInstance(sqlContext).carbonCatalog.dropTable(
+            tableMeta.partitioner.partitionCount,
+            tableMeta.storePath,
+            identifier)(sqlContext)
+          CarbonDataRDDFactory.dropTable(
+            sqlContext.sparkContext,
+            dbName,
+            tableName,
+            tableMeta.partitioner)
           QueryPartitionHelper.getInstance().removePartition(dbName, tableName)
 
           LOGGER.audit(s"Deleted table [$tableName] under database [$dbName]")
@@ -1370,19 +1341,19 @@ private[sql] case class ShowLoads(
 private[sql] case class DescribeCommandFormatted(
     child: SparkPlan,
     override val output: Seq[Attribute],
-    tblIdentifier: TableIdentifier)
+    identifier: TableIdentifier)
   extends RunnableCommand {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val sqlContext = sparkSession.sqlContext
-    val relation = CarbonEnv.getInstance(sqlContext).carbonCatalog
-      .lookupRelation1(tblIdentifier)(sqlContext).asInstanceOf[CarbonRelation]
+    val metadata = CarbonEnv.getMetaData(sqlContext, identifier)
+    val tableMeta = CarbonEnv.getTableMeta(sqlContext, identifier)
     val mapper = new ObjectMapper()
     val colProps = StringBuilder.newBuilder
     var results: Seq[(String, String, String)] = child.schema.fields.map { field =>
-      val comment = if (relation.metaData.dims.contains(field.name)) {
-        val dimension = relation.metaData.carbonTable.getDimensionByName(
-            relation.tableMeta.carbonTableIdentifier.getTableName,
+      val comment = if (metadata.dims.contains(field.name)) {
+        val dimension = metadata.carbonTable.getDimensionByName(
+            tableMeta.carbonTableIdentifier.getTableName,
             field.name)
         if (null != dimension.getColumnProperties && dimension.getColumnProperties.size() > 0) {
           val colprop = mapper.writeValueAsString(dimension.getColumnProperties)
@@ -1408,13 +1379,13 @@ private[sql] case class DescribeCommandFormatted(
       colProps.toString()
     }
     results ++= Seq(("", "", ""), ("##Detailed Table Information", "", ""))
-    results ++= Seq(("Database Name : ", relation.tableMeta.carbonTableIdentifier
+    results ++= Seq(("Database Name : ", tableMeta.carbonTableIdentifier
       .getDatabaseName, "")
     )
-    results ++= Seq(("Table Name : ", relation.tableMeta.carbonTableIdentifier.getTableName, ""))
-    results ++= Seq(("CARBON Store Path : ", relation.tableMeta.storePath, ""))
+    results ++= Seq(("Table Name : ", tableMeta.carbonTableIdentifier.getTableName, ""))
+    results ++= Seq(("CARBON Store Path : ", tableMeta.storePath, ""))
     results ++= Seq(("", "", ""), ("#Aggregate Tables", "", ""))
-    val carbonTable = relation.tableMeta.carbonTable
+    val carbonTable = tableMeta.carbonTable
     val aggTables = carbonTable.getAggregateTablesName
     if (aggTables.size == 0) {
       results ++= Seq(("NONE", "", ""))
@@ -1439,7 +1410,7 @@ private[sql] case class DescribeCommandFormatted(
       results ++= Seq(("NONE", "", ""))
     }
     val dimension = carbonTable
-      .getDimensionByTableName(relation.tableMeta.carbonTableIdentifier.getTableName);
+      .getDimensionByTableName(tableMeta.carbonTableIdentifier.getTableName);
     results ++= getColumnGroups(dimension.asScala.toList)
     results.map { case (name, dataType, comment) =>
       Row(f"$name%-36s $dataType%-80s $comment%-72s")
@@ -1464,60 +1435,57 @@ private[sql] case class DescribeCommandFormatted(
   }
 }
 
-private[sql] case class DeleteLoadByDate(
-    databaseNameOp: Option[String],
-    tableName: String,
-    dateField: String,
-    dateValue: String
-) extends RunnableCommand {
-
-  val LOGGER = LogServiceFactory.getLogService(this.getClass.getCanonicalName)
-
-  def run(sparkSession: SparkSession): Seq[Row] = {
-    val sqlContext = sparkSession.sqlContext
-    val dbName = getDB.getDatabaseName(databaseNameOp, sparkSession)
-    LOGGER.audit(s"The delete load by date request has been received for $dbName.$tableName")
-    val identifier = TableIdentifier(tableName, Option(dbName))
-    val relation = CarbonEnv.getInstance(sqlContext).carbonCatalog
-      .lookupRelation1(identifier)(sqlContext).asInstanceOf[CarbonRelation]
-    var level: String = ""
-    var carbonTable = org.carbondata.core.carbon.metadata.CarbonMetadata
-         .getInstance().getCarbonTable(dbName + '_' + tableName)
-    if (relation == null) {
-      LOGGER.audit(s"The delete load by date is failed. Table $dbName.$tableName does not exist")
-      sys.error(s"Table $dbName.$tableName does not exist")
-    }
-
-    val matches: Seq[AttributeReference] = relation.dimensionsAttr.filter(
-      filter => filter.name.equalsIgnoreCase(dateField) &&
-                filter.dataType.isInstanceOf[TimestampType]).toList
-
-    if (matches.isEmpty) {
-      LOGGER.audit(
-        "The delete load by date is failed. " +
-        "Table $dbName.$tableName does not contain date field :" + dateField)
-      sys.error(s"Table $dbName.$tableName does not contain date field " + dateField)
-    }
-    else {
-      level = matches.asJava.get(0).name
-    }
-
-    val actualColName = relation.metaData.carbonTable.getDimensionByName(tableName, level)
-      .getColName
-    CarbonDataRDDFactory.deleteLoadByDate(
-      sqlContext,
-      new CarbonDataLoadSchema(carbonTable),
-      dbName,
-      tableName,
-      CarbonEnv.getInstance(sqlContext).carbonCatalog.storePath,
-      level,
-      actualColName,
-      dateValue,
-      relation.tableMeta.partitioner)
-    LOGGER.audit(s"The delete load by date $dateValue is successful for $dbName.$tableName.")
-    Seq.empty
-  }
-}
+//private[sql] case class DeleteLoadByDate(
+//    databaseNameOp: Option[String],
+//    tableName: String,
+//    dateField: String,
+//    dateValue: String)
+//    extends RunnableCommand {
+//
+//  val LOGGER = LogServiceFactory.getLogService(this.getClass.getCanonicalName)
+//
+//  def run(sparkSession: SparkSession): Seq[Row] = {
+//    val sqlContext = sparkSession.sqlContext
+//    val dbName = getDB.getDatabaseName(databaseNameOp, sparkSession)
+//    LOGGER.audit(s"The delete load by date request has been received for $dbName.$tableName")
+//    val identifier = TableIdentifier(tableName, Option(dbName))
+//    val relation = CarbonEnv.getRelation(sqlContext, identifier)
+//    var level: String = ""
+//    val carbonTable = CarbonMetadata.getInstance().getCarbonTable(dbName + '_' + tableName)
+//    if (relation == null) {
+//      LOGGER.audit(s"The delete load by date is failed. Table $dbName.$tableName does not exist")
+//      sys.error(s"Table $dbName.$tableName does not exist")
+//    }
+//
+//    val matches: Seq[AttributeReference] = relation.dimensionsAttr.filter(
+//      filter => filter.name.equalsIgnoreCase(dateField) &&
+//                filter.dataType.isInstanceOf[TimestampType]).toList
+//
+//    if (matches.isEmpty) {
+//      LOGGER.audit(
+//        "The delete load by date is failed. " +
+//        "Table $dbName.$tableName does not contain date field :" + dateField)
+//      sys.error(s"Table $dbName.$tableName does not contain date field " + dateField)
+//    } else {
+//      level = matches.asJava.get(0).name
+//    }
+//
+//    val actualColName = relation.metadata.carbonTable.getDimensionByName(tableName, level)
+//      .getColName
+//    CarbonDataRDDFactory.deleteLoadByDate(
+//      sqlContext,
+//      new CarbonDataLoadSchema(carbonTable),
+//      dbName,
+//      tableName,
+//      CarbonEnv.getInstance(sqlContext).carbonCatalog.storePath,
+//      level,
+//      actualColName,
+//      dateValue,
+//      relation.tableMeta.partitioner)
+//    LOGGER.audit(s"The delete load by date $dateValue is successful for $dbName.$tableName.")
+//    Seq.empty
+//  }
+//}
 
 private[sql] case class CleanFiles(
     databaseNameOp: Option[String],
@@ -1530,28 +1498,26 @@ private[sql] case class CleanFiles(
     val dbName = getDB.getDatabaseName(databaseNameOp, sparkSession)
     LOGGER.audit(s"The clean files request has been received for $dbName.$tableName")
     val identifier = TableIdentifier(tableName, Option(dbName))
-    val relation = CarbonEnv.getInstance(sqlContext).carbonCatalog
-      .lookupRelation1(identifier)(sqlContext).
-      asInstanceOf[CarbonRelation]
-    if (relation == null) {
+    val tableMeta = CarbonEnv.getTableMeta(sqlContext, identifier)
+    if (tableMeta == null) {
       LOGGER.audit(s"The clean files request is failed. Table $dbName.$tableName does not exist")
       sys.error(s"Table $dbName.$tableName does not exist")
     }
 
     val carbonLoadModel = new CarbonLoadModel()
-    carbonLoadModel.setTableName(relation.tableMeta.carbonTableIdentifier.getTableName)
-    carbonLoadModel.setDatabaseName(relation.tableMeta.carbonTableIdentifier.getDatabaseName)
-    val table = relation.tableMeta.carbonTable
+    carbonLoadModel.setTableName(tableMeta.carbonTableIdentifier.getTableName)
+    carbonLoadModel.setDatabaseName(tableMeta.carbonTableIdentifier.getDatabaseName)
+    val table = tableMeta.carbonTable
     carbonLoadModel.setAggTables(table.getAggregateTablesName.asScala.toArray)
     carbonLoadModel.setTableName(table.getFactTableName)
-    carbonLoadModel.setStorePath(relation.tableMeta.storePath)
+    carbonLoadModel.setStorePath(tableMeta.storePath)
     val dataLoadSchema = new CarbonDataLoadSchema(table)
     carbonLoadModel.setCarbonDataLoadSchema(dataLoadSchema)
     CarbonDataRDDFactory.cleanFiles(
       sqlContext.sparkContext,
       carbonLoadModel,
-      relation.tableMeta.storePath,
-      relation.tableMeta.partitioner)
+      tableMeta.storePath,
+      tableMeta.partitioner)
     LOGGER.audit("Clean files request is successful")
     Seq.empty
   }
