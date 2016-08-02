@@ -119,6 +119,7 @@ class CarbonMetastoreCatalog(sparkSession: SparkSession, val storePath: String)
     tableCreationTime
   }
 
+
   def lookupRelation1(dbName: Option[String],
       tableName: String)(sqlContext: SQLContext): LogicalPlan = {
     lookupRelation1(TableIdentifier(tableName, dbName))(sqlContext)
@@ -134,6 +135,21 @@ class CarbonMetastoreCatalog(sparkSession: SparkSession, val storePath: String)
     if (tables.nonEmpty) {
       CarbonRelation(database, tableIdentifier.table,
         CarbonSparkUtil.createSparkMeta(tables.head.carbonTable), tables.head, alias)(sqlContext)
+    } else {
+      LOGGER.audit(s"Table Not Found: ${tableIdentifier.table}")
+      throw new NoSuchTableException(database, tableIdentifier.table)
+    }
+  }
+
+  def getAllMeta(tableIdentifier: TableIdentifier,
+      alias: Option[String] = None)(sqlContext: SQLContext): (CarbonMetaData, TableMeta) = {
+    checkSchemasModifiedTimeAndReloadTables()
+    val database = tableIdentifier.database.getOrElse(getDB.getDatabaseName(None, sparkSession))
+    val tables = metadata.tablesMeta.filter(
+      c => c.carbonTableIdentifier.getDatabaseName.equalsIgnoreCase(database) &&
+          c.carbonTableIdentifier.getTableName.equalsIgnoreCase(tableIdentifier.table))
+    if (tables.nonEmpty) {
+      (CarbonSparkUtil.createSparkMeta(tables.head.carbonTable), tables.head)
     } else {
       LOGGER.audit(s"Table Not Found: ${tableIdentifier.table}")
       throw new NoSuchTableException(database, tableIdentifier.table)
