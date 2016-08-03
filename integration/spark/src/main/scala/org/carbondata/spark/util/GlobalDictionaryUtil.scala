@@ -21,25 +21,16 @@ import java.io.IOException
 import java.nio.charset.Charset
 import java.util.regex.Pattern
 
-import org.apache.spark.sql.catalyst.TableIdentifier
-
-import scala.collection.JavaConverters._
-import scala.collection.mutable.{ArrayBuffer, HashMap, HashSet}
-import scala.language.implicitConversions
-import scala.util.control.Breaks.{break, breakable}
-
 import org.apache.commons.lang3.{ArrayUtils, StringUtils}
-import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{CarbonEnv, DataFrame}
+import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.hive.CarbonMetastoreCatalog
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.{CarbonEnv, DataFrame, SQLContext}
 import org.apache.spark.util.FileUtils
-
 import org.carbondata.common.factory.CarbonCommonFactory
+import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.cache.dictionary.Dictionary
-import org.carbondata.core.carbon.CarbonDataLoadSchema
-import org.carbondata.core.carbon.CarbonTableIdentifier
+import org.carbondata.core.carbon.{CarbonDataLoadSchema, CarbonTableIdentifier}
 import org.carbondata.core.carbon.metadata.datatype.DataType
 import org.carbondata.core.carbon.metadata.encoder.Encoding
 import org.carbondata.core.carbon.metadata.schema.table.column.CarbonDimension
@@ -50,17 +41,22 @@ import org.carbondata.core.reader.CarbonDictionaryReader
 import org.carbondata.core.util.CarbonProperties
 import org.carbondata.core.writer.CarbonDictionaryWriter
 import org.carbondata.processing.etl.DataLoadingException
-import org.carbondata.spark.load.CarbonLoaderUtil
-import org.carbondata.spark.load.CarbonLoadModel
+import org.carbondata.spark.CarbonSparkFactory
+import org.carbondata.spark.load.{CarbonLoadModel, CarbonLoaderUtil}
 import org.carbondata.spark.partition.reader.CSVWriter
 import org.carbondata.spark.rdd.{ArrayParser, CarbonAllDictionaryCombineRDD, CarbonBlockDistinctValuesCombineRDD, CarbonColumnDictGenerateRDD, CarbonDataRDDFactory, CarbonGlobalDictionaryGenerateRDD, ColumnPartitioner, DataFormat, DictionaryLoadModel, GenericParser, PrimitiveParser, StructParser}
-import org.carbondata.spark.CarbonSparkFactory
+
+import scala.collection.JavaConverters._
+import scala.collection.mutable.{ArrayBuffer, HashMap, HashSet}
+import scala.language.implicitConversions
+import scala.util.control.Breaks.{break, breakable}
 
 /**
  * A object which provide a method to generate global dictionary from CSV files.
  */
-object GlobalDictionaryUtil extends Logging {
+object GlobalDictionaryUtil {
 
+  private lazy val LOGGER = LogServiceFactory.getLogService(this.getClass.getCanonicalName)
   /**
    * find columns which need to generate global dictionary.
    *
@@ -416,7 +412,7 @@ object GlobalDictionaryUtil extends Logging {
       val columnName = model.primDimensions(x._1).getColName
       if (CarbonCommonConstants.STORE_LOADSTATUS_FAILURE.equals(x._2)) {
         result = true
-        logError(s"table:$tableName column:$columnName generate global dictionary file failed")
+        LOGGER.error(s"table:$tableName column:$columnName generate global dictionary file failed")
       }
       if (x._3) noDictionaryColumns +=  model.primDimensions(x._1)
     }
@@ -424,10 +420,10 @@ object GlobalDictionaryUtil extends Logging {
       updateTableMetadata(carbonLoadModel, sqlContext, model, noDictionaryColumns.toArray)
     }
     if (result) {
-      logError("generate global dictionary files failed")
+      LOGGER.error("generate global dictionary files failed")
       throw new Exception("Failed to generate global dictionary files")
     } else {
-      logInfo("generate global dictionary successfully")
+      LOGGER.error("generate global dictionary successfully")
     }
   }
 
@@ -447,7 +443,7 @@ object GlobalDictionaryUtil extends Logging {
       val colPathMapTrim = colPathMap.trim
       val colNameWithPath = colPathMapTrim.split(":")
       if (colNameWithPath.length == 1) {
-        logError("the format of external column dictionary should be " +
+        LOGGER.error("the format of external column dictionary should be " +
         "columnName:columnPath, please check")
         throw new DataLoadingException("the format of predefined column dictionary" +
         " should be columnName:columnPath, please check")
@@ -485,7 +481,7 @@ object GlobalDictionaryUtil extends Logging {
     val preDictDimensionOption = dimensions.filter(
       _.getColName.equalsIgnoreCase(dimParent))
     if (preDictDimensionOption.length == 0) {
-      logError(s"No column $dimParent exists in ${table.getDatabaseName}.${table.getTableName}")
+      LOGGER.error(s"No column $dimParent exists in ${table.getDatabaseName}.${table.getTableName}")
       throw new DataLoadingException(s"No column $colName exists " +
       s"in ${table.getDatabaseName}.${table.getTableName}")
     }
@@ -594,7 +590,7 @@ object GlobalDictionaryUtil extends Logging {
           value = tokens(1)
         } catch {
           case ex: Exception =>
-            logError("read a bad dictionary record" + x)
+            LOGGER.error("read a bad dictionary record" + x)
         }
         (index, value)
       })
@@ -606,7 +602,7 @@ object GlobalDictionaryUtil extends Logging {
         .filter(x => requireColumnsList.contains(x._1))
     } catch {
       case ex: Exception =>
-        logError("read local dictionary files failed")
+        LOGGER.error("read local dictionary files failed")
         throw ex
     }
 
@@ -630,7 +626,7 @@ object GlobalDictionaryUtil extends Logging {
         file.getName.endsWith(dictExt) && file.getSize > 0)) {
         true
       } else {
-        logInfo("No dictionary files found or empty dictionary files! " +
+        LOGGER.info("No dictionary files found or empty dictionary files! " +
           "Won't generate new dictionary.")
         false
       }
@@ -638,7 +634,7 @@ object GlobalDictionaryUtil extends Logging {
       if (filePath.exists() && filePath.getSize > 0) {
         true
       } else {
-        logInfo("No dictionary files found or empty dictionary files! " +
+        LOGGER.info("No dictionary files found or empty dictionary files! " +
           "Won't generate new dictionary.")
         false
       }
@@ -669,7 +665,7 @@ object GlobalDictionaryUtil extends Logging {
 
       val allDictionaryPath = carbonLoadModel.getAllDictPath
       if(StringUtils.isEmpty(allDictionaryPath)) {
-        logInfo("Generate global dictionary from source data files!")
+        LOGGER.info("Generate global dictionary from source data files!")
         // load data by using dataSource com.databricks.spark.csv
         var df = loadDataFrame(sqlContext, carbonLoadModel)
         var headers = if (StringUtils.isEmpty(carbonLoadModel.getCsvHeader)) {
@@ -701,7 +697,7 @@ object GlobalDictionaryUtil extends Logging {
           // check result status
           checkStatus(carbonLoadModel, sqlContext, model, statusList)
         } else {
-          logInfo("have no column need to generate global dictionary in Fact file")
+          LOGGER.info("have no column need to generate global dictionary in Fact file")
         }
         // generate global dict from dimension file
         if (carbonLoadModel.getDimFolderPath != null) {
@@ -723,12 +719,12 @@ object GlobalDictionaryUtil extends Logging {
                 inputRDDforDim, modelforDim).collect()
               checkStatus(carbonLoadModel, sqlContext, modelforDim, statusListforDim)
             } else {
-              logInfo(s"No columns in dimension table $dimTableName to generate global dictionary")
+              LOGGER.info(s"No columns in dimension table $dimTableName to generate global dictionary")
             }
           }
         }
       } else {
-        logInfo("Generate global dictionary from all dictionary files!")
+        LOGGER.info("Generate global dictionary from all dictionary files!")
         val isNonempty = validateAllDictionaryPath(allDictionaryPath)
         if(isNonempty) {
           // fill the map[columnIndex -> columnName]
@@ -741,7 +737,7 @@ object GlobalDictionaryUtil extends Logging {
             }
             fileHeaders = fileHeadersArr.toArray
           } else {
-            logError("Not found file header! Please set fileheader")
+            LOGGER.error("Not found file header! Please set fileheader")
             throw new IOException("Failed to get file header")
           }
           // prune columns according to the CSV file header, dimension columns
@@ -761,13 +757,13 @@ object GlobalDictionaryUtil extends Logging {
             // check result status
             checkStatus(carbonLoadModel, sqlContext, model, statusList)
           } else {
-            logInfo("have no column need to generate global dictionary")
+            LOGGER.info("have no column need to generate global dictionary")
           }
         }
       }
     } catch {
       case ex: Exception =>
-        logError("generate global dictionary failed")
+        LOGGER.error("generate global dictionary failed")
         throw ex
     }
   }

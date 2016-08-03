@@ -22,31 +22,22 @@ import java.text.SimpleDateFormat
 import java.util
 import java.util.UUID
 
-import org.apache.spark.sql.execution.datasources.LogicalRelation
-
-import scala.collection.JavaConverters._
-import scala.collection.mutable.ArrayBuffer
-import scala.language.implicitConversions
-import scala.util.Random
-
 import org.apache.spark.SparkEnv
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference, Cast, Literal}
+import org.apache.spark.sql.catalyst.expressions.{Attribute, Cast, Literal}
 import org.apache.spark.sql.execution.SparkPlan
 import org.apache.spark.sql.types.TimestampType
 import org.apache.spark.util.FileUtils
-import org.codehaus.jackson.map.ObjectMapper
-
 import org.carbondata.common.factory.CarbonCommonFactory
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.carbon.CarbonDataLoadSchema
 import org.carbondata.core.carbon.metadata.CarbonMetadata
 import org.carbondata.core.carbon.metadata.datatype.DataType
 import org.carbondata.core.carbon.metadata.encoder.Encoding
-import org.carbondata.core.carbon.metadata.schema.{SchemaEvolution, SchemaEvolutionEntry}
-import org.carbondata.core.carbon.metadata.schema.table.{CarbonTable, TableInfo, TableSchema}
 import org.carbondata.core.carbon.metadata.schema.table.column.{CarbonDimension, ColumnSchema}
+import org.carbondata.core.carbon.metadata.schema.table.{CarbonTable, TableInfo, TableSchema}
+import org.carbondata.core.carbon.metadata.schema.{SchemaEvolution, SchemaEvolutionEntry}
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.datastorage.store.impl.FileFactory
 import org.carbondata.core.util.{CarbonProperties, CarbonUtil}
@@ -59,6 +50,12 @@ import org.carbondata.spark.load._
 import org.carbondata.spark.partition.api.impl.QueryPartitionHelper
 import org.carbondata.spark.rdd.CarbonDataRDDFactory
 import org.carbondata.spark.util.{CarbonScalaUtil, GlobalDictionaryUtil}
+import org.codehaus.jackson.map.ObjectMapper
+
+import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
+import scala.language.implicitConversions
+import scala.util.Random
 
 
 case class tableModel(
@@ -1072,8 +1069,7 @@ private[sql] case class LoadTable(
           complex_delimiter_level_1.equalsIgnoreCase(complex_delimiter_level_2) ||
           delimiter.equalsIgnoreCase(complex_delimiter_level_2)) {
         sys.error(s"Field Delimiter & Complex types delimiter are same")
-      }
-      else {
+      } else {
         carbonLoadModel.setComplexDelimiterLevel1(
           CarbonUtil.escapeComplexDelimiterChar(complex_delimiter_level_1))
         carbonLoadModel.setComplexDelimiterLevel2(
@@ -1094,8 +1090,7 @@ private[sql] case class LoadTable(
           carbonLoadModel.setCsvHeader(fileHeader)
           carbonLoadModel.setColDictFilePath(columnDict)
           carbonLoadModel.setDirectLoad(true)
-        }
-        else {
+        } else {
           val fileType = FileFactory.getFileType(partitionLocation)
           if (FileFactory.isFileExist(partitionLocation, fileType)) {
             val file = FileFactory.getCarbonFile(partitionLocation, fileType)
@@ -1123,14 +1118,12 @@ private[sql] case class LoadTable(
           .loadCarbonData(sqlContext, carbonLoadModel, storeLocation, tableMeta.storePath,
             kettleHomePath,
             tableMeta.partitioner, columinar, isAgg = false, partitionStatus)
-      }
-      catch {
+      } catch {
         case ex: Exception =>
           LOGGER.error(ex)
           LOGGER.audit(s"Dataload failure for $dbName.$tableName. Please check the logs")
           throw ex
-      }
-      finally {
+      } finally {
         // Once the data load is successful delete the unwanted partition files
         try {
           val fileType = FileFactory.getFileType(partitionLocation)
@@ -1211,7 +1204,7 @@ private[sql] case class DropTableCommand(ifExistsSet: Boolean, databaseNameOp: O
       if (sqlContext.tableNames(dbName).map(x => x.toLowerCase())
         .contains(tableName.toLowerCase())) {
         try {
-          sparkSession.catalog.runSqlHive(s"DROP TABLE IF EXISTS $dbName.$tableName")
+          sparkSession.sql(s"DROP TABLE IF EXISTS $dbName.$tableName")
         } catch {
           case e: RuntimeException =>
             LOGGER.audit(
@@ -1256,8 +1249,7 @@ private[sql] case class DropTableCommand(ifExistsSet: Boolean, databaseNameOp: O
 
           LOGGER.audit(s"Deleted table [$tableName] under database [$dbName]")
         }
-      }
-      finally {
+      } finally {
         if (carbonLock != null) {
           if (carbonLock.unlock()) {
             logInfo("Table MetaData Unlocked Successfully after dropping the table")

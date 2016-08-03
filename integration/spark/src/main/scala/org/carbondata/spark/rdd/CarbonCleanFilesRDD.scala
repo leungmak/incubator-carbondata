@@ -20,13 +20,12 @@ package org.carbondata.spark.rdd
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 
-import org.apache.spark.{Logging, Partition, SparkContext, TaskContext}
+import org.apache.spark.{Partition, SparkContext, TaskContext}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.execution.command.Partitioner
 
 import org.carbondata.spark.Value
 import org.carbondata.spark.util.CarbonQueryUtil
-
 
 class CarbonCleanFilesRDD[V: ClassTag](
     sc: SparkContext,
@@ -34,7 +33,7 @@ class CarbonCleanFilesRDD[V: ClassTag](
     databaseName: String,
     tableName: String,
     partitioner: Partitioner)
-  extends RDD[V](sc, Nil) with Logging {
+  extends RDD[V](sc, Nil) {
 
   sc.setLocalProperty("spark.scheduler.pool", "DDL")
 

@@ -29,8 +29,7 @@ import scala.util.control.Breaks._
 import org.apache.hadoop.conf.{Configurable, Configuration}
 import org.apache.hadoop.mapreduce.Job
 import org.apache.hadoop.mapreduce.lib.input.FileSplit
-import org.apache.spark.internal.Logging
-import org.apache.spark.{Partition, SparkContext, SparkEnv}
+import org.apache.spark.{SparkContext, SparkEnv}
 import org.apache.spark.sql.{CarbonEnv, SQLContext}
 import org.apache.spark.sql.execution.command.{AlterTableModel, CompactionModel, Partitioner}
 import org.apache.spark.sql.hive.DistributionUtil
@@ -59,9 +58,9 @@ import org.carbondata.spark.util.{CarbonQueryUtil, LoadMetadataUtil}
  * This is the factory class which can create different RDD depends on user needs.
  *
  */
-object CarbonDataRDDFactory extends Logging {
+object CarbonDataRDDFactory {
 
-  val logger = LogServiceFactory.getLogService(CarbonDataRDDFactory.getClass.getName)
+  private lazy val LOGGER = LogServiceFactory.getLogService(this.getClass.getCanonicalName)
 
   // scalastyle:off
   def partitionCarbonData(sc: SparkContext,
@@ -153,7 +152,7 @@ object CarbonDataRDDFactory extends Logging {
     if (resultMap.nonEmpty) {
       if (resultMap.size == 1) {
         if (resultMap.contains("")) {
-          logError("Delete by Date request is failed")
+          LOGGER.error("Delete by Date request is failed")
           sys.error("Delete by Date request is failed, potential causes " +
                     "Empty store or Invalid column type, For more details please refer logs.")
         }
@@ -191,7 +190,7 @@ object CarbonDataRDDFactory extends Logging {
         )
       try {
         if (carbonLock.lockWithRetries()) {
-          logInfo("Successfully got the table metadata file lock")
+          LOGGER.info("Successfully got the table metadata file lock")
           if (updatedLoadMetadataDetailsList.nonEmpty) {
             // TODO: Load Aggregate tables after retention.
           }
@@ -206,14 +205,14 @@ object CarbonDataRDDFactory extends Logging {
         }
       } finally {
         if (carbonLock.unlock()) {
-          logInfo("unlock the table metadata file successfully")
+          LOGGER.info("unlock the table metadata file successfully")
         } else {
-          logError("Unable to unlock the metadata lock")
+          LOGGER.error("Unable to unlock the metadata lock")
         }
       }
     } else {
-      logError("Delete by Date request is failed")
-      logger.audit(s"The delete load by date is failed for $databaseName.$tableName")
+      LOGGER.error("Delete by Date request is failed")
+      LOGGER.audit(s"The delete load by date is failed for $databaseName.$tableName")
       sys.error("Delete by Date request is failed, potential causes " +
                 "Empty store or Invalid column type, For more details please refer logs.")
     }
@@ -225,7 +224,7 @@ object CarbonDataRDDFactory extends Logging {
     val spaceConsumed = FileUtils.getSpaceOccupied(filePaths)
     val blockSize =
       hadoopConfiguration.getLongBytes("dfs.blocksize", CarbonCommonConstants.CARBON_256MB)
-    logInfo("[Block Distribution]")
+    LOGGER.info("[Block Distribution]")
     // calculate new block size to allow use all the parallelism
     if (spaceConsumed < defaultParallelism * blockSize) {
       var newSplitSize: Long = spaceConsumed / defaultParallelism
@@ -234,9 +233,9 @@ object CarbonDataRDDFactory extends Logging {
       }
       hadoopConfiguration.set(
         "mapreduce.input.fileinputformat.split.maxsize", newSplitSize.toString)
-      logInfo("totalInputSpaceConsumed : " + spaceConsumed +
+      LOGGER.info("totalInputSpaceConsumed : " + spaceConsumed +
         " , defaultParallelism : " + defaultParallelism)
-      logInfo("mapreduce.input.fileinputformat.split.maxsize : " + newSplitSize.toString)
+      LOGGER.info("mapreduce.input.fileinputformat.split.maxsize : " + newSplitSize.toString)
     }
   }
 
@@ -249,15 +248,12 @@ object CarbonDataRDDFactory extends Logging {
     if (alterTableModel.compactionType.equalsIgnoreCase("major")) {
       compactionSize = CarbonDataMergerUtil.getCompactionSize(CompactionType.MAJOR_COMPACTION)
       compactionType = CompactionType.MAJOR_COMPACTION
-    }
-    else {
+    } else {
       compactionType = CompactionType.MINOR_COMPACTION
     }
 
-    logger
-      .audit(s"Compaction request received for table " +
-        s"${carbonLoadModel.getDatabaseName}.${carbonLoadModel.getTableName}"
-      )
+    LOGGER.audit(s"Compaction request received for table " +
+        s"${carbonLoadModel.getDatabaseName}.${carbonLoadModel.getTableName}")
     val carbonTable = carbonLoadModel.getCarbonDataLoadSchema.getCarbonTable
     val tableCreationTime = CarbonEnv.getInstance(sqlContext).carbonCatalog
       .getTableCreationTime(carbonLoadModel.getDatabaseName, carbonLoadModel.getTableName)
@@ -272,19 +268,16 @@ object CarbonDataRDDFactory extends Logging {
     val compactionModel = CompactionModel(compactionSize,
       compactionType,
       carbonTable,
-      tableCreationTime
-    )
+      tableCreationTime)
 
-    val lock = CarbonLockFactory
-      .getCarbonLockObj(carbonTable.getAbsoluteTableIdentifier.getCarbonTableIdentifier,
-        LockUsage.COMPACTION_LOCK
-      )
+    val lock =
+      CarbonLockFactory.getCarbonLockObj(
+        carbonTable.getAbsoluteTableIdentifier.getCarbonTableIdentifier,
+        LockUsage.COMPACTION_LOCK)
 
     if (lock.lockWithRetries()) {
-      logger
-        .info("Acquired the compaction lock for table " + carbonLoadModel
-          .getDatabaseName + "." + carbonLoadModel.getTableName
-        )
+      LOGGER.info("Acquired the compaction lock for table " + carbonLoadModel.getDatabaseName +
+          "." + carbonLoadModel.getTableName)
       startCompactionThreads(sqlContext,
         carbonLoadModel,
         partitioner,
@@ -292,18 +285,12 @@ object CarbonDataRDDFactory extends Logging {
         kettleHomePath,
         storeLocation,
         compactionModel,
-        lock
-      )
-    }
-    else {
-      logger
-        .audit("Not able to acquire the compaction lock for table " +
-          s"${carbonLoadModel.getDatabaseName}.${carbonLoadModel.getTableName}"
-        )
-      logger
-        .error("Not able to acquire the compaction lock for table " + carbonLoadModel
-          .getDatabaseName + "." + carbonLoadModel.getTableName
-        )
+        lock)
+    } else {
+      LOGGER.audit("Not able to acquire the compaction lock for table " +
+          s"${carbonLoadModel.getDatabaseName}.${carbonLoadModel.getTableName}")
+      LOGGER.error("Not able to acquire the compaction lock for table " + carbonLoadModel
+          .getDatabaseName + "." + carbonLoadModel.getTableName)
       sys.error("Table is already locked for compaction. Please try after some time.")
     }
   }
@@ -327,10 +314,8 @@ object CarbonDataRDDFactory extends Logging {
     }
     catch {
       case e: Exception =>
-        logger
-          .error("Exception in compaction thread while clean up of stale segments " + e
-            .getMessage
-          )
+        LOGGER.error("Exception in compaction thread while clean up of stale segments " +
+            e.getMessage)
     }
 
     var loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
@@ -339,8 +324,7 @@ object CarbonDataRDDFactory extends Logging {
       partitioner.partitionCount,
       compactionModel.compactionSize,
       segList,
-      compactionModel.compactionType
-    )
+      compactionModel.compactionType)
 
     if (loadsToMerge.size() > 1) {
 
@@ -357,7 +341,7 @@ object CarbonDataRDDFactory extends Logging {
           }
           catch {
             case e: Exception =>
-              logger
+              LOGGER
                 .error("Exception in compaction thread while clean up of stale segments " + e
                   .getMessage
                 )
@@ -375,7 +359,7 @@ object CarbonDataRDDFactory extends Logging {
               }
               catch {
                 case e: Exception =>
-                  logger.error("Exception in compaction thread " + e.getMessage)
+                  LOGGER.error("Exception in compaction thread " + e.getMessage)
               }
             }
             )
@@ -420,7 +404,7 @@ object CarbonDataRDDFactory extends Logging {
           )
           if (loadsToMerge.size() > 1) {
             loadsToMerge.asScala.foreach(seg => {
-              logger.info("load identified for merge is " + seg.getLoadName)
+              LOGGER.info("load identified for merge is " + seg.getLoadName)
             }
             )
 
@@ -461,10 +445,10 @@ object CarbonDataRDDFactory extends Logging {
 
     // for handling of the segment Merging.
     def handleSegmentMerging(tableCreationTime: Long): Unit = {
-      logger
+      LOGGER
         .info("compaction need status is " + CarbonDataMergerUtil.checkIfAutoLoadMergingRequired())
       if (CarbonDataMergerUtil.checkIfAutoLoadMergingRequired()) {
-        logger
+        LOGGER
           .audit("Compaction request received for table " + carbonLoadModel
             .getDatabaseName + "." + carbonLoadModel.getTableName
           )
@@ -491,7 +475,7 @@ object CarbonDataRDDFactory extends Logging {
         storeLocation = storeLocation + "/carbonstore/" + System.nanoTime()
 
         if (lock.lockWithRetries()) {
-          logger.info("Acquired the compaction lock.")
+          LOGGER.info("Acquired the compaction lock.")
           startCompactionThreads(sqlContext,
             carbonLoadModel,
             partitioner,
@@ -499,15 +483,14 @@ object CarbonDataRDDFactory extends Logging {
             kettleHomePath,
             storeLocation,
             compactionModel,
-            lock
-          )
+            lock)
         }
         else {
-          logger
+          LOGGER
             .audit("Not able to acquire the compaction lock for table " + carbonLoadModel
               .getDatabaseName + "." + carbonLoadModel.getTableName
             )
-          logger
+          LOGGER
             .error("Not able to acquire the compaction lock for table " + carbonLoadModel
               .getDatabaseName + "." + carbonLoadModel.getTableName
             )
@@ -516,7 +499,7 @@ object CarbonDataRDDFactory extends Logging {
     }
 
     try {
-      logger
+      LOGGER
         .audit("Data load request has been received for table " + carbonLoadModel
           .getDatabaseName + "." + carbonLoadModel.getTableName
         )
@@ -564,7 +547,7 @@ object CarbonDataRDDFactory extends Logging {
       }
       catch {
         case e: Exception =>
-          logger
+          LOGGER
             .error("Exception in data load while clean up of stale segments " + e
               .getMessage
             )
@@ -660,15 +643,12 @@ object CarbonDataRDDFactory extends Logging {
           }
           val jobContext = new Job(hadoopConfiguration)
           val rawSplits = inputFormat.getSplits(jobContext).toArray
-          val result = new Array[Partition](rawSplits.size)
-          val blockList = rawSplits.map(inputSplit => {
+          val blockList = rawSplits.map { inputSplit =>
             val fileSplit = inputSplit.asInstanceOf[FileSplit]
             new TableBlockInfo(fileSplit.getPath.toString,
               fileSplit.getStart, "1",
-              fileSplit.getLocations, fileSplit.getLength
-            ).asInstanceOf[Distributable]
+              fileSplit.getLocations, fileSplit.getLength).asInstanceOf[Distributable]
           }
-          )
           // group blocks to nodes, tasks
           val startTime = System.currentTimeMillis
           val activeNodes = DistributionUtil
@@ -678,10 +658,9 @@ object CarbonDataRDDFactory extends Logging {
               .nodeBlockMapping(blockList.toSeq.asJava, -1, activeNodes.toList.asJava).asScala
               .toSeq
           val timeElapsed: Long = System.currentTimeMillis - startTime
-          logInfo("Total Time taken in block allocation : " + timeElapsed)
-          logInfo("Total no of blocks : " + blockList.size
-            + ", No.of Nodes : " + nodeBlockMapping.size
-          )
+          LOGGER.info("Total Time taken in block allocation : " + timeElapsed)
+          LOGGER.info("Total no of blocks : " + blockList.size +
+              ", No.of Nodes : " + nodeBlockMapping.size)
           var str = ""
           nodeBlockMapping.foreach(entry => {
             val tableBlock = entry._2
@@ -697,7 +676,7 @@ object CarbonDataRDDFactory extends Logging {
             str = str + "\n"
           }
           )
-          logInfo(str)
+          LOGGER.info(str)
           blocksGroupBy = nodeBlockMapping.map(entry => {
             val blockDetailsList =
               entry._2.asScala.map(distributable => {
@@ -762,7 +741,7 @@ object CarbonDataRDDFactory extends Logging {
 
       if (loadStatus == CarbonCommonConstants.STORE_LOADSTATUS_FAILURE) {
         var message: String = ""
-        logInfo("********starting clean up**********")
+        LOGGER.info("********starting clean up**********")
         if (isAgg) {
           // TODO:need to clean aggTable
           CarbonLoaderUtil.deleteTable(partitioner.partitionCount, carbonLoadModel.getDatabaseName,
@@ -785,10 +764,10 @@ object CarbonDataRDDFactory extends Logging {
           }
           message = "Dataload failure"
         }
-        logInfo("********clean up done**********")
-        logger.audit(s"Data load is failed for " +
+        LOGGER.info("********clean up done**********")
+        LOGGER.audit(s"Data load is failed for " +
           s"${carbonLoadModel.getDatabaseName}.${carbonLoadModel.getTableName}")
-        logWarning("Unable to write load metadata file")
+        LOGGER.warn("Unable to write load metadata file")
         throw new Exception(message)
       } else {
         val metadataDetails = status(0)._2
@@ -802,16 +781,16 @@ object CarbonDataRDDFactory extends Logging {
             )
           if (!status) {
             val message = "Dataload failed due to failure in table status updation."
-            logger.audit("Data load is failed for " +
+            LOGGER.audit("Data load is failed for " +
               s"${carbonLoadModel.getDatabaseName}.${carbonLoadModel.getTableName}")
-            logger.error("Dataload failed due to failure in table status updation.")
+            LOGGER.error("Dataload failed due to failure in table status updation.")
             throw new Exception(message)
           }
         } else if (!carbonLoadModel.isRetentionRequest) {
           // TODO : Handle it
-          logInfo("********Database updated**********")
+          LOGGER.info("********Database updated**********")
         }
-        logger.audit("Data load is successful for " +
+        LOGGER.audit("Data load is successful for " +
           s"${carbonLoadModel.getDatabaseName}.${carbonLoadModel.getTableName}")
       }
     }
@@ -894,9 +873,9 @@ object CarbonDataRDDFactory extends Logging {
     }
     finally {
       if (carbonLock.unlock()) {
-        logInfo("unlock the table metadata file successfully")
+        LOGGER.info("unlock the table metadata file successfully")
       } else {
-        logError("Unable to unlock the metadata lock")
+        LOGGER.error("Unable to unlock the metadata lock")
       }
     }
   }

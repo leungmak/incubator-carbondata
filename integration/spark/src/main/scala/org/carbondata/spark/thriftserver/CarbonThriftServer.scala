@@ -49,7 +49,7 @@ object CarbonThriftServer {
 
     val cc = new CarbonContext(sc, args.head)
 
-    HiveThriftServer2.startWithContext(cc)
+    HiveThriftServer2.startWithContext(cc.sqlContext)
   }
 
 }

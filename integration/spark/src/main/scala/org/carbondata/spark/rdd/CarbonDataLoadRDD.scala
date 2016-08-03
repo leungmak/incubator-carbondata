@@ -24,7 +24,6 @@ import java.util.UUID
 import scala.collection.JavaConverters._
 import scala.util.Random
 
-import org.apache.spark.Logging
 import org.apache.spark.Partition
 import org.apache.spark.SerializableWritable
 import org.apache.spark.SparkContext
@@ -112,8 +111,7 @@ class CarbonDataLoadRDD[K, V](
     schemaLastUpdatedTime: Long,
     blocksGroupBy: Array[(String, Array[BlockDetails])],
     isTableSplitPartition: Boolean)
-  extends RDD[(K, V)](sc, Nil)
-    with Logging {
+  extends RDD[(K, V)](sc, Nil) {
 
   sc.setLocalProperty("spark.scheduler.pool", "DDL")
 

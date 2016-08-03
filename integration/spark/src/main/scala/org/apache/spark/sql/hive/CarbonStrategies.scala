@@ -19,23 +19,19 @@ package org.apache.spark.sql.hive
 
 import java.util
 
-import scala.collection.JavaConverters._
-
 import org.apache.spark.sql._
-import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
-import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.expressions
+import org.apache.spark.sql.catalyst.{TableIdentifier, expressions}
 import org.apache.spark.sql.catalyst.expressions.{AttributeSet, _}
 import org.apache.spark.sql.catalyst.planning.{PhysicalOperation, QueryPlanner}
 import org.apache.spark.sql.catalyst.plans.logical.{Filter => LogicalFilter, LogicalPlan}
-import org.apache.spark.sql.execution.{_}
+import org.apache.spark.sql.execution._
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.optimizer.{CarbonAliasDecoderRelation, CarbonDecoderRelation}
 import org.apache.spark.sql.types.IntegerType
-
 import org.carbondata.common.logging.LogServiceFactory
-import org.carbondata.spark.exception.MalformedCarbonCommandException
+
+import scala.collection.JavaConverters._
 
 
 class CarbonStrategies(carbonContext: CarbonContext) extends QueryPlanner[SparkPlan] {
@@ -159,14 +155,14 @@ class CarbonStrategies(carbonContext: CarbonContext) extends QueryPlanner[SparkP
           scan)
         if (scan.unprocessedExprs.nonEmpty) {
           val filterCondToAdd = scan.unprocessedExprs.reduceLeftOption(expressions.And)
-          filterCondToAdd.map(Filter(_, decoder)).getOrElse(decoder)
+          filterCondToAdd.map(FilterExec(_, decoder)).getOrElse(decoder)
         } else {
           decoder
         }
       } else {
         if (scan.unprocessedExprs.nonEmpty) {
           val filterCondToAdd = scan.unprocessedExprs.reduceLeftOption(expressions.And)
-          filterCondToAdd.map(Filter(_, scan)).getOrElse(scan)
+          filterCondToAdd.map(FilterExec(_, scan)).getOrElse(scan)
         } else {
           scan
         }
@@ -184,7 +180,7 @@ class CarbonStrategies(carbonContext: CarbonContext) extends QueryPlanner[SparkP
         val newAttr = AttributeReference(attr.name,
           attr.dataType,
           attr.nullable,
-          attr.metadata)(attr.exprId, Seq(tableName))
+          attr.metadata)(attr.exprId, Some(tableName))
         relation.addAttribute(newAttr)
         newAttr
       }
@@ -211,7 +207,7 @@ class CarbonStrategies(carbonContext: CarbonContext) extends QueryPlanner[SparkP
         AttributeReference(attr.name,
           IntegerType,
           attr.nullable,
-          attr.metadata)(attr.exprId, attr.qualifiers)
+          attr.metadata)(attr.exprId, attr.qualifier)
       } else {
         attr
       }
@@ -229,49 +225,46 @@ class CarbonStrategies(carbonContext: CarbonContext) extends QueryPlanner[SparkP
   }
 
   object DDLStrategies extends Strategy {
-    def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
-      case DropTable(tableName, ifNotExists)
-        if CarbonEnv.getInstance(sqlContext).carbonCatalog
-            .tableExists(toTableIdentifier(tableName.toLowerCase))(sqlContext) =>
-        val identifier = toTableIdentifier(tableName.toLowerCase)
-        ExecutedCommand(DropTableCommand(ifNotExists, identifier.database, identifier.table)) :: Nil
-      case ShowLoadsCommand(databaseName, table, limit) =>
-        ExecutedCommand(ShowLoads(databaseName, table, limit, plan.output)) :: Nil
-      case LoadTable(databaseNameOp, tableName, factPathFromUser, dimFilesPath,
-      partionValues, isOverwriteExist, inputSqlString) =>
-        val isCarbonTable = CarbonEnv.getInstance(sqlContext).carbonCatalog
-            .tableExists(TableIdentifier(tableName, databaseNameOp))(sqlContext)
-        if (isCarbonTable || partionValues.nonEmpty) {
-          ExecutedCommand(LoadTable(databaseNameOp, tableName, factPathFromUser,
-            dimFilesPath, partionValues, isOverwriteExist, inputSqlString)) :: Nil
-        } else {
-          ExecutedCommand(HiveNativeCommand(inputSqlString)) :: Nil
-        }
-      case d: HiveNativeCommand =>
-        try {
-          val resolvedTable = sqlContext.executePlan(CarbonHiveSyntax.parse(d.sql)).optimizedPlan
-          planLater(resolvedTable) :: Nil
-        } catch {
-          case ce: MalformedCarbonCommandException =>
-            throw ce
-          case ae: AnalysisException =>
-            throw ae
-          case e: Exception => ExecutedCommand(d) :: Nil
-        }
-      case DescribeFormattedCommand(sql, tblIdentifier) =>
-        val isTable = CarbonEnv.getInstance(sqlContext).carbonCatalog
-            .tableExists(tblIdentifier)(sqlContext)
-        if (isTable) {
-          val describe =
-            LogicalDescribeCommand(UnresolvedRelation(tblIdentifier, None), isExtended = false)
-          val resolvedTable = sqlContext.executePlan(describe.table).analyzed
-          val resultPlan = sqlContext.executePlan(resolvedTable).executedPlan
-          ExecutedCommand(DescribeCommandFormatted(resultPlan, plan.output, tblIdentifier)) :: Nil
-        } else {
-          ExecutedCommand(HiveNativeCommand(sql)) :: Nil
-        }
-      case _ =>
-        Nil
+    def apply(plan: LogicalPlan): Seq[SparkPlan] = {
+      plan match {
+        case DropTableCommand(ifExistsSet, databaseNameOp, tableName) =>
+          ExecutedCommandExec(DropTableCommand(ifExistsSet, databaseNameOp, tableName)) :: Nil
+        case ShowLoadsCommand(databaseName, table, limit) =>
+          ExecutedCommandExec(ShowLoads(databaseName, table, limit, plan.output)) :: Nil
+        case LoadTable(databaseNameOp, tableName, factPathFromUser, dimFilesPath,
+        partionValues, isOverwriteExist, inputSqlString) =>
+          if (CarbonEnv.isExist(sqlContext, TableIdentifier(tableName, databaseNameOp)) ||
+              partionValues.nonEmpty) {
+            ExecutedCommandExec(LoadTable(databaseNameOp, tableName, factPathFromUser,
+              dimFilesPath, partionValues, isOverwriteExist, inputSqlString)) :: Nil
+          } else {
+            //ExecutedCommandExec(HiveNativeCommand(inputSqlString)) :: Nil
+              Seq()
+          }
+        //      case d: HiveNativeCommand =>
+        //        try {
+        //          val resolvedTable = sqlContext.executePlan(CarbonHiveSyntax.parse(d.sql)).optimizedPlan
+        //          planLater(resolvedTable) :: Nil
+        //        } catch {
+        //          case ce: MalformedCarbonCommandException =>
+        //            throw ce
+        //          case ae: AnalysisException =>
+        //            throw ae
+        //          case e: Exception => ExecutedCommand(d) :: Nil
+        //        }
+        //      case DescribeFormattedCommand(sql, tblIdentifier) =>
+        //        if (CarbonEnv.isExist(sqlContext, tblIdentifier)) {
+        //          val describe =
+        //            LogicalDescribeCommand(UnresolvedRelation(tblIdentifier, None), isExtended = false)
+        //          val resolvedTable = sqlContext.executePlan(describe.table).analyzed
+        //          val resultPlan = sqlContext.sparkSession.sql(resolvedTable).executedPlan
+        //          ExecutedCommandExec(DescribeCommandFormatted(resultPlan, plan.output, tblIdentifier)) :: Nil
+        //        } else {
+        //          ExecutedCommandExec(HiveNativeCommand(sql)) :: Nil
+        //        }
+        case _ =>
+          Nil
+      }
     }
 
     def toTableIdentifier(name: String): TableIdentifier = {

@@ -130,36 +130,36 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
             Sort(sort.order, sort.global, child)
           }
 
-        case union: Union
-          if !(union.left.isInstanceOf[CarbonDictionaryTempDecoder] ||
-               union.right.isInstanceOf[CarbonDictionaryTempDecoder]) =>
-          val leftCondAttrs = new util.HashSet[Attribute]
-          val rightCondAttrs = new util.HashSet[Attribute]
-          union.left.output.foreach(attr => leftCondAttrs.add(aliasMap.getOrElse(attr, attr)))
-          union.right.output.foreach(attr => rightCondAttrs.add(aliasMap.getOrElse(attr, attr)))
-          var leftPlan = union.left
-          var rightPlan = union.right
-          if (leftCondAttrs.size() > 0 &&
-              !leftPlan.isInstanceOf[CarbonDictionaryCatalystDecoder]) {
-            leftPlan = CarbonDictionaryTempDecoder(leftCondAttrs,
-              new util.HashSet[Attribute](),
-              union.left)
-          }
-          if (rightCondAttrs.size() > 0 &&
-              !rightPlan.isInstanceOf[CarbonDictionaryCatalystDecoder]) {
-            rightPlan = CarbonDictionaryTempDecoder(rightCondAttrs,
-              new util.HashSet[Attribute](),
-              union.right)
-          }
-          if (!decoder) {
-            decoder = true
-            CarbonDictionaryTempDecoder(new util.HashSet[Attribute](),
-              new util.HashSet[Attribute](),
-              Union(leftPlan, rightPlan),
-              isOuter = true)
-          } else {
-            Union(leftPlan, rightPlan)
-          }
+//        case union: Union
+//          if !(union.left.isInstanceOf[CarbonDictionaryTempDecoder] ||
+//               union.right.isInstanceOf[CarbonDictionaryTempDecoder]) =>
+//          val leftCondAttrs = new util.HashSet[Attribute]
+//          val rightCondAttrs = new util.HashSet[Attribute]
+//          union.left.output.foreach(attr => leftCondAttrs.add(aliasMap.getOrElse(attr, attr)))
+//          union.right.output.foreach(attr => rightCondAttrs.add(aliasMap.getOrElse(attr, attr)))
+//          var leftPlan = union.left
+//          var rightPlan = union.right
+//          if (leftCondAttrs.size() > 0 &&
+//              !leftPlan.isInstanceOf[CarbonDictionaryCatalystDecoder]) {
+//            leftPlan = CarbonDictionaryTempDecoder(leftCondAttrs,
+//              new util.HashSet[Attribute](),
+//              union.left)
+//          }
+//          if (rightCondAttrs.size() > 0 &&
+//              !rightPlan.isInstanceOf[CarbonDictionaryCatalystDecoder]) {
+//            rightPlan = CarbonDictionaryTempDecoder(rightCondAttrs,
+//              new util.HashSet[Attribute](),
+//              union.right)
+//          }
+//          if (!decoder) {
+//            decoder = true
+//            CarbonDictionaryTempDecoder(new util.HashSet[Attribute](),
+//              new util.HashSet[Attribute](),
+//              Union(leftPlan, rightPlan),
+//              isOuter = true)
+//          } else {
+//            Union(leftPlan, rightPlan)
+//          }
 
         case agg: Aggregate if !agg.child.isInstanceOf[CarbonDictionaryTempDecoder] =>
           val attrsOndimAggs = new util.HashSet[Attribute]
@@ -328,63 +328,63 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
             Project(p.projectList, child)
           }
 
-        case wd: Window if !wd.child.isInstanceOf[CarbonDictionaryTempDecoder] =>
-          val attrsOnProjects = new util.HashSet[Attribute]
-          wd.projectList.map {
-            case attr: AttributeReference =>
-            case others =>
-              others.collect {
-                case attr: AttributeReference
-                  if isDictionaryEncoded(attr, relations, aliasMap) =>
-                  attrsOnProjects.add(aliasMap.getOrElse(attr, attr))
-              }
-          }
-          wd.windowExpressions.map {
-            case others =>
-              others.collect {
-                case attr: AttributeReference
-                  if isDictionaryEncoded(attr, relations, aliasMap) =>
-                  attrsOnProjects.add(aliasMap.getOrElse(attr, attr))
-              }
-          }
-          wd.partitionSpec.map{
-            case attr: AttributeReference =>
-            case others =>
-              others.collect {
-                case attr: AttributeReference
-                  if isDictionaryEncoded(attr, relations, aliasMap) =>
-                  attrsOnProjects.add(aliasMap.getOrElse(attr, attr))
-              }
-          }
-          wd.orderSpec.map { s =>
-            s.collect {
-              case attr: AttributeReference
-                if isDictionaryEncoded(attr, relations, aliasMap) =>
-                attrsOnProjects.add(aliasMap.getOrElse(attr, attr))
-            }
-          }
-          wd.partitionSpec.map { s =>
-            s.collect {
-              case attr: AttributeReference
-                if isDictionaryEncoded(attr, relations, aliasMap) =>
-                attrsOnProjects.add(aliasMap.getOrElse(attr, attr))
-            }
-          }
-          var child = wd.child
-          if (attrsOnProjects.size() > 0 && !child.isInstanceOf[Project]) {
-            child = CarbonDictionaryTempDecoder(attrsOnProjects,
-              new util.HashSet[Attribute](),
-              wd.child)
-          }
-          if (!decoder) {
-            decoder = true
-            CarbonDictionaryTempDecoder(new util.HashSet[Attribute](),
-              new util.HashSet[Attribute](),
-              Window(wd.projectList, wd.windowExpressions, wd.partitionSpec, wd.orderSpec, child),
-              isOuter = true)
-          } else {
-            Window(wd.projectList, wd.windowExpressions, wd.partitionSpec, wd.orderSpec, child)
-          }
+//        case wd: Window if !wd.child.isInstanceOf[CarbonDictionaryTempDecoder] =>
+//          val attrsOnProjects = new util.HashSet[Attribute]
+//          wd.projectList.map {
+//            case attr: AttributeReference =>
+//            case others =>
+//              others.collect {
+//                case attr: AttributeReference
+//                  if isDictionaryEncoded(attr, relations, aliasMap) =>
+//                  attrsOnProjects.add(aliasMap.getOrElse(attr, attr))
+//              }
+//          }
+//          wd.windowExpressions.map {
+//            case others =>
+//              others.collect {
+//                case attr: AttributeReference
+//                  if isDictionaryEncoded(attr, relations, aliasMap) =>
+//                  attrsOnProjects.add(aliasMap.getOrElse(attr, attr))
+//              }
+//          }
+//          wd.partitionSpec.map{
+//            case attr: AttributeReference =>
+//            case others =>
+//              others.collect {
+//                case attr: AttributeReference
+//                  if isDictionaryEncoded(attr, relations, aliasMap) =>
+//                  attrsOnProjects.add(aliasMap.getOrElse(attr, attr))
+//              }
+//          }
+//          wd.orderSpec.map { s =>
+//            s.collect {
+//              case attr: AttributeReference
+//                if isDictionaryEncoded(attr, relations, aliasMap) =>
+//                attrsOnProjects.add(aliasMap.getOrElse(attr, attr))
+//            }
+//          }
+//          wd.partitionSpec.map { s =>
+//            s.collect {
+//              case attr: AttributeReference
+//                if isDictionaryEncoded(attr, relations, aliasMap) =>
+//                attrsOnProjects.add(aliasMap.getOrElse(attr, attr))
+//            }
+//          }
+//          var child = wd.child
+//          if (attrsOnProjects.size() > 0 && !child.isInstanceOf[Project]) {
+//            child = CarbonDictionaryTempDecoder(attrsOnProjects,
+//              new util.HashSet[Attribute](),
+//              wd.child)
+//          }
+//          if (!decoder) {
+//            decoder = true
+//            CarbonDictionaryTempDecoder(new util.HashSet[Attribute](),
+//              new util.HashSet[Attribute](),
+//              Window(wd.projectList, wd.windowExpressions, wd.partitionSpec, wd.orderSpec, child),
+//              isOuter = true)
+//          } else {
+//            Window(wd.projectList, wd.windowExpressions, wd.partitionSpec, wd.orderSpec, child)
+//          }
 
         case l: LogicalRelation if l.relation.isInstanceOf[CarbonDatasourceRelation] =>
           if (!decoder) {
@@ -470,32 +470,32 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
           }
         }.asInstanceOf[Seq[NamedExpression]]
         Project(prExps, p.child)
-      case wd: Window if relations.nonEmpty =>
-        val prExps = wd.projectList.map { prExp =>
-          prExp.transform {
-            case attr: AttributeReference =>
-              updateDataType(attr, relations, allAttrsNotDecode, aliasMap)
-          }
-        }.asInstanceOf[Seq[Attribute]]
-        val wdExps = wd.windowExpressions.map { gexp =>
-          gexp.transform {
-            case attr: AttributeReference =>
-              updateDataType(attr, relations, allAttrsNotDecode, aliasMap)
-          }
-        }.asInstanceOf[Seq[NamedExpression]]
-        val partitionSpec = wd.partitionSpec.map{ exp =>
-          exp.transform {
-            case attr: AttributeReference =>
-              updateDataType(attr, relations, allAttrsNotDecode, aliasMap)
-          }
-        }
-        val orderSpec = wd.orderSpec.map { exp =>
-          exp.transform {
-            case attr: AttributeReference =>
-              updateDataType(attr, relations, allAttrsNotDecode, aliasMap)
-          }
-        }.asInstanceOf[Seq[SortOrder]]
-        Window(prExps, wdExps, partitionSpec, orderSpec, wd.child)
+//      case wd: Window if relations.nonEmpty =>
+//        val prExps = wd.projectList.map { prExp =>
+//          prExp.transform {
+//            case attr: AttributeReference =>
+//              updateDataType(attr, relations, allAttrsNotDecode, aliasMap)
+//          }
+//        }.asInstanceOf[Seq[Attribute]]
+//        val wdExps = wd.windowExpressions.map { gexp =>
+//          gexp.transform {
+//            case attr: AttributeReference =>
+//              updateDataType(attr, relations, allAttrsNotDecode, aliasMap)
+//          }
+//        }.asInstanceOf[Seq[NamedExpression]]
+//        val partitionSpec = wd.partitionSpec.map{ exp =>
+//          exp.transform {
+//            case attr: AttributeReference =>
+//              updateDataType(attr, relations, allAttrsNotDecode, aliasMap)
+//          }
+//        }
+//        val orderSpec = wd.orderSpec.map { exp =>
+//          exp.transform {
+//            case attr: AttributeReference =>
+//              updateDataType(attr, relations, allAttrsNotDecode, aliasMap)
+//          }
+//        }.asInstanceOf[Seq[SortOrder]]
+//        Window(prExps, wdExps, partitionSpec, orderSpec, wd.child)
 
       case l: LogicalRelation if l.relation.isInstanceOf[CarbonDatasourceRelation] =>
         allAttrsNotDecode = marker.revokeJoin()
@@ -562,12 +562,12 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
     val uAttr = aliasMap.getOrElse(attr, attr)
     val relation = relations.find(p => p.contains(uAttr))
     if (relation.isDefined) {
-      relation.get.carbonRelation.carbonRelation.metaData.dictionaryMap.get(uAttr.name) match {
+      relation.get.carbonRelation.metadata.dictionaryMap.get(uAttr.name) match {
         case Some(true) if !allAttrsNotDecode.asScala.exists(p => p.name.equals(uAttr.name)) =>
           val newAttr = AttributeReference(attr.name,
             IntegerType,
             attr.nullable,
-            attr.metadata)(attr.exprId, attr.qualifiers)
+            attr.metadata)(attr.exprId, attr.qualifier)
           relation.get.addAttribute(newAttr)
           newAttr
         case _ => attr
@@ -583,7 +583,7 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
     val uAttr = aliasMap.getOrElse(attr, attr)
     val relation = relations.find(p => p.contains(uAttr))
     if (relation.isDefined) {
-      relation.get.carbonRelation.carbonRelation.metaData.dictionaryMap.get(uAttr.name) match {
+      relation.get.carbonRelation.metadata.dictionaryMap.get(uAttr.name) match {
         case Some(true) => true
         case _ => false
       }

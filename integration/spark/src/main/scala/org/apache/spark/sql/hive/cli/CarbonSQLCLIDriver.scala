@@ -18,31 +18,28 @@ package org.apache.spark.sql.hive.cli
 
 import java.io.File
 
-import scala.collection.JavaConverters._
-
 import org.apache.spark.internal.Logging
-import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.scheduler.StatsReportListener
-import org.apache.spark.sql.CarbonContext
-import org.apache.spark.sql.hive.HiveContext
 import org.apache.spark.sql.hive.thriftserver.{SparkSQLCLIDriver, SparkSQLEnv}
+import org.apache.spark.sql.{CarbonContext, SparkSession}
 import org.apache.spark.util.Utils
+import org.apache.spark.{SparkConf, SparkContext}
 
 object CarbonSQLCLIDriver extends Logging {
 
-  var hiveContext: HiveContext = _
+  var sparkSession: SparkSession = _
   var sparkContext: SparkContext = _
 
   def main(args: Array[String]): Unit = {
     init()
     SparkSQLEnv.sparkContext = sparkContext
-    SparkSQLEnv.hiveContext = hiveContext
+    SparkSQLEnv.sqlContext = sparkSession.sqlContext
     SparkSQLCLIDriver.installSignalHandler()
     SparkSQLCLIDriver.main(args)
   }
 
   def init() {
-    if (hiveContext == null) {
+    if (sparkSession == null) {
       val sparkConf = new SparkConf(loadDefaults = true)
       val maybeSerializer = sparkConf.getOption("spark.serializer")
       val maybeKryoReferenceTracking = sparkConf.getOption("spark.kryo.referenceTracking")
@@ -67,14 +64,14 @@ object CarbonSQLCLIDriver extends Logging {
       val path = System.getenv("CARBON_HOME") + "/bin/carbonsqlclistore"
       val store = new File(path)
       store.mkdirs()
-      hiveContext = new CarbonContext(sparkContext,
+      sparkSession = new CarbonContext(sparkContext,
         maybeStorePath.getOrElse(store.getCanonicalPath),
         store.getCanonicalPath)
 
-      hiveContext.setConf("spark.sql.hive.version", HiveContext.hiveExecutionVersion)
+      //hiveContext.setConf("spark.sql.hive.version", HiveContext.hiveExecutionVersion)
 
       if (log.isDebugEnabled) {
-        hiveContext.hiveconf.getAllProperties.asScala.toSeq.sorted.foreach { case (k, v) =>
+        sparkSession.sqlContext.getAllConfs.toSeq.sorted.foreach { case (k, v) =>
           logDebug(s"HiveConf var: $k=$v")
         }
       }

@@ -18,23 +18,13 @@
 package org.apache.spark.sql.hive
 
 import java.io._
-import java.util.GregorianCalendar
-import java.util.UUID
+import java.util.{GregorianCalendar, UUID}
 
-import scala.Array.canBuildFrom
-import scala.collection.mutable.ArrayBuffer
-import scala.language.implicitConversions
-import scala.util.parsing.combinator.RegexParsers
-
-import org.apache.spark
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.execution.command.{AggregateTableAttributes, Partitioner}
-import org.apache.spark.sql.hive.client.ClientInterface
 import org.apache.spark.sql.types._
-
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.carbon.CarbonTableIdentifier
 import org.carbondata.core.carbon.metadata.CarbonMetadata
@@ -51,6 +41,12 @@ import org.carbondata.core.writer.ThriftWriter
 import org.carbondata.format.{SchemaEvolutionEntry, TableInfo}
 import org.carbondata.lcm.locks.ZookeeperInit
 import org.carbondata.spark.util.CarbonScalaUtil.CarbonSparkUtil
+
+
+import scala.Array.canBuildFrom
+import scala.collection.mutable.ArrayBuffer
+import scala.language.implicitConversions
+import scala.util.parsing.combinator.RegexParsers
 
 case class MetaData(var tablesMeta: ArrayBuffer[TableMeta])
 
@@ -284,7 +280,7 @@ class CarbonMetastoreCatalog(sparkSession: SparkSession, val storePath: String)
    *
    */
   def createTableFromThrift(
-      tableInfo: TableInfo,
+      tableInfo: org.carbondata.core.carbon.metadata.schema.table.TableInfo,
       dbName: String,
       tableName: String,
       partitioner: Partitioner)
@@ -295,8 +291,8 @@ class CarbonMetastoreCatalog(sparkSession: SparkSession, val storePath: String)
     }
 
     val schemaConverter = new ThriftWrapperSchemaConverterImpl
-    val thriftTableInfo = schemaConverter
-      .fromWrapperToExternalTableInfo(tableInfo, dbName, tableName)
+    val thriftTableInfo =
+      schemaConverter.fromWrapperToExternalTableInfo(tableInfo, dbName, tableName)
     val schemaEvolutionEntry = new SchemaEvolutionEntry(tableInfo.getLastUpdatedTime)
     thriftTableInfo.getFact_table.getSchema_evolution.getSchema_evolution_history
       .add(schemaEvolutionEntry)
@@ -409,8 +405,7 @@ class CarbonMetastoreCatalog(sparkSession: SparkSession, val storePath: String)
    */
   def getTables(databaseName: Option[String])(sqlContext: SQLContext): Seq[(String, Boolean)] = {
 
-    val dbName =
-      databaseName.getOrElse(sqlContext.asInstanceOf[HiveContext].catalog.client.currentDatabase)
+    val dbName = databaseName.getOrElse(sqlContext.sparkSession.catalog.currentDatabase)
     checkSchemasModifiedTimeAndReloadTables()
     metadata.tablesMeta.filter { c =>
       c.carbonTableIdentifier.getDatabaseName.equalsIgnoreCase(dbName)
@@ -432,7 +427,7 @@ class CarbonMetastoreCatalog(sparkSession: SparkSession, val storePath: String)
     (sqlContext: SQLContext) {
     val dbName = tableIdentifier.database.get
     val tableName = tableIdentifier.table
-    if (!tableExists(tableIdentifier)(sqlContext)) {
+    if (!tableExists(tableIdentifier)) {
       LOGGER.audit(s"Drop Table failed. Table with $dbName.$tableName does not exist")
       sys.error(s"Table with $dbName.$tableName does not exist")
     }

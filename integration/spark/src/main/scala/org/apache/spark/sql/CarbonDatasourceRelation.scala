@@ -73,8 +73,8 @@ class CarbonSource
       data: DataFrame): BaseRelation = {
 
     // To avoid derby problem, dataframe need to be writen and read using CarbonContext
-    require(sqlContext.isInstanceOf[CarbonContext], "Error in saving dataframe to carbon file, " +
-        "must use CarbonContext to save dataframe")
+    require(sqlContext.sparkSession.isInstanceOf[CarbonContext],
+      "Error in saving dataframe to carbon file, must use CarbonContext to save dataframe")
 
     // User should not specify path since only one store is supported in carbon currently,
     // after we support multi-store, we can remove this limitation

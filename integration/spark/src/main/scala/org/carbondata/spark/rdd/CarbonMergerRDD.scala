@@ -20,20 +20,17 @@ package org.carbondata.spark.rdd
 import java.util
 import java.util.{Collections, List}
 
-import scala.collection.JavaConverters._
-
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.CarbonContext
 import org.apache.spark.sql.execution.command.{CarbonMergerMapping, NodeInfo}
-import org.apache.spark.sql.hive.{CarbonMetastoreCatalog, DistributionUtil}
-
+import org.apache.spark.sql.hive.DistributionUtil
 import org.carbondata.common.logging.LogServiceFactory
-import org.carbondata.core.carbon.{AbsoluteTableIdentifier, CarbonTableIdentifier}
 import org.carbondata.core.carbon.datastore.block.{Distributable, SegmentProperties, TableBlockInfo, TableTaskInfo, TaskBlockInfo}
 import org.carbondata.core.carbon.metadata.blocklet.DataFileFooter
 import org.carbondata.core.carbon.path.CarbonTablePath
+import org.carbondata.core.carbon.{AbsoluteTableIdentifier, CarbonTableIdentifier}
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.util.CarbonProperties
 import org.carbondata.hadoop.{CarbonInputFormat, CarbonInputSplit}
@@ -41,18 +38,19 @@ import org.carbondata.integration.spark.merger.{CarbonCompactionExecutor, Carbon
 import org.carbondata.processing.util.CarbonDataProcessorUtil
 import org.carbondata.scan.result.iterator.RawResultIterator
 import org.carbondata.spark.MergeResult
-import org.carbondata.spark.load.{CarbonLoaderUtil, CarbonLoadModel}
+import org.carbondata.spark.load.{CarbonLoadModel, CarbonLoaderUtil}
 import org.carbondata.spark.splits.TableSplit
 import org.carbondata.spark.util.QueryPlanUtil
 
+import scala.collection.JavaConverters._
 
 class CarbonMergerRDD[K, V](
-  sc: SparkContext,
-  result: MergeResult[K, V],
-  carbonLoadModel: CarbonLoadModel,
-  carbonMergerMapping : CarbonMergerMapping,
-  confExecutorsTemp: String)
-  extends RDD[(K, V)](sc, Nil) with Logging {
+    sc: SparkContext,
+    result: MergeResult[K, V],
+    carbonLoadModel: CarbonLoadModel,
+    carbonMergerMapping : CarbonMergerMapping,
+    confExecutorsTemp: String)
+  extends RDD[(K, V)](sc, Nil) {
 
   val defaultParallelism = sc.defaultParallelism
   sc.setLocalProperty("spark.scheduler.pool", "DDL")

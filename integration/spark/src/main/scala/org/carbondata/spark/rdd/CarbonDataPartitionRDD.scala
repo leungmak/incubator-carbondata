@@ -18,19 +18,16 @@
 
 package org.carbondata.spark.rdd
 
-import scala.collection.JavaConverters._
-
-import org.apache.spark.{Logging, Partition, SerializableWritable, SparkContext, TaskContext}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.execution.command.Partitioner
-
+import org.apache.spark.{Partition, SerializableWritable, SparkContext, TaskContext}
 import org.carbondata.common.logging.impl.StandardLogService
-import org.carbondata.hadoop.CarbonInputSplit
 import org.carbondata.spark.PartitionResult
 import org.carbondata.spark.partition.api.impl.CSVFilePartitioner
 import org.carbondata.spark.splits.TableSplit
 import org.carbondata.spark.util.CarbonQueryUtil
 
+import scala.collection.JavaConverters._
 
 class CarbonSparkRawDataPartition(rddId: Int, val idx: Int, @transient val tableSplit: TableSplit)
   extends Partition {
@@ -60,7 +57,7 @@ class CarbonDataPartitionRDD[K, V](
     escapeChar: String,
     multiLine: Boolean,
     partitioner: Partitioner)
-  extends RDD[(K, V)](sc, Nil) with Logging {
+  extends RDD[(K, V)](sc, Nil) {
 
   sc.setLocalProperty("spark.scheduler.pool", "DDL")
 
