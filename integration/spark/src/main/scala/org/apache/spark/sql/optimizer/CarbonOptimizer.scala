@@ -23,12 +23,15 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
 import org.apache.spark.sql._
+import org.apache.spark.sql.catalyst.catalog.SessionCatalog
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.optimizer.Optimizer
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
+import org.apache.spark.sql.execution.SparkOptimizer
 import org.apache.spark.sql.execution.datasources.LogicalRelation
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types.{IntegerType, StringType}
 
 import org.carbondata.spark.CarbonFilters
@@ -45,6 +48,16 @@ object LazyProjection extends Rule[LogicalPlan] {
     } else {
       plan
     }
+  }
+}
+
+class CarbonOptimizer(
+    optimizer: Optimizer,
+    catalog: SessionCatalog,
+    conf: SQLConf)
+  extends Optimizer(catalog, conf) {
+  override def execute(plan: LogicalPlan): LogicalPlan = {
+    CarbonOptimizer.execute(plan, optimizer)
   }
 }
 

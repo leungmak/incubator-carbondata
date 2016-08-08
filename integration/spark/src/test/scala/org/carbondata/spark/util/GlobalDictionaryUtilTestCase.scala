@@ -20,28 +20,25 @@ package org.carbondata.spark.util
 
 import java.io.File
 
-import org.apache.spark.sql.{CarbonEnv, CarbonRelation}
+import org.apache.spark.sql.{CarbonDatasourceRelation, CarbonEnv}
 import org.apache.spark.sql.common.util.CarbonHiveContext
 import org.apache.spark.sql.common.util.CarbonHiveContext.sql
 import org.apache.spark.sql.common.util.QueryTest
 
-import org.carbondata.core.carbon.{CarbonDataLoadSchema}
+import org.carbondata.core.carbon.CarbonDataLoadSchema
 import org.carbondata.spark.load.CarbonLoadModel
-
 import org.scalatest.BeforeAndAfterAll
 
 /**
   * Test Case for org.carbondata.spark.util.GlobalDictionaryUtil
   *
-  * @date: Apr 10, 2016 10:34:58 PM
-  * @See org.carbondata.spark.util.GlobalDictionaryUtil
   */
 class GlobalDictionaryUtilTestCase extends QueryTest with BeforeAndAfterAll {
 
-  var sampleRelation: CarbonRelation = _
-  var dimSampleRelation: CarbonRelation = _
-  var complexRelation: CarbonRelation = _
-  var incrementalLoadTableRelation: CarbonRelation = _
+  var sampleRelation: CarbonDatasourceRelation = _
+  var dimSampleRelation: CarbonDatasourceRelation = _
+  var complexRelation: CarbonDatasourceRelation = _
+  var incrementalLoadTableRelation: CarbonDatasourceRelation = _
   var filePath: String = _
   var workDirectory: String = _
   var dimFilePath: String = _
@@ -49,7 +46,7 @@ class GlobalDictionaryUtilTestCase extends QueryTest with BeforeAndAfterAll {
   var complexfilePath1: String = _
   var complexfilePath2: String = _
 
-  def buildCarbonLoadModel(relation: CarbonRelation,
+  def buildCarbonLoadModel(relation: CarbonDatasourceRelation,
     filePath: String,
     dimensionFilePath: String,
     header: String): CarbonLoadModel = {
@@ -139,16 +136,16 @@ class GlobalDictionaryUtilTestCase extends QueryTest with BeforeAndAfterAll {
   def buildRelation() = {
     val catalog = CarbonEnv.getInstance(CarbonHiveContext).carbonCatalog
     sampleRelation = catalog.lookupRelation1(Option("default"), "sample")(CarbonHiveContext)
-      .asInstanceOf[CarbonRelation]
+      .asInstanceOf[CarbonDatasourceRelation]
     dimSampleRelation = catalog
       .lookupRelation1(Option("default"), "dimSample")(CarbonHiveContext)
-      .asInstanceOf[CarbonRelation]
+      .asInstanceOf[CarbonDatasourceRelation]
     complexRelation = catalog
       .lookupRelation1(Option("default"), "complextypes")(CarbonHiveContext)
-      .asInstanceOf[CarbonRelation]
+      .asInstanceOf[CarbonDatasourceRelation]
     incrementalLoadTableRelation = catalog
       .lookupRelation1(Option("default"), "incrementalLoadTable")(CarbonHiveContext)
-      .asInstanceOf[CarbonRelation]
+      .asInstanceOf[CarbonDatasourceRelation]
   }
 
   test("[issue-80]Global Dictionary Generation") {

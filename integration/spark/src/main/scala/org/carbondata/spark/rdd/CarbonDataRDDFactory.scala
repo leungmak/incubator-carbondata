@@ -19,7 +19,7 @@
 package org.carbondata.spark.rdd
 
 import java.util
-import java.util.concurrent.{Executors, ExecutorService, Future}
+import java.util.concurrent.{ExecutorService, Executors, Future}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
@@ -30,7 +30,7 @@ import org.apache.hadoop.conf.{Configurable, Configuration}
 import org.apache.hadoop.mapreduce.Job
 import org.apache.hadoop.mapreduce.lib.input.FileSplit
 import org.apache.spark.{SparkContext, SparkEnv}
-import org.apache.spark.sql.{CarbonEnv, SQLContext}
+import org.apache.spark.sql.{CarbonEnv, SQLContext, SparkSession}
 import org.apache.spark.sql.execution.command.{AlterTableModel, CompactionModel, Partitioner}
 import org.apache.spark.sql.hive.DistributionUtil
 import org.apache.spark.util.{FileUtils, SplitUtils}
@@ -239,7 +239,7 @@ object CarbonDataRDDFactory {
     }
   }
 
-  def alterTableForCompaction(sqlContext: SQLContext,
+  def alterTableForCompaction(sqlContext: SparkSession,
     alterTableModel: AlterTableModel,
     carbonLoadModel: CarbonLoadModel, partitioner: Partitioner, hdfsStoreLocation: String,
     kettleHomePath: String, storeLocation: String): Unit = {
@@ -295,7 +295,7 @@ object CarbonDataRDDFactory {
     }
   }
 
-  def startCompactionThreads(sqlContext: SQLContext,
+  def startCompactionThreads(sqlContext: SparkSession,
     carbonLoadModel: CarbonLoadModel,
     partitioner: Partitioner,
     hdfsStoreLocation: String,
@@ -431,7 +431,7 @@ object CarbonDataRDDFactory {
     }
   }
 
-  def loadCarbonData(sqlContext: SQLContext,
+  def loadCarbonData(sqlContext: SparkSession,
       carbonLoadModel: CarbonLoadModel,
       storeLocation: String,
       hdfsStoreLocation: String,

@@ -22,7 +22,7 @@ import java.io.File
 
 import org.apache.spark.sql.common.util.CarbonHiveContext.sql
 import org.apache.spark.sql.common.util.{CarbonHiveContext, QueryTest}
-import org.apache.spark.sql.{CarbonEnv, CarbonRelation}
+import org.apache.spark.sql.{CarbonEnv, CarbonDatasourceRelation}
 import org.carbondata.core.carbon.CarbonDataLoadSchema
 import org.carbondata.spark.load.CarbonLoadModel
 import org.scalatest.BeforeAndAfterAll
@@ -30,18 +30,16 @@ import org.scalatest.BeforeAndAfterAll
 /**
   * Test Case for org.carbondata.integration.spark.util.GlobalDictionaryUtil
   *
-  * @date: Apr 10, 2016 10:34:58 PM
-  * @See org.carbondata.integration.spark.util.GlobalDictionaryUtil
   */
 class AllDictionaryTestCase extends QueryTest with BeforeAndAfterAll {
 
   var pwd: String = _
-  var sampleRelation: CarbonRelation = _
-  var complexRelation: CarbonRelation = _
+  var sampleRelation: CarbonDatasourceRelation = _
+  var complexRelation: CarbonDatasourceRelation = _
   var sampleAllDictionaryFile: String = _
   var complexAllDictionaryFile: String = _
 
-  def buildCarbonLoadModel(relation: CarbonRelation,
+  def buildCarbonLoadModel(relation: CarbonDatasourceRelation,
     filePath: String,
     dimensionFilePath: String,
     header: String,
@@ -105,8 +103,8 @@ class AllDictionaryTestCase extends QueryTest with BeforeAndAfterAll {
 
   def buildRelation() = {
     val catalog = CarbonEnv.getInstance(CarbonHiveContext).carbonCatalog
-    sampleRelation = catalog.lookupRelation1(Option("default"), "sample")(CarbonHiveContext).asInstanceOf[CarbonRelation]
-    complexRelation = catalog.lookupRelation1(Option("default"), "complextypes")(CarbonHiveContext).asInstanceOf[CarbonRelation]
+    sampleRelation = catalog.lookupRelation1(Option("default"), "sample")(CarbonHiveContext).asInstanceOf[CarbonDatasourceRelation]
+    complexRelation = catalog.lookupRelation1(Option("default"), "complextypes")(CarbonHiveContext).asInstanceOf[CarbonDatasourceRelation]
   }
 
   test("Support generate global dictionary from all dictionary files") {

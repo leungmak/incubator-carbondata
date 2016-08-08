@@ -20,14 +20,13 @@ package org.carbondata.spark.util
 
 import java.io.File
 
-import org.apache.spark.sql.{CarbonEnv, CarbonRelation}
+import org.apache.spark.sql.{CarbonDatasourceRelation, CarbonEnv}
 import org.apache.spark.sql.common.util.CarbonHiveContext
 import org.apache.spark.sql.common.util.CarbonHiveContext.sql
 import org.apache.spark.sql.common.util.QueryTest
 
 import org.carbondata.core.carbon.CarbonDataLoadSchema
 import org.carbondata.spark.load.CarbonLoadModel
-
 import org.scalatest.BeforeAndAfterAll
 
   /**
@@ -36,9 +35,9 @@ import org.scalatest.BeforeAndAfterAll
   */
 class ExternalColumnDictionaryTestCase extends QueryTest with BeforeAndAfterAll {
 
-  var extComplexRelation: CarbonRelation = _
-  var verticalDelimiteRelation: CarbonRelation = _
-  var loadSqlRelation: CarbonRelation = _
+  var extComplexRelation: CarbonDatasourceRelation = _
+  var verticalDelimiteRelation: CarbonDatasourceRelation = _
+  var loadSqlRelation: CarbonDatasourceRelation = _
   var filePath: String = _
   var pwd: String = _
   var complexFilePath1: String = _
@@ -113,14 +112,14 @@ class ExternalColumnDictionaryTestCase extends QueryTest with BeforeAndAfterAll 
   def buildRelation() = {
     val catalog = CarbonEnv.getInstance(CarbonHiveContext).carbonCatalog
     extComplexRelation = catalog.lookupRelation1(Option("default"), "extComplextypes")(CarbonHiveContext)
-      .asInstanceOf[CarbonRelation]
+      .asInstanceOf[CarbonDatasourceRelation]
     verticalDelimiteRelation = catalog.lookupRelation1(Option("default"), "verticalDelimitedTable")(CarbonHiveContext)
-      .asInstanceOf[CarbonRelation]
+      .asInstanceOf[CarbonDatasourceRelation]
     loadSqlRelation = catalog.lookupRelation1(Option("default"), "loadSqlTest")(CarbonHiveContext)
-      .asInstanceOf[CarbonRelation]
+      .asInstanceOf[CarbonDatasourceRelation]
   }
 
-  def buildCarbonLoadModel(relation: CarbonRelation,
+  def buildCarbonLoadModel(relation: CarbonDatasourceRelation,
       filePath:String,
       header: String,
       extColFilePath: String,

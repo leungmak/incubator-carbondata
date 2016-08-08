@@ -21,8 +21,8 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.errors.attachTree
 import org.apache.spark.sql.catalyst.expressions._
-import org.apache.spark.sql.execution.{UnaryExecNode, SparkPlan}
-import org.apache.spark.sql.hive.CarbonMetastoreTypes
+import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
+import org.apache.spark.sql.hive.{CarbonMetastoreTypes, CarbonSessionState}
 import org.apache.spark.sql.optimizer.{CarbonAliasDecoderRelation, CarbonDecoderRelation}
 import org.apache.spark.sql.types._
 
@@ -43,7 +43,7 @@ case class CarbonDictionaryDecoder(
     profile: CarbonProfile,
     aliasMap: CarbonAliasDecoderRelation,
     child: SparkPlan)
-  (@transient sqlContext: SQLContext)
+  (@transient sqlContext: CarbonSessionState)
   extends UnaryExecNode {
 
   override def otherCopyArgs: Seq[AnyRef] = sqlContext :: Nil

@@ -20,8 +20,7 @@ package org.apache.spark.sql
 import java.util.regex.{Matcher, Pattern}
 
 import org.apache.spark.sql.catalyst.expressions.Expression
-import org.apache.spark.sql.catalyst.parser.{ParserInterface, AbstractSqlParser}
-
+import org.apache.spark.sql.catalyst.parser.{AbstractSqlParser, ParserInterface}
 import scala.collection.JavaConverters._
 import scala.collection.mutable.LinkedHashSet
 import scala.language.implicitConversions
@@ -31,10 +30,10 @@ import org.apache.hadoop.hive.ql.lib.Node
 import org.apache.hadoop.hive.ql.parse._
 import org.apache.spark.sql.catalyst.{SqlLexical, _}
 import org.apache.spark.sql.catalyst.analysis._
+import org.apache.spark.sql.catalyst.catalog.CatalogColumn
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.trees.CurrentOrigin
 import org.apache.spark.sql.execution.command._
-import org.apache.spark.sql.hive.HiveQlWrapper
 
 import org.carbondata.core.carbon.metadata.datatype.DataType
 import org.carbondata.core.constants.CarbonCommonConstants
@@ -174,7 +173,7 @@ class CarbonSqlParser() extends AbstractSparkSQLParser {
     { case Identifier(str) if regex.unapplySeq(str).isDefined => str }
   )
 
-  def parse(input: String): LogicalPlan = synchronized {
+  override def parse(input: String): LogicalPlan = synchronized {
     // Initialize the Keywords.
     initLexical
     phrase(start)(new lexical.Scanner(input)) match {
@@ -198,7 +197,7 @@ class CarbonSqlParser() extends AbstractSparkSQLParser {
     ("(?i)" + keys).r
 
   override protected lazy val start: Parser[LogicalPlan] =
-    loadManagement | describeTable | showLoads | alterTable | createTable
+    loadManagement | describeTable | showLoads
 
   protected lazy val loadManagement: Parser[LogicalPlan] = deleteLoadsByID | deleteLoadsByLoadDate |
     cleanFiles | loadDataNew
@@ -278,42 +277,6 @@ class CarbonSqlParser() extends AbstractSparkSQLParser {
     }
     dimensions ++ complexDimensions
   }
-
-  protected lazy val alterTable: Parser[LogicalPlan] =
-    ALTER ~> TABLE ~> restInput ^^ {
-      case statement =>
-        try {
-          // DDl will be parsed and we get the AST tree from the HiveQl
-          val node = HiveQlWrapper.getAst("alter table " + statement)
-          // processing the AST tree
-          nodeToPlanForAlterTable(node)
-        } catch {
-          // MalformedCarbonCommandException need to be throw directly, parser will catch it
-          case ce: MalformedCarbonCommandException =>
-            throw ce
-        }
-    }
-
-  /**
-   * For handling the create table DDl systax compatible to Hive syntax
-   */
-  protected lazy val createTable: Parser[LogicalPlan] =
-    restInput ^^ {
-
-      case statement =>
-        try {
-          // DDl will be parsed and we get the AST tree from the HiveQl
-          val node = HiveQlWrapper.getAst(statement)
-          // processing the AST tree
-          nodeToPlan(node)
-        } catch {
-          // MalformedCarbonCommandException need to be throw directly, parser will catch it
-          case ce: MalformedCarbonCommandException =>
-            throw ce
-          case e: Exception =>
-            sys.error("Parsing error") // no need to do anything.
-        }
-    }
 
   private def getScaleAndPrecision(dataType: String): (Int, Int) = {
     val m: Matcher = Pattern.compile("^decimal\\(([^)]+)\\)").matcher(dataType)
@@ -441,6 +404,35 @@ class CarbonSqlParser() extends AbstractSparkSQLParser {
     }
   }
 
+
+  def createFields(cols: Seq[CatalogColumn]): Seq[Field] = {
+    var fields: Seq[Field] = Seq[Field]()
+    cols.map { col =>
+      val columnName = col.name
+      val dataType = Option(col.dataType)
+      val name = Option(col.name)
+      // This is to parse complex data types
+      val x = col.name + ' ' + col.name
+      val f: Field = anyFieldDef(new lexical.Scanner(x))
+      match {
+        case Success(field, _) => field
+        case failureOrError => new Field(columnName, dataType, name, None, null,
+          Some("columnar"))
+      }
+      // the data type of the decimal type will be like decimal(10,0)
+      // so checking the start of the string and taking the precision and scale.
+      // resetting the data type with decimal
+      if (f.dataType.getOrElse("").startsWith("decimal")) {
+        val (precision, scale) = getScaleAndPrecision(col.dataType)
+        f.precision = precision
+        f.scale = scale
+        f.dataType = Some("decimal")
+      }
+      fields ++= Seq(f)
+    }
+    fields
+  }
+
   /**
    * This function will traverse the tree and logical plan will be formed using that.
    *
@@ -491,7 +483,7 @@ class CarbonSqlParser() extends AbstractSparkSQLParser {
    * @param tableProperties
    * @return
    */
-  protected def prepareTableModel(ifNotExistPresent: Boolean, dbName: Option[String]
+  def prepareTableModel(ifNotExistPresent: Boolean, dbName: Option[String]
                                   , tableName: String, fields: Seq[Field],
                                   partitionCols: Seq[PartitionerField],
                                   tableProperties: Map[String, String]): tableModel

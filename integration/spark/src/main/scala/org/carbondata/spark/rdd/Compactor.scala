@@ -19,7 +19,7 @@ package org.carbondata.spark.rdd
 
 import scala.collection.JavaConverters._
 
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.{SQLContext, SparkSession}
 import org.apache.spark.sql.execution.command.{CarbonMergerMapping, Partitioner}
 
 import org.carbondata.common.logging.LogServiceFactory
@@ -29,7 +29,7 @@ import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.load.LoadMetadataDetails
 import org.carbondata.core.util.CarbonProperties
 import org.carbondata.lcm.status.SegmentStatusManager
-import org.carbondata.spark.load.{CarbonLoaderUtil, CarbonLoadModel}
+import org.carbondata.spark.load.{CarbonLoadModel, CarbonLoaderUtil}
 import org.carbondata.spark.MergeResultImpl
 import org.carbondata.spark.merger.CarbonDataMergerUtil
 
@@ -48,7 +48,7 @@ object Compactor {
     kettleHomePath: String,
     tableCreationTime: Long,
     loadsToMerge: java.util.List[LoadMetadataDetails],
-    sqlContext: SQLContext): Unit = {
+    sqlContext: SparkSession): Unit = {
 
     val startTime = System.nanoTime();
     val mergedLoadName = CarbonDataMergerUtil.getMergedLoadName(loadsToMerge)

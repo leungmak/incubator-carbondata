@@ -19,30 +19,19 @@ package org.apache.spark.sql
 
 import java.io.File
 
+import scala.language.implicitConversions
+
 import org.apache.spark.SparkContext
 import org.apache.spark.scheduler.cluster.CoarseGrainedSchedulerBackend
-import org.apache.spark.sql.catalyst.parser.ParserInterface
 import org.apache.spark.sql.execution.command.PartitionData
-import org.apache.spark.sql.hive._
-import org.apache.spark.sql.internal.{SQLConf, SessionState}
+import org.apache.spark.sql.hive.{HiveSharedState, _}
+import org.apache.spark.sql.internal.{SQLConf, SessionState, SharedState}
 import org.apache.spark.sql.optimizer.LazyProjection
+
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.util.CarbonProperties
 
-import scala.language.implicitConversions
-
-class CarbonSessionState(
-    val sparkSession: SparkSession,
-    val storePath: String)
-    extends SessionState(sparkSession) {
-  override lazy val sqlParser: ParserInterface = new CarbonSpark2Parser
-  override lazy val catalog = {
-    CarbonProperties.getInstance()
-        .addProperty(CarbonCommonConstants.STORE_LOCATION, storePath)
-    new CarbonMetastoreCatalog(sparkSession, storePath)
-  }
-}
 
 class CarbonContext(
     val sc: SparkContext,
@@ -65,16 +54,22 @@ class CarbonContext(
   }
 
   CarbonContext.addInstance(sc, this)
-  CodeGenerateFactory.init(sc.version)
-  CarbonEnv.getInstance(this.sqlContext).carbonCatalog =
-      sessionState.asInstanceOf[CarbonSessionState].catalog
+  CarbonEnv.getInstance(this).carbonCatalog =
+      sessionState.asInstanceOf[CarbonSessionState].catalog.metastoreCatalog
 
   var lastSchemaUpdatedTime = System.currentTimeMillis()
 
-  protected[sql] override lazy val conf: SQLConf = new CarbonSQLConf
-
   override private[sql] lazy val sessionState: SessionState = {
     new CarbonSessionState(this, storePath)
+  }
+
+  /**
+   * State shared across sessions, including the [[SparkContext]], cached data, listener,
+   * and a catalog that interacts with external systems.
+   */
+  @transient
+  override lazy val sharedState: SharedState = {
+    new CarbonSharedState(sc)
   }
 
 //  @transient
@@ -104,13 +99,6 @@ class CarbonContext(
 //      )
 //    }
 
-
-  experimental.extraOptimizations = Seq(LazyProjection)
-
-  experimental.extraStrategies = {
-    val carbonStrategy = new CarbonStrategies(this)
-    Seq(carbonStrategy.CarbonTableScan, carbonStrategy.DDLStrategies)
-  }
 
   sc.hadoopConfiguration.addResource("hive-site.xml")
   if (sc.hadoopConfiguration.get(CarbonCommonConstants.HIVE_CONNECTION_URL) == null) {
@@ -188,7 +176,7 @@ object CarbonContext {
   }
 
   final def updateCarbonPorpertiesPath(sc: SparkContext) {
-    val carbonPropertiesFilePath = sc.conf.set("carbon.properties.filepath", null)
+    val carbonPropertiesFilePath = sc.conf.get("carbon.properties.filepath", null)
     val systemcarbonPropertiesFilePath = System.getProperty("carbon.properties.filepath", null)
     if (null != carbonPropertiesFilePath && null == systemcarbonPropertiesFilePath) {
       System.setProperty("carbon.properties.filepath",

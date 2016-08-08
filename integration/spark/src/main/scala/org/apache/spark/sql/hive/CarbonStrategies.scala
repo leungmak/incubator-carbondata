@@ -23,27 +23,25 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.{TableIdentifier, expressions}
 import org.apache.spark.sql.catalyst.expressions.{AttributeSet, _}
 import org.apache.spark.sql.catalyst.planning.{PhysicalOperation, QueryPlanner}
-import org.apache.spark.sql.catalyst.plans.logical.{Filter => LogicalFilter, LogicalPlan}
+import org.apache.spark.sql.catalyst.plans.logical.{LogicalPlan, Filter => LogicalFilter}
 import org.apache.spark.sql.execution._
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.optimizer.{CarbonAliasDecoderRelation, CarbonDecoderRelation}
 import org.apache.spark.sql.types.IntegerType
-import org.carbondata.common.logging.LogServiceFactory
 
+import org.carbondata.common.logging.LogServiceFactory
 import scala.collection.JavaConverters._
 
 
-class CarbonStrategies(carbonContext: CarbonContext) extends QueryPlanner[SparkPlan] {
+class CarbonStrategies(carbonContext: CarbonSessionState) extends QueryPlanner[SparkPlan] {
 
   override def strategies: Seq[Strategy] = getStrategies
-
-  def sqlContext = carbonContext.sqlContext
 
   val LOGGER = LogServiceFactory.getLogService("CarbonStrategies")
 
   def getStrategies: Seq[Strategy] = {
-    val total = carbonContext.sessionState.planner.strategies :+ CarbonTableScan
+    val total = carbonContext.planner.strategies :+ CarbonTableScan
     total
   }
 
@@ -58,15 +56,15 @@ class CarbonStrategies(carbonContext: CarbonContext) extends QueryPlanner[SparkP
         case PhysicalOperation(projectList, predicates, l: LogicalRelation)
             if l.relation.isInstanceOf[CarbonDatasourceRelation] =>
           if (isStarQuery(plan)) {
-            carbonRawScanForStarQuery(projectList, predicates, l)(sqlContext) :: Nil
+            carbonRawScanForStarQuery(projectList, predicates, l)(carbonContext) :: Nil
           } else {
-            carbonRawScan(projectList, predicates, l)(sqlContext) :: Nil
+            carbonRawScan(projectList, predicates, l)(carbonContext) :: Nil
           }
         case CarbonDictionaryCatalystDecoder(relations, profile, aliasMap, _, child) =>
           CarbonDictionaryDecoder(relations,
             profile,
             aliasMap,
-            planLater(child))(sqlContext) :: Nil
+            planLater(child))(carbonContext) :: Nil
         case _ =>
           Nil
       }
@@ -77,7 +75,7 @@ class CarbonStrategies(carbonContext: CarbonContext) extends QueryPlanner[SparkP
      */
     private def carbonRawScan(projectList: Seq[NamedExpression],
       predicates: Seq[Expression],
-      logicalRelation: LogicalRelation)(sc: SQLContext): SparkPlan = {
+      logicalRelation: LogicalRelation)(sc: CarbonSessionState): SparkPlan = {
 
       val identifier = logicalRelation.relation.asInstanceOf[CarbonDatasourceRelation].identifier
       // Check out any expressions are there in project list. if they are present then we need to
@@ -86,13 +84,13 @@ class CarbonStrategies(carbonContext: CarbonContext) extends QueryPlanner[SparkP
       val filterSet = AttributeSet(predicates.flatMap(_.references))
       val scan = CarbonScan(projectSet.toSeq,
         logicalRelation,
-        predicates)(sqlContext)
+        predicates)(carbonContext)
       projectList.map {
         case attr: AttributeReference =>
         case Alias(attr: AttributeReference, _) =>
         case others =>
           others.references.map{f =>
-            val dictionary = CarbonEnv.getMetaData(sqlContext, identifier).dictionaryMap.get(f.name)
+            val dictionary = CarbonEnv.getMetaData(carbonContext, identifier).dictionaryMap.get(f.name)
             if (dictionary.isDefined && dictionary.get) {
               scan.attributesNeedToDecode.add(f.asInstanceOf[AttributeReference])
             }
@@ -132,7 +130,7 @@ class CarbonStrategies(carbonContext: CarbonContext) extends QueryPlanner[SparkP
      */
     private def carbonRawScanForStarQuery(projectList: Seq[NamedExpression],
       predicates: Seq[Expression],
-      logicalRelation: LogicalRelation)(sc: SQLContext): SparkPlan = {
+      logicalRelation: LogicalRelation)(sc: CarbonSessionState): SparkPlan = {
       val relation = logicalRelation.relation.asInstanceOf[CarbonDatasourceRelation]
       val tableName: String = relation.metadata.carbonTable.getFactTableName.toLowerCase
       // Check out any expressions are there in project list. if they are present then we need to
@@ -141,7 +139,7 @@ class CarbonStrategies(carbonContext: CarbonContext) extends QueryPlanner[SparkP
       val scan = CarbonScan(projectList.map(_.toAttribute),
         logicalRelation,
         predicates,
-        useUnsafeCoversion = false)(sqlContext)
+        useUnsafeCoversion = false)(carbonContext)
       projectExprsNeedToDecode.addAll(scan.attributesNeedToDecode)
       val updatedAttrs = scan.attributesRaw.map(attr =>
         updateDataType(attr.asInstanceOf[AttributeReference], relation, projectExprsNeedToDecode))
@@ -170,7 +168,7 @@ class CarbonStrategies(carbonContext: CarbonContext) extends QueryPlanner[SparkP
     }
 
     def getCarbonDecoder(logicalRelation: LogicalRelation,
-      sc: SQLContext,
+      sc: CarbonSessionState,
       tableName: String,
       projectExprsNeedToDecode: Seq[Attribute],
       scan: CarbonScan): CarbonDictionaryDecoder = {
@@ -227,13 +225,13 @@ class CarbonStrategies(carbonContext: CarbonContext) extends QueryPlanner[SparkP
   object DDLStrategies extends Strategy {
     def apply(plan: LogicalPlan): Seq[SparkPlan] = {
       plan match {
-        case DropTableCommand(ifExistsSet, databaseNameOp, tableName) =>
-          ExecutedCommandExec(DropTableCommand(ifExistsSet, databaseNameOp, tableName)) :: Nil
+        case org.apache.spark.sql.execution.command.DropTableCommand(tableName,ifExists,isView) =>
+          ExecutedCommandExec(DropTableCommand1(ifExists, tableName.database, tableName.table)) :: Nil
         case ShowLoadsCommand(databaseName, table, limit) =>
           ExecutedCommandExec(ShowLoads(databaseName, table, limit, plan.output)) :: Nil
         case LoadTable(databaseNameOp, tableName, factPathFromUser, dimFilesPath,
         partionValues, isOverwriteExist, inputSqlString) =>
-          if (CarbonEnv.isExist(sqlContext, TableIdentifier(tableName, databaseNameOp)) ||
+          if (CarbonEnv.isExist(carbonContext, TableIdentifier(tableName, databaseNameOp)) ||
               partionValues.nonEmpty) {
             ExecutedCommandExec(LoadTable(databaseNameOp, tableName, factPathFromUser,
               dimFilesPath, partionValues, isOverwriteExist, inputSqlString)) :: Nil

@@ -25,24 +25,26 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.execution.LeafExecNode
 import org.apache.spark.sql.execution.datasources.LogicalRelation
+
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.util.CarbonProperties
 import org.carbondata.scan.model._
 import org.carbondata.spark.rdd.CarbonScanRDD
 import org.carbondata.spark.{CarbonFilters, RawValue, RawValueImpl}
-
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
+
+import org.apache.spark.sql.hive.CarbonSessionState
 
 case class CarbonScan(
     var attributesRaw: Seq[Attribute],
     relation: LogicalRelation,
     dimensionPredicatesRaw: Seq[Expression],
-    useUnsafeCoversion: Boolean = true)(@transient val ocRaw: SQLContext) extends LeafExecNode {
+    useUnsafeCoversion: Boolean = true)(@transient val ocRaw: CarbonSessionState) extends LeafExecNode {
   val carbonTable = relation.relation.asInstanceOf[CarbonDatasourceRelation].metadata.carbonTable
   val selectedDims = scala.collection.mutable.MutableList[QueryDimension]()
   val selectedMsrs = scala.collection.mutable.MutableList[QueryMeasure]()
-  @transient val carbonCatalog = CarbonEnv.getInstance(ocRaw).carbonCatalog
+  @transient val carbonCatalog = ocRaw.catalog.metastoreCatalog
 
   val attributesNeedToDecode = new java.util.HashSet[AttributeReference]()
   val unprocessedExprs = new ArrayBuffer[Expression]()
@@ -168,7 +170,7 @@ case class CarbonScan(
       absoluteTableIdentifier, buildCarbonPlan, carbonTable)
     val kv: RawValue[Array[Any]] = new RawValueImpl
     // setting queryid
-    buildCarbonPlan.setQueryId(ocRaw.getConf("queryId", System.nanoTime() + ""))
+    buildCarbonPlan.setQueryId(ocRaw.conf.getConfString("queryId", System.nanoTime() + ""))
 
     val identifier = relation.relation.asInstanceOf[CarbonDatasourceRelation]
         .tableMeta.carbonTableIdentifier
@@ -177,16 +179,14 @@ case class CarbonScan(
     val schemaLastUpdatedTime =
       carbonCatalog.getSchemaLastUpdatedTime(identifier.getDatabaseName, identifier.getTableName)
     new CarbonScanRDD(
-      ocRaw.sparkContext,
+      ocRaw.sparkSession.sparkContext,
       model,
       buildCarbonPlan.getFilterExpression,
       kv,
       conf,
       tableCreationTime,
       schemaLastUpdatedTime,
-      CarbonEnv.getTableMeta(
-        ocRaw,
-        relation.relation.asInstanceOf[CarbonDatasourceRelation].identifier).storePath)
+      ocRaw.catalog.metastoreCatalog.storePath)
   }
 
 //  override def outputsUnsafeRows: Boolean =

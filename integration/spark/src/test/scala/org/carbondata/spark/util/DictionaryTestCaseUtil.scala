@@ -18,7 +18,7 @@
 package org.carbondata.spark.util
 
 
-import org.apache.spark.sql.CarbonRelation
+import org.apache.spark.sql.CarbonDatasourceRelation
 import org.apache.spark.sql.common.util.CarbonHiveContext
 
 import org.carbondata.core.cache.dictionary.DictionaryColumnUniqueIdentifier
@@ -37,7 +37,7 @@ object DictionaryTestCaseUtil {
    * @param columnName  name of specified column
    * @param value  a value of column
    */
-  def checkDictionary(relation: CarbonRelation, columnName: String, value: String) {
+  def checkDictionary(relation: CarbonDatasourceRelation, columnName: String, value: String) {
     val table = relation.tableMeta.carbonTable
     val dimension = table.getDimensionByName(table.getFactTableName, columnName)
     val tableIdentifier = new CarbonTableIdentifier(table.getDatabaseName, table.getFactTableName, "uniqueid")

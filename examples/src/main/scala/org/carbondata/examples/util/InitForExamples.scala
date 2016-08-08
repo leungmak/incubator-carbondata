@@ -43,7 +43,7 @@ object InitForExamples {
     println(s"Starting $appName using spark version ${sc.version}")
 
     val cc = new CarbonContext(sc, storeLocation, currentPath + "/target/carbonmetastore")
-    cc.setConf("carbon.kettle.home", kettleHome)
+    cc.conf.set("carbon.kettle.home", kettleHome)
 
     // whether use table split partition
     // true -> use table split partition, support multiple partition loading

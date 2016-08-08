@@ -17,16 +17,16 @@
 
 package org.apache.spark.sql.hive
 
-import org.apache.hadoop.hive.ql.parse.ASTNode
+import org.apache.spark.SparkContext
+import org.apache.spark.sql.hive.client.HiveClient
+import org.apache.spark.sql.internal.SharedState
+
 
 /**
- * Wrapper class for using the hiveQl class of hive.
+ * A class that holds all state shared across sessions in a given
+ * [[org.apache.spark.sql.SparkSession]] backed by Hive.
  */
-object HiveQlWrapper {
-
-  def getAst(sql: String): ASTNode = {
-
-    HiveQl.getAst(sql)
-  }
+ class CarbonSharedState(override val sparkContext: SparkContext)
+  extends HiveSharedState(sparkContext) {
 
 }

@@ -20,7 +20,7 @@ package org.carbondata.spark.util
 
 import java.io.File
 
-import org.apache.spark.sql.{CarbonEnv, CarbonRelation}
+import org.apache.spark.sql.{CarbonDatasourceRelation, CarbonEnv}
 import org.apache.spark.sql.common.util.CarbonHiveContext
 import org.apache.spark.sql.common.util.CarbonHiveContext.sql
 import org.apache.spark.sql.common.util.QueryTest
@@ -30,11 +30,11 @@ import org.carbondata.core.carbon.{CarbonDataLoadSchema, CarbonTableIdentifier}
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.spark.load.CarbonLoadModel
 import org.carbondata.spark.load.CarbonLoaderUtil
-
 import org.scalatest.BeforeAndAfterAll
 import java.io.FileWriter
 import java.io.BufferedWriter
 import java.util.Random
+
 import org.carbondata.core.carbon.metadata.encoder.Encoding
 import org.carbondata.core.carbon.path.CarbonStorePath
 import org.carbondata.core.carbon.path.CarbonStorePath
@@ -44,14 +44,12 @@ import org.carbondata.core.util.CarbonUtil
 /**
   * Test Case for org.carbondata.spark.util.GlobalDictionaryUtil
   *
-  * @date: Apr 10, 2016 10:34:58 PM
-  * @See org.carbondata.spark.util.GlobalDictionaryUtil
   */
 class AutoHighCardinalityIdentifyTestCase extends QueryTest with BeforeAndAfterAll {
 
   var filePath: String = _
 
-  def buildCarbonLoadModel(relation: CarbonRelation,
+  def buildCarbonLoadModel(relation: CarbonDatasourceRelation,
     filePath: String,
     dimensionFilePath: String,
     header: String): CarbonLoadModel = {
@@ -117,10 +115,10 @@ class AutoHighCardinalityIdentifyTestCase extends QueryTest with BeforeAndAfterA
       case ex: Throwable => logError(ex.getMessage + "\r\n" + ex.getStackTraceString)
     }
   }
-  def relation(tableName: String): CarbonRelation = {
+  def relation(tableName: String): CarbonDatasourceRelation = {
     CarbonEnv.getInstance(CarbonHiveContext).carbonCatalog
         .lookupRelation1(Option("default"), tableName)(CarbonHiveContext)
-        .asInstanceOf[CarbonRelation]
+        .asInstanceOf[CarbonDatasourceRelation]
   }
   
   private def checkDictFile(table: CarbonTable) = {

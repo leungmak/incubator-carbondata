@@ -38,7 +38,10 @@ case class CarbonBoundReference(colExp: ColumnExpression, dataType: DataType, nu
 
   override def toAttribute: Attribute = throw new UnsupportedOperationException
 
-  override def qualifiers: Seq[String] = throw new UnsupportedOperationException
+
+  override def qualifier: Option[String] = throw new UnsupportedOperationException
+
+  override def newInstance(): NamedExpression = CarbonBoundReference(colExp, dataType, nullable)
 
   override def exprId: ExprId = throw new UnsupportedOperationException
 

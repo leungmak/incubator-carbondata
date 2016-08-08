@@ -62,7 +62,7 @@ class CarbonSource
           case Seq(name) => TableIdentifier(name, None)
           case Seq(db, name) => TableIdentifier(name, Some(db))
         }
-        CarbonDatasourceRelation(identifier, None)(sqlContext)
+        CarbonDatasourceRelation(identifier, None)(sqlContext.sparkSession)
     }
   }
 
@@ -124,16 +124,16 @@ class CarbonSource
  * Creates carbon relation compliant to data source api.
  * This relation is stored to hive metastore
  */
-private[sql] case class CarbonDatasourceRelation(
+ case class CarbonDatasourceRelation(
     identifier: TableIdentifier,
     alias: Option[String])
-  (@transient ctx: SQLContext)
+  (@transient ctx: SparkSession)
   extends BaseRelation with Serializable {
 
-  override def sqlContext = ctx
+  override def sqlContext = ctx.sqlContext
 
-  val metadata = CarbonEnv.getMetaData(sqlContext, identifier)
-  val tableMeta = CarbonEnv.getTableMeta(sqlContext, identifier)
+  val metadata = CarbonEnv.getMetaData(ctx, identifier)
+  val tableMeta = CarbonEnv.getTableMeta(ctx, identifier)
 
   val dimensionsAttr = {
     val tableName = tableMeta.carbonTable.getFactTableName

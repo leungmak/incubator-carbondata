@@ -23,10 +23,11 @@ import java.util.regex.Pattern
 
 import org.apache.commons.lang3.{ArrayUtils, StringUtils}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.TableIdentifier
+import org.apache.spark.sql.catalyst.CarbonTableIdentifierImplicit._
 import org.apache.spark.sql.hive.CarbonMetastoreCatalog
-import org.apache.spark.sql.{CarbonEnv, DataFrame, SQLContext}
+import org.apache.spark.sql.{CarbonEnv, DataFrame, SQLContext, SparkSession}
 import org.apache.spark.util.FileUtils
+
 import org.carbondata.common.factory.CarbonCommonFactory
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.cache.dictionary.Dictionary
@@ -45,7 +46,6 @@ import org.carbondata.spark.CarbonSparkFactory
 import org.carbondata.spark.load.{CarbonLoadModel, CarbonLoaderUtil}
 import org.carbondata.spark.partition.reader.CSVWriter
 import org.carbondata.spark.rdd.{ArrayParser, CarbonAllDictionaryCombineRDD, CarbonBlockDistinctValuesCombineRDD, CarbonColumnDictGenerateRDD, CarbonDataRDDFactory, CarbonGlobalDictionaryGenerateRDD, ColumnPartitioner, DataFormat, DictionaryLoadModel, GenericParser, PrimitiveParser, StructParser}
-
 import scala.collection.JavaConverters._
 import scala.collection.mutable.{ArrayBuffer, HashMap, HashSet}
 import scala.language.implicitConversions
@@ -334,7 +334,7 @@ object GlobalDictionaryUtil {
    * @param sqlContext  SQLContext
    * @param carbonLoadModel  carbon data load model
    */
-  def loadDataFrame(sqlContext: SQLContext,
+  def loadDataFrame(sqlContext: SparkSession,
       carbonLoadModel: CarbonLoadModel): DataFrame = {
     val df = sqlContext.read
       .format("com.databricks.spark.csv.newapi")
@@ -363,7 +363,7 @@ object GlobalDictionaryUtil {
   }
 
   private def updateTableMetadata(carbonLoadModel: CarbonLoadModel,
-                                  sqlContext: SQLContext,
+                                  sqlContext: SparkSession,
                                   model: DictionaryLoadModel,
                                   noDictDimension: Array[CarbonDimension]): Unit = {
 
@@ -391,7 +391,7 @@ object GlobalDictionaryUtil {
         model.table.getDatabaseName, model.table.getTableName, carbonLoadModel.getStorePath)
 
     // update CarbonDataLoadSchema
-    val identifier = TableIdentifier(model.table.getTableName, Option(model.table.getDatabaseName))
+    val identifier = Seq(model.table.getDatabaseName, model.table.getTableName)
     val tableMeta = CarbonEnv.getTableMeta(sqlContext, identifier)
     carbonLoadModel.setCarbonDataLoadSchema(new CarbonDataLoadSchema(tableMeta.carbonTable))
   }
@@ -402,7 +402,7 @@ object GlobalDictionaryUtil {
    * @param status checking whether the generating is  successful
    */
   private def checkStatus(carbonLoadModel: CarbonLoadModel,
-                          sqlContext: SQLContext,
+                          sqlContext: SparkSession,
                           model: DictionaryLoadModel,
                           status: Array[(Int, String, Boolean)]) = {
     var result = false
@@ -520,7 +520,7 @@ object GlobalDictionaryUtil {
                                               table: CarbonTableIdentifier,
                                               dimensions: Array[CarbonDimension],
                                               carbonLoadModel: CarbonLoadModel,
-                                              sqlContext: SQLContext,
+                                              sqlContext: SparkSession,
                                               hdfsLocation: String,
                                               dictFolderPath: String) = {
     // set pre defined dictionary column
@@ -573,7 +573,7 @@ object GlobalDictionaryUtil {
    * @param allDictionaryPath
    * @return allDictionaryRdd
    */
-  private def readAllDictionaryFiles(sqlContext: SQLContext,
+  private def readAllDictionaryFiles(sqlContext: SparkSession,
                                        csvFileColumns: Array[String],
                                        requireColumns: Array[String],
                                      allDictionaryPath: String) = {
@@ -647,7 +647,7 @@ object GlobalDictionaryUtil {
    * @param sqlContext  sql context
    * @param carbonLoadModel  carbon load model
    */
-  def generateGlobalDictionary(sqlContext: SQLContext,
+  def generateGlobalDictionary(sqlContext: SparkSession,
                                carbonLoadModel: CarbonLoadModel,
                                hdfsLocation: String): Unit = {
     try {

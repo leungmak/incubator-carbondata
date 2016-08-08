@@ -19,7 +19,7 @@
 
 package org.apache.spark.sql.common.util
 
-import org.apache.spark.Logging
+import org.apache.spark.internal.Logging
 import org.scalatest.{FunSuite, Outcome}
 
 

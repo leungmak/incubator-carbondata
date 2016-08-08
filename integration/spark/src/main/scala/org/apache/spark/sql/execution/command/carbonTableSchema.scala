@@ -29,6 +29,7 @@ import org.apache.spark.sql.catalyst.expressions.{Attribute, Cast, Literal}
 import org.apache.spark.sql.execution.SparkPlan
 import org.apache.spark.sql.types.TimestampType
 import org.apache.spark.util.FileUtils
+
 import org.carbondata.common.factory.CarbonCommonFactory
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.carbon.CarbonDataLoadSchema
@@ -51,11 +52,12 @@ import org.carbondata.spark.partition.api.impl.QueryPartitionHelper
 import org.carbondata.spark.rdd.CarbonDataRDDFactory
 import org.carbondata.spark.util.{CarbonScalaUtil, GlobalDictionaryUtil}
 import org.codehaus.jackson.map.ObjectMapper
-
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.language.implicitConversions
 import scala.util.Random
+
+import org.apache.spark.sql.hive.{CarbonSessionCatalog, CarbonSessionState}
 
 
 case class tableModel(
@@ -156,12 +158,12 @@ case class CompactionModel(compactionSize: Long,
   tableCreationTime: Long)
 
 object TableNewProcessor {
-  def apply(cm: tableModel, sqlContext: SQLContext): TableInfo = {
+  def apply(cm: tableModel, sqlContext: SparkSession): TableInfo = {
     new TableNewProcessor(cm, sqlContext).process
   }
 }
 
-class TableNewProcessor(cm: tableModel, sqlContext: SQLContext) {
+class TableNewProcessor(cm: tableModel, sqlContext: SparkSession) {
 
   var index = 0
   var rowGroup = 0
@@ -763,7 +765,6 @@ private[sql] case class AlterTableCompaction(alterTableModel: AlterTableModel)
   extends RunnableCommand {
 
   def run(sparkSession: SparkSession): Seq[Row] = {
-    val sqlContext = sparkSession.sqlContext
     val tableName = alterTableModel.tableName
     val databaseName = getDB.getDatabaseName(alterTableModel.dbName, sparkSession)
     if (null == org.carbondata.core.carbon.metadata.CarbonMetadata.getInstance
@@ -773,7 +774,7 @@ private[sql] case class AlterTableCompaction(alterTableModel: AlterTableModel)
     }
 
     val tableMeta =
-      CarbonEnv.getTableMeta(sqlContext, TableIdentifier(tableName, Option(databaseName)))
+      CarbonEnv.getTableMeta(sparkSession, TableIdentifier(tableName, Option(databaseName)))
     if (tableMeta == null) {
       sys.error(s"Table $databaseName.$tableName does not exist")
     }
@@ -790,7 +791,7 @@ private[sql] case class AlterTableCompaction(alterTableModel: AlterTableModel)
 
     val partitioner = tableMeta.partitioner
 
-    val kettleHomePath = CarbonScalaUtil.getKettleHomePath(sqlContext)
+    val kettleHomePath = CarbonScalaUtil.getKettleHomePath(sparkSession)
     if (kettleHomePath == null) {
       sys.error(s"carbon.kettle.home is not set")
     }
@@ -801,7 +802,7 @@ private[sql] case class AlterTableCompaction(alterTableModel: AlterTableModel)
     storeLocation = storeLocation + "/carbonstore/" + System.nanoTime()
 
     CarbonDataRDDFactory.alterTableForCompaction(
-      sqlContext,
+      sparkSession,
         alterTableModel,
         carbonLoadModel,
         partitioner,
@@ -817,7 +818,7 @@ private[sql] case class AlterTableCompaction(alterTableModel: AlterTableModel)
 private[sql] case class CreateTable(cm: tableModel) extends RunnableCommand {
 
   def run(sparkSession: SparkSession): Seq[Row] = {
-    val sqlContext = sparkSession.sqlContext
+    val sqlContext = sparkSession
     val LOGGER = LogServiceFactory.getLogService(this.getClass.getCanonicalName)
     cm.databaseName = getDB.getDatabaseName(cm.databaseNameOp, sparkSession)
     val tbName = cm.tableName
@@ -830,7 +831,7 @@ private[sql] case class CreateTable(cm: tableModel) extends RunnableCommand {
       sys.error("No Dimensions found. Table should have at least one dimesnion !")
     }
 
-    if (sqlContext.tableNames(dbName).exists(_.equalsIgnoreCase(tbName))) {
+    if (sqlContext.catalog.listTables(dbName).collect().exists(_.name.equalsIgnoreCase(tbName))) {
       if (!cm.ifNotExistsSet) {
         LOGGER.audit(
           s"Table creation with Database name [$dbName] and Table name [$tbName] failed. " +
@@ -896,7 +897,7 @@ private[sql] case class DeleteLoadsById(
     val dbName = getDB.getDatabaseName(databaseNameOp, sparkSession)
 
     val identifier = TableIdentifier(tableName, Option(dbName))
-    if (!CarbonEnv.isExist(sparkSession.sqlContext, identifier)) {
+    if (!CarbonEnv.isExist(sparkSession, identifier)) {
       LOGGER.audit(s"Delete load by Id is failed. Table $dbName.$tableName does not exist")
       sys.error(s"Table $dbName.$tableName does not exist")
     }
@@ -936,7 +937,7 @@ private[sql] case class DeleteLoadsByLoadDate(
     LOGGER.audit("The delete load by load date request has been received.")
     val dbName = getDB.getDatabaseName(databaseNameOp, sparkSession)
     val identifier = TableIdentifier(tableName, Option(dbName))
-    if (!CarbonEnv.isExist(sparkSession.sqlContext, identifier)) {
+    if (!CarbonEnv.isExist(sparkSession, identifier)) {
       LOGGER.audit(s"Delete load by load date is failed. Table $dbName.$tableName does not exist")
       sys.error(s"Table $dbName.$tableName does not exist")
     }
@@ -977,7 +978,7 @@ private[sql] case class LoadTable(
 
 
   def run(sparkSession: SparkSession): Seq[Row] = {
-    val sqlContext = sparkSession.sqlContext
+    val sqlContext = sparkSession
     val dbName = getDB.getDatabaseName(databaseNameOp, sparkSession)
     if (isOverwriteExist) {
       sys.error("Overwrite is not supported for carbon table with " + dbName + "." + tableName)
@@ -1005,7 +1006,7 @@ private[sql] case class LoadTable(
         sys.error("Table is locked for updation. Please try after some time")
       }
 
-      val factPath = FileUtils.getPaths(CarbonUtil.checkAndAppendHDFSUrl(factPathFromUser))
+      val factPath = FileUtils.getPaths(CarbonUtil.checkAndAppendHDFSUrl(factPathFromUser.toLowerCase))
       val carbonLoadModel = new CarbonLoadModel()
       carbonLoadModel.setTableName(tableMeta.carbonTableIdentifier.getTableName)
       carbonLoadModel.setDatabaseName(tableMeta.carbonTableIdentifier.getDatabaseName)
@@ -1038,7 +1039,7 @@ private[sql] case class LoadTable(
 
       storeLocation = storeLocation + "/carbonstore/" + System.nanoTime()
 
-      val columinar = sqlContext.getConf("carbon.is.columnar.storage", "true").toBoolean
+      val columinar = sqlContext.conf.get("carbon.is.columnar.storage", "true").toBoolean
       val kettleHomePath = CarbonScalaUtil.getKettleHomePath(sqlContext)
       if (kettleHomePath == null) {
         sys.error(s"carbon.kettle.home is not set")
@@ -1163,7 +1164,7 @@ private[sql] case class PartitionData(databaseName: String, tableName: String, f
   var partitionStatus = CarbonCommonConstants.STORE_LOADSTATUS_SUCCESS
 
   def run(sparkSession: SparkSession): Seq[Row] = {
-    val sqlContext = sparkSession.sqlContext
+    val sqlContext = sparkSession
     val identifier = TableIdentifier(tableName, Option(databaseName))
     val tableMeta = CarbonEnv.getTableMeta(sqlContext, identifier)
     val dimNames = tableMeta.carbonTable
@@ -1183,12 +1184,12 @@ private[sql] case class PartitionData(databaseName: String, tableName: String, f
   }
 }
 
-private[sql] case class DropTableCommand(ifExistsSet: Boolean, databaseNameOp: Option[String],
+private[sql] case class DropTableCommand1(ifExistsSet: Boolean, databaseNameOp: Option[String],
     tableName: String)
   extends RunnableCommand {
 
   def run(sparkSession: SparkSession): Seq[Row] = {
-    val sqlContext = sparkSession.sqlContext
+    val sqlContext = sparkSession
     val LOGGER = LogServiceFactory.getLogService(this.getClass.getCanonicalName)
     val dbName = getDB.getDatabaseName(databaseNameOp, sparkSession)
     val identifier = TableIdentifier(tableName, Option(dbName))
@@ -1201,10 +1202,9 @@ private[sql] case class DropTableCommand(ifExistsSet: Boolean, databaseNameOp: O
                  "[$tableName] failed")
         LOGGER.error(s"Carbon Table $dbName.$tableName metadata does not exist")
       }
-      if (sqlContext.tableNames(dbName).map(x => x.toLowerCase())
-        .contains(tableName.toLowerCase())) {
+      if (sqlContext.catalog.listTables(dbName).collect.exists(_.name.equalsIgnoreCase(tableName))) {
         try {
-          sparkSession.sql(s"DROP TABLE IF EXISTS $dbName.$tableName")
+          sparkSession.sessionState.asInstanceOf[CarbonSessionState].metadataHive.runSqlHive(s"DROP TABLE IF EXISTS $dbName.$tableName")
         } catch {
           case e: RuntimeException =>
             LOGGER.audit(
@@ -1337,7 +1337,7 @@ private[sql] case class DescribeCommandFormatted(
   extends RunnableCommand {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
-    val sqlContext = sparkSession.sqlContext
+    val sqlContext = sparkSession
     val metadata = CarbonEnv.getMetaData(sqlContext, identifier)
     val tableMeta = CarbonEnv.getTableMeta(sqlContext, identifier)
     val mapper = new ObjectMapper()
@@ -1486,7 +1486,7 @@ private[sql] case class CleanFiles(
   val LOGGER = LogServiceFactory.getLogService(this.getClass.getCanonicalName)
 
   def run(sparkSession: SparkSession): Seq[Row] = {
-    val sqlContext = sparkSession.sqlContext
+    val sqlContext = sparkSession
     val dbName = getDB.getDatabaseName(databaseNameOp, sparkSession)
     LOGGER.audit(s"The clean files request has been received for $dbName.$tableName")
     val identifier = TableIdentifier(tableName, Option(dbName))

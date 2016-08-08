@@ -20,15 +20,15 @@ package org.carbondata.spark.util
 
 import java.io.File
 
-import org.apache.spark.sql.{ CarbonEnv, CarbonRelation }
+import org.apache.spark.sql.{CarbonDatasourceRelation, CarbonEnv}
 import org.apache.spark.sql.common.util.CarbonHiveContext
 import org.apache.spark.sql.common.util.CarbonHiveContext.sql
 import org.apache.spark.sql.common.util.QueryTest
 
-import org.carbondata.core.carbon.{ CarbonDataLoadSchema }
+import org.carbondata.core.carbon.CarbonDataLoadSchema
 import org.carbondata.spark.load.CarbonLoadModel
-
 import org.scalatest.BeforeAndAfterAll
+
 import org.carbondata.core.datastorage.store.impl.FileFactory
 import scala.collection.mutable.ListBuffer
 import java.util.concurrent.ExecutorService
@@ -37,6 +37,7 @@ import java.util.concurrent.Future
 import java.util.concurrent.FutureTask
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
+
 import org.carbondata.core.carbon.path.CarbonTablePath
 import org.carbondata.common.ext.PathFactory
 import org.carbondata.core.carbon.ColumnIdentifier
@@ -45,10 +46,10 @@ import org.carbondata.core.constants.CarbonCommonConstants
 
 class GlobalDictionaryUtilConcurrentTestCase extends QueryTest with BeforeAndAfterAll {
 
-  var sampleRelation: CarbonRelation = _
+  var sampleRelation: CarbonDatasourceRelation = _
   var workDirectory: String = _
 
-  def buildCarbonLoadModel(relation: CarbonRelation,
+  def buildCarbonLoadModel(relation: CarbonDatasourceRelation,
                            filePath: String,
                            dimensionFilePath: String,
                            header: String): CarbonLoadModel = {
@@ -93,7 +94,7 @@ class GlobalDictionaryUtilConcurrentTestCase extends QueryTest with BeforeAndAft
   def buildRelation() = {
     val catalog = CarbonEnv.getInstance(CarbonHiveContext).carbonCatalog
     sampleRelation = catalog.lookupRelation1(Option("default"), "employee")(CarbonHiveContext)
-      .asInstanceOf[CarbonRelation]
+      .asInstanceOf[CarbonDatasourceRelation]
   }
   def writedummydata(filePath: String, recCount: Int) = {
     var a: Int = 0

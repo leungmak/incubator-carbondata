@@ -283,12 +283,12 @@ object PerfTest {
     val dimension = Seq((1, 1 * 1000), (1, 100), (1, 50), (2, 10)) // cardinality for each column
     val measure = 5 // number of measure
     val template = TableTemplate(dimension, measure)
-    val df = new TableGenerator(cc).genDataFrame(template, rows)
+    val df = new TableGenerator(cc.sqlContext).genDataFrame(template, rows)
     println("generate data completed")
 
     // run all queries against all data sources
     val datasource = Seq("parquet", "orc", "carbon")
-    val runner = new QueryRunner(cc, df, datasource)
+    val runner = new QueryRunner(cc.sqlContext, df, datasource)
 
     val results = runner.loadData
     println(s"load performance: ${results.map(_.avgTime / 1000000L).mkString(", ")}")

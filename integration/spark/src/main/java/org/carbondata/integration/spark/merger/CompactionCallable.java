@@ -26,6 +26,7 @@ import org.carbondata.spark.load.CarbonLoadModel;
 import org.carbondata.spark.rdd.Compactor;
 
 import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.execution.command.Partitioner;
 
 /**
@@ -40,12 +41,12 @@ public class CompactionCallable implements Callable<Void> {
   private final String kettleHomePath;
   private final Long tableCreationTime;
   private final List<LoadMetadataDetails> loadsToMerge;
-  private final SQLContext sqlContext;
+  private final SparkSession sqlContext;
   private final CarbonLoadModel carbonLoadModel;
 
   public CompactionCallable(String hdfsStoreLocation, CarbonLoadModel carbonLoadModel,
       Partitioner partitioner, String storeLocation, CarbonTable carbonTable, String kettleHomePath,
-      Long tableCreationTime, List<LoadMetadataDetails> loadsToMerge, SQLContext sqlContext) {
+      Long tableCreationTime, List<LoadMetadataDetails> loadsToMerge, SparkSession sqlContext) {
 
     this.hdfsStoreLocation = hdfsStoreLocation;
     this.carbonLoadModel = carbonLoadModel;

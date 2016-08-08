@@ -79,14 +79,14 @@ object CarbonScalaUtil {
     }
   }
 
-  def getKettleHomePath(sqlContext: SQLContext): String = {
+  def getKettleHomePath(sqlContext: SparkSession): String = {
     val carbonHome = System.getenv("CARBON_HOME")
     var kettleHomePath: String = null
     if (carbonHome != null) {
       kettleHomePath = System.getenv("CARBON_HOME") + "/processing/carbonplugins"
     }
     if (kettleHomePath == null) {
-      kettleHomePath = sqlContext.getConf("carbon.kettle.home", null)
+      kettleHomePath = sqlContext.conf.get("carbon.kettle.home", null)
     }
     if (null == kettleHomePath) {
       kettleHomePath = CarbonProperties.getInstance.getProperty("carbon.kettle.home")
