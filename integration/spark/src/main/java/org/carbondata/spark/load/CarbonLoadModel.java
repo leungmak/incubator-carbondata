@@ -42,6 +42,8 @@ public class CarbonLoadModel implements Serializable {
 
   private String factFilePath;
 
+  private String factFolderPath;
+
   private String dimFolderPath;
 
   private String colDictFilePath;
@@ -523,5 +525,13 @@ public class CarbonLoadModel implements Serializable {
    */
   public void setSerializationNullFormat(String serializationNullFormat) {
     this.serializationNullFormat = serializationNullFormat;
+  }
+
+  public String getFactFolderPath() {
+    return factFolderPath;
+  }
+
+  public void setFactFolderPath(String factFolderPath) {
+    this.factFolderPath = factFolderPath;
   }
 }

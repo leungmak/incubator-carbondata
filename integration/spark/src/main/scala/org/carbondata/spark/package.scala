@@ -32,26 +32,31 @@ package object spark {
      */
     def saveAsCarbonFile(parameters: Map[String, String] = Map()): Unit = {
       // To avoid derby problem, dataframe need to be writen and read using CarbonContext
-      require(dataFrame.sqlContext.isInstanceOf[CarbonContext],
+      require(dataFrame.sparkSession.isInstanceOf[CarbonContext],
         "Error in saving dataframe to carbon file, must use CarbonContext to save dataframe"
       )
 
-      val storePath = dataFrame.sqlContext.asInstanceOf[CarbonContext].storePath
+      val storePath = dataFrame.sparkSession.asInstanceOf[CarbonContext].storePath
       val options = new CarbonOption(parameters)
       val dbName = options.dbName
       val tableName = options.tableName
 
       // temporary solution: write to csv file, then load the csv into carbon
-      val tempCSVFolder = s"$storePath/$dbName/$tableName/tempCSV"
+      val tempCSVFolder = s"$storePath/$dbName/$tableName/tempcsv"
       dataFrame.write
-        .format(csvPackage)
+        .format("csv")
         .option("header", "true")
+        .option("delimiter", ",")
+        .option("parserLib", "univocity")
+        .option("escape", "\\")
+        .option("ignoreLeadingWhiteSpace", "false")
+        .option("ignoreTrailingWhiteSpace", "false")
         .mode(SaveMode.Overwrite)
         .save(tempCSVFolder)
 
-      val cc = CarbonContext.getInstance(dataFrame.sqlContext.sparkContext)
+      val cc = dataFrame.sparkSession
       val tempCSVPath = new Path(tempCSVFolder)
-      val fs = tempCSVPath.getFileSystem(dataFrame.sqlContext.sparkContext.hadoopConfiguration)
+      val fs = tempCSVPath.getFileSystem(dataFrame.sparkSession.sparkContext.hadoopConfiguration)
 
       try {
         cc.sql(makeCreateTableString(dataFrame.schema, options))
@@ -60,12 +65,8 @@ package object spark {
         val itor = fs.listFiles(tempCSVPath, true)
         while (itor.hasNext) {
           val f = itor.next()
-          if (f.getPath.getName.startsWith("part-")) {
-            val newPath = s"${ f.getPath.getParent }/${ f.getPath.getName }.csv"
-            if (!fs.rename(f.getPath, new Path(newPath))) {
-              cc.sql(s"DROP TABLE ${ options.tableName }")
-              throw new RuntimeException("File system rename failed when loading data into carbon")
-            }
+          if (!f.getPath.getName.endsWith(".csv")) {
+            fs.delete(f.getPath)
           }
         }
         cc.sql(makeLoadString(tableName, tempCSVFolder))
@@ -74,7 +75,7 @@ package object spark {
       }
     }
 
-    private def csvPackage: String = "com.databricks.spark.csv"
+    private def csvPackage: String = "com.databricks.spark.csv.newapi"
 
     private def convertToCarbonType(sparkType: DataType): String = {
       sparkType match {
@@ -99,7 +100,6 @@ package object spark {
       s"""
           CREATE TABLE IF NOT EXISTS $tableName
           (${ carbonSchema.mkString(", ") })
-          STORED BY '${ CarbonContext.datasourceName }'
       """
     }
 

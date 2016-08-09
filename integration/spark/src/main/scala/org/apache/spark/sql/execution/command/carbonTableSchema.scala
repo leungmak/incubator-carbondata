@@ -1087,6 +1087,7 @@ private[sql] case class LoadTable(
           LOGGER.info("Initiating Direct Load for the Table : (" +
                       dbName + "." + tableName + ")")
           carbonLoadModel.setFactFilePath(factPath)
+          carbonLoadModel.setFactFolderPath(CarbonUtil.checkAndAppendHDFSUrl(factPathFromUser.toLowerCase))
           carbonLoadModel.setCsvDelimiter(CarbonUtil.unescapeChar(delimiter))
           carbonLoadModel.setCsvHeader(fileHeader)
           carbonLoadModel.setColDictFilePath(columnDict)

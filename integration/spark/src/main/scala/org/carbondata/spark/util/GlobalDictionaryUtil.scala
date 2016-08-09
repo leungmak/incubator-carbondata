@@ -337,7 +337,7 @@ object GlobalDictionaryUtil {
   def loadDataFrame(sqlContext: SparkSession,
       carbonLoadModel: CarbonLoadModel): DataFrame = {
     val df = sqlContext.read
-      .format("com.databricks.spark.csv.newapi")
+      .format("csv")
       .option("header", {
         if (StringUtils.isEmpty(carbonLoadModel.getCsvHeader)) {
           "true"
@@ -358,7 +358,7 @@ object GlobalDictionaryUtil {
       .option("escape", carbonLoadModel.getEscapeChar)
       .option("ignoreLeadingWhiteSpace", "false")
       .option("ignoreTrailingWhiteSpace", "false")
-      .load(carbonLoadModel.getFactFilePath)
+      .load(carbonLoadModel.getFactFolderPath)
     df
   }
 

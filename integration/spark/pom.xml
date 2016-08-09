@@ -39,11 +39,11 @@
     </repository>
   </repositories>
   <dependencies>
-    <dependency>
-      <groupId>com.databricks</groupId>
-      <artifactId>spark-csv_${scala.binary.version}</artifactId>
-      <version>1.2.0</version>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>com.databricks</groupId>-->
+      <!--<artifactId>spark-csv_${scala.binary.version}</artifactId>-->
+      <!--<version>1.2.0</version>-->
+    <!--</dependency>-->
     <dependency>
       <groupId>org.carbondata</groupId>
       <artifactId>carbon-common</artifactId>

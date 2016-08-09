@@ -21,8 +21,9 @@ import java.io.File
 
 import scala.util.Random
 
+import org.apache.spark.sql.hive.CarbonSessionState
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.{CarbonContext, DataFrame, Row, SaveMode, SQLContext}
+import org.apache.spark.sql.{CarbonContext, DataFrame, Row, SQLContext, SaveMode}
 import org.apache.spark.sql.types.{DataTypes, StructType}
 
 import org.carbondata.examples.PerfTest._
@@ -42,7 +43,7 @@ class Query(val queryType: String, val queryNo: Int, val sqlString: String) {
    * @param runs run how many time
    * @param datasource datasource to run
    */
-  def run(sqlContext: SQLContext, runs: Int, datasource: String): QueryResult = {
+  def run(sqlContext: CarbonContext, runs: Int, datasource: String): QueryResult = {
     // run repeated and calculate average time elapsed
     require(runs >= 1)
     val sqlToRun = makeSQLString(datasource)
@@ -74,7 +75,7 @@ class Query(val queryType: String, val queryNo: Int, val sqlString: String) {
  */
 case class QueryResult(datasource: String, result: Array[Row], avgTime: Long, firstTime: Long)
 
-class QueryRunner(sqlContext: SQLContext, dataFrame: DataFrame, datasources: Seq[String]) {
+class QueryRunner(sqlContext: CarbonContext, dataFrame: DataFrame, datasources: Seq[String]) {
 
   /**
    * run a query on each datasource
@@ -121,15 +122,15 @@ class QueryRunner(sqlContext: SQLContext, dataFrame: DataFrame, datasources: Seq
       val time = withTime {
         datasource match {
           case "parquet" =>
-            dataFrame.sqlContext.setConf(s"spark.sql.$datasource.compression.codec", "snappy")
+            dataFrame.sparkSession.conf.set(s"spark.sql.$datasource.compression.codec", "snappy")
             loadToNative(datasource)
           case "orc" =>
-            dataFrame.sqlContext.sparkContext.hadoopConfiguration.set("orc.compress", "SNAPPY")
+            dataFrame.sparkSession.sparkContext.hadoopConfiguration.set("orc.compress", "SNAPPY")
             loadToNative(datasource)
           case "carbon" =>
             sqlContext.sql(s"DROP TABLE IF EXISTS ${PerfTest.makeTableName(datasource)}")
             println(s"loading data into $datasource, path: " +
-                s"${dataFrame.sqlContext.asInstanceOf[CarbonContext].storePath}")
+                s"${dataFrame.sparkSession.asInstanceOf[CarbonContext].storePath}")
             dataFrame.write
                 .format("org.apache.spark.sql.CarbonSource")
                 .option("tableName", PerfTest.makeTableName(datasource))
@@ -170,7 +171,7 @@ case class TableTemplate(dimension: Seq[(Int, Int)], measure: Int)
 /**
  * utility to generate random data according to template
  */
-class TableGenerator(sqlContext: SQLContext) {
+class TableGenerator(sqlContext: CarbonContext) {
 
   /**
    * generate a dataframe from random data
@@ -203,7 +204,7 @@ class TableGenerator(sqlContext: SQLContext) {
     }
     val df = sqlContext.createDataFrame(data, schema)
     df.write.mode(SaveMode.Overwrite).parquet(PerfTest.savePath("temp"))
-    sqlContext.parquetFile(PerfTest.savePath("temp"))
+    sqlContext.sqlContext.parquetFile(PerfTest.savePath("temp"))
   }
 }
 
@@ -283,12 +284,12 @@ object PerfTest {
     val dimension = Seq((1, 1 * 1000), (1, 100), (1, 50), (2, 10)) // cardinality for each column
     val measure = 5 // number of measure
     val template = TableTemplate(dimension, measure)
-    val df = new TableGenerator(cc.sqlContext).genDataFrame(template, rows)
+    val df = new TableGenerator(cc).genDataFrame(template, rows)
     println("generate data completed")
 
     // run all queries against all data sources
     val datasource = Seq("parquet", "orc", "carbon")
-    val runner = new QueryRunner(cc.sqlContext, df, datasource)
+    val runner = new QueryRunner(cc, df, datasource)
 
     val results = runner.loadData
     println(s"load performance: ${results.map(_.avgTime / 1000000L).mkString(", ")}")
