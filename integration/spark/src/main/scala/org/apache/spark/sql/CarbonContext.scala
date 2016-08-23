@@ -72,44 +72,6 @@ class CarbonContext(
     new CarbonSharedState(sc)
   }
 
-//  @transient
-//  override protected[sql] lazy val analyzer =
-//    new Analyzer(catalog, conf) {
-//      override val extendedResolutionRules =
-//        PreprocessTableInsertion(conf) ::
-//            new FindDataSourceTable(sparkSession) ::
-//            DataSourceAnalysis(conf) ::
-//            (if (conf.runSQLonFile) new ResolveDataSource(sparkSession) :: Nil else Nil)
-//
-//      override val extendedCheckRules = Seq(datasources.PreWriteCheck(conf, catalog))
-//    }
-//
-//    new Analyzer(catalog, functionRegistry, conf) {
-//      override val extendedResolutionRules =
-//        catalog.ParquetConversions ::
-//        catalog.CreateTables ::
-//        catalog.PreInsertionCasts ::
-//        ExtractPythonUDFs ::
-//        ResolveHiveWindowFunction ::
-//        PreInsertCastAndRename ::
-//        Nil
-//
-//      override val extendedCheckRules = Seq(
-//        PreWriteCheck(catalog)
-//      )
-//    }
-
-
-  sc.hadoopConfiguration.addResource("hive-site.xml")
-  if (sc.hadoopConfiguration.get(CarbonCommonConstants.HIVE_CONNECTION_URL) == null) {
-    val metaStorePathAbsolute = new File(metaStorePath).getCanonicalPath
-    val hiveMetaStoreDB = metaStorePathAbsolute + "/metastore_db"
-    logDebug(s"metastore db is going to be created in location : $hiveMetaStoreDB")
-    sc.conf.set(CarbonCommonConstants.HIVE_CONNECTION_URL,
-            s"jdbc:derby:;databaseName=$hiveMetaStoreDB;create=true")
-    sc.conf.set("hive.metastore.warehouse.dir",
-      metaStorePathAbsolute + "/hivemetadata")
-  }
 
   @transient
   val LOGGER = LogServiceFactory.getLogService(CarbonContext.getClass.getName)
