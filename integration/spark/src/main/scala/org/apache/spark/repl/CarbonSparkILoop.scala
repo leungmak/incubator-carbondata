@@ -36,7 +36,7 @@ class CarbonSparkILoop extends SparkILoop {
          }
               """)
       command("import org.apache.spark.SparkContext._")
-      command("import org.apache.spark.sql.CarbonContext")
+      command("import org.apache.spark.sql.CarbonSession")
       command("""
          @transient val cc = {
            val _cc = {
@@ -46,7 +46,7 @@ class CarbonSparkILoop extends SparkILoop {
              store.mkdirs()
              val storePath = sc.getConf.getOption("spark.carbon.storepath")
                   .getOrElse(store.getCanonicalPath)
-             new CarbonContext(sc, storePath, store.getCanonicalPath)
+             new CarbonSession(sc, storePath, store.getCanonicalPath)
            }
            println("Carbon context available as cc.")
            _cc

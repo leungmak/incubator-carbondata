@@ -47,8 +47,10 @@ private[sql] class CarbonSessionCatalog(
     conf: SQLConf,
     hadoopConf: Configuration,
     storePath: String)
-  extends SessionCatalog(
+  extends HiveSessionCatalog(
     externalCatalog,
+    client,
+    sparkSession,
     functionResourceLoader,
     functionRegistry,
     conf,
@@ -84,20 +86,20 @@ private[sql] class CarbonSessionCatalog(
   // and HiveCatalog. We should still do it at some point...
   val metastoreCatalog = new CarbonMetastoreCatalog(sparkSession, storePath)
 
-  val ParquetConversions: Rule[LogicalPlan] = metastoreCatalog.ParquetConversions
-  val OrcConversions: Rule[LogicalPlan] = metastoreCatalog.OrcConversions
-  val CreateTables: Rule[LogicalPlan] = metastoreCatalog.CreateTables
+  override val ParquetConversions: Rule[LogicalPlan] = metastoreCatalog.ParquetConversions
+  override val OrcConversions: Rule[LogicalPlan] = metastoreCatalog.OrcConversions
+  override val CreateTables: Rule[LogicalPlan] = metastoreCatalog.CreateTables
 
   override def refreshTable(name: TableIdentifier): Unit = {
     super.refreshTable(name)
     metastoreCatalog.refreshTable(name)
   }
 
-  def invalidateCache(): Unit = {
+  override def invalidateCache(): Unit = {
     metastoreCatalog.cachedDataSourceTables.invalidateAll()
   }
 
-  def hiveDefaultTableFilePath(name: TableIdentifier): String = {
+  override def hiveDefaultTableFilePath(name: TableIdentifier): String = {
     metastoreCatalog.hiveDefaultTableFilePath(name)
   }
 

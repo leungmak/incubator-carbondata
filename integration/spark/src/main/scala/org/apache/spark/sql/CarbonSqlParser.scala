@@ -383,8 +383,8 @@ class CarbonSqlParser() extends AbstractSparkSQLParser {
           case _ => // Unsupport features
         }
 
-        if (!(storedBy.equals(CarbonContext.datasourceName) ||
-              storedBy.equals(CarbonContext.datasourceShortName))) {
+        if (!(storedBy.equals(CarbonSession.datasourceName) ||
+              storedBy.equals(CarbonSession.datasourceShortName))) {
           // TODO: should execute by Hive instead of error
           sys.error("Not a carbon format request")
         }

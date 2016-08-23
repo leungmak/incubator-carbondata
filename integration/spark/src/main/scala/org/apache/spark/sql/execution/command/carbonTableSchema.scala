@@ -1102,7 +1102,7 @@ private[sql] case class LoadTable(
           FileFactory.mkdirs(partitionLocation, fileType)
           LOGGER.info("Initiating Data Partitioning for the Table : (" +
                       dbName + "." + tableName + ")")
-          partitionStatus = CarbonContext.partitionData(
+          partitionStatus = CarbonSession.partitionData(
             dbName,
             tableName,
             factPath,

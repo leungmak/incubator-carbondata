@@ -21,7 +21,7 @@ import java.io.File
 import org.apache.spark.internal.Logging
 import org.apache.spark.scheduler.StatsReportListener
 import org.apache.spark.sql.hive.thriftserver.{SparkSQLCLIDriver, SparkSQLEnv}
-import org.apache.spark.sql.{CarbonContext, SparkSession}
+import org.apache.spark.sql.{CarbonSession, SparkSession}
 import org.apache.spark.util.Utils
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -64,7 +64,7 @@ object CarbonSQLCLIDriver extends Logging {
       val path = System.getenv("CARBON_HOME") + "/bin/carbonsqlclistore"
       val store = new File(path)
       store.mkdirs()
-      sparkSession = new CarbonContext(sparkContext,
+      sparkSession = new CarbonSession(sparkContext, None,
         maybeStorePath.getOrElse(store.getCanonicalPath),
         store.getCanonicalPath)
 

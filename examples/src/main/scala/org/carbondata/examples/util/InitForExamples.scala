@@ -21,7 +21,7 @@ import java.io.File
 
 import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.CarbonContext
+import org.apache.spark.sql.CarbonSession
 
 import org.carbondata.core.util.CarbonProperties
 
@@ -34,7 +34,7 @@ object InitForExamples {
   val storeLocation = currentPath + "/target/store"
   val kettleHome = new File(currentPath + "/../processing/carbonplugins").getCanonicalPath
 
-  def createCarbonContext(appName: String): CarbonContext = {
+  def createCarbonContext(appName: String): CarbonSession = {
     val sc = new SparkContext(new SparkConf()
       .setAppName(appName)
       .setMaster("local[2]"))
@@ -42,7 +42,7 @@ object InitForExamples {
 
     println(s"Starting $appName using spark version ${sc.version}")
 
-    val cc = new CarbonContext(sc, storeLocation, currentPath + "/target/carbonmetastore")
+    val cc = new CarbonSession(sc, None, storeLocation, currentPath + "/target/carbonmetastore")
     cc.conf.set("carbon.kettle.home", kettleHome)
 
     // whether use table split partition

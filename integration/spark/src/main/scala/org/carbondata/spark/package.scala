@@ -31,12 +31,12 @@ package object spark {
      * Saves DataFrame as carbon files.
      */
     def saveAsCarbonFile(parameters: Map[String, String] = Map()): Unit = {
-      // To avoid derby problem, dataframe need to be writen and read using CarbonContext
-      require(dataFrame.sparkSession.isInstanceOf[CarbonContext],
-        "Error in saving dataframe to carbon file, must use CarbonContext to save dataframe"
+      // To avoid derby problem, dataframe need to be writen and read using CarbonSession
+      require(dataFrame.sparkSession.isInstanceOf[CarbonSession],
+        "Error in saving dataframe to carbon file, must use CarbonSession to save dataframe"
       )
 
-      val storePath = dataFrame.sparkSession.asInstanceOf[CarbonContext].storePath
+      val storePath = dataFrame.sparkSession.asInstanceOf[CarbonSession].storePath
       val options = new CarbonOption(parameters)
       val dbName = options.dbName
       val tableName = options.tableName

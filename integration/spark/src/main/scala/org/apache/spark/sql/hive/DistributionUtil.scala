@@ -22,7 +22,7 @@ import java.net.{InetAddress, InterfaceAddress, NetworkInterface}
 import scala.collection.JavaConverters._
 
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.CarbonContext
+import org.apache.spark.sql.CarbonSession
 
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.carbon.datastore.block.Distributable
@@ -33,7 +33,7 @@ import org.carbondata.spark.load.CarbonLoaderUtil
  */
 object DistributionUtil {
   @transient
-  val LOGGER = LogServiceFactory.getLogService(CarbonContext.getClass.getName)
+  val LOGGER = LogServiceFactory.getLogService(CarbonSession.getClass.getName)
   /*
    * This method will return the list of executers in the cluster.
    * For this we take the  memory status of all node with getExecutorMemoryStatus
@@ -131,7 +131,7 @@ object DistributionUtil {
       else nodeMapping.size()
 
     val startTime = System.currentTimeMillis()
-    CarbonContext.ensureExecutors(sparkContext, requiredExecutors)
+    CarbonSession.ensureExecutors(sparkContext, requiredExecutors)
     var nodes = DistributionUtil.getNodeList(sparkContext)
     var maxTimes = 30
     while (nodes.length < requiredExecutors && maxTimes > 0) {

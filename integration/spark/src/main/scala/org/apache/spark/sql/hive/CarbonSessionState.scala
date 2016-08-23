@@ -16,7 +16,7 @@ import org.carbondata.core.util.CarbonProperties
 class CarbonSessionState(
     val sparkSession: SparkSession,
     val storePath: String)
-  extends SessionState(sparkSession) {
+  extends HiveSessionState(sparkSession) {
   self =>
 
   override lazy val sqlParser: ParserInterface = new CarbonSpark2Parser(conf)
@@ -43,7 +43,7 @@ class CarbonSessionState(
   /**
    * A Hive client used for interacting with the metastore.
    */
-  lazy val metadataHive: HiveClient = sharedState.metadataHive.newSession()
+  override lazy val metadataHive: HiveClient = sharedState.metadataHive.newSession()
 
   /**
    * An analyzer that uses the Hive metastore.
@@ -107,7 +107,7 @@ class CarbonSessionState(
    * are automatically converted to use the Spark SQL parquet table scan, instead of the Hive
    * SerDe.
    */
-  def convertMetastoreParquet: Boolean = {
+  override def convertMetastoreParquet: Boolean = {
     conf.getConf(HiveUtils.CONVERT_METASTORE_PARQUET)
   }
 
@@ -117,7 +117,7 @@ class CarbonSessionState(
    *
    * This configuration is only effective when "spark.sql.hive.convertMetastoreParquet" is true.
    */
-  def convertMetastoreParquetWithSchemaMerging: Boolean = {
+  override def convertMetastoreParquetWithSchemaMerging: Boolean = {
     conf.getConf(HiveUtils.CONVERT_METASTORE_PARQUET_WITH_SCHEMA_MERGING)
   }
 
@@ -126,19 +126,19 @@ class CarbonSessionState(
    * are automatically converted to use the Spark SQL ORC table scan, instead of the Hive
    * SerDe.
    */
-  def convertMetastoreOrc: Boolean = {
+  override def convertMetastoreOrc: Boolean = {
     conf.getConf(HiveUtils.CONVERT_METASTORE_ORC)
   }
 
   /**
    * When true, Hive Thrift server will execute SQL queries asynchronously using a thread pool."
    */
-  def hiveThriftServerAsync: Boolean = {
+  override def hiveThriftServerAsync: Boolean = {
     conf.getConf(HiveUtils.HIVE_THRIFT_SERVER_ASYNC)
   }
 
   // TODO: why do we get this from SparkConf but not SQLConf?
-  def hiveThriftServerSingleSession: Boolean = {
+  override def hiveThriftServerSingleSession: Boolean = {
     sparkSession.sparkContext.conf.getBoolean(
       "spark.sql.hive.thriftServer.singleSession", defaultValue = false)
   }

@@ -20,7 +20,7 @@ package org.carbondata.examples
 import java.io.File
 
 import org.apache.spark.{ SparkConf, SparkContext }
-import org.apache.spark.sql.CarbonContext
+import org.apache.spark.sql.CarbonSession$
 
 import org.carbondata.core.util.CarbonProperties
 import org.carbondata.examples.util.InitForExamples

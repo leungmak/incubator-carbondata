@@ -33,8 +33,9 @@ import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.util.CarbonProperties
 
 
-class CarbonContext(
+class CarbonSession(
     val sc: SparkContext,
+    @transient private val existingSharedState: Option[SharedState],
     val storePath: String,
     metaStorePath: String)
     extends SparkSession(sc) {
@@ -42,6 +43,7 @@ class CarbonContext(
 
   def this(sc: SparkContext) = {
     this (sc,
+      None,
       new File(CarbonCommonConstants.STORE_LOCATION_DEFAULT_VAL).getCanonicalPath,
       new File(CarbonCommonConstants.METASTORE_LOCATION_DEFAULT_VAL).getCanonicalPath)
   }
@@ -49,11 +51,20 @@ class CarbonContext(
   def this(sc: SparkContext, storePath: String) = {
     this(
       sc,
+      None,
       storePath,
       new File(CarbonCommonConstants.METASTORE_LOCATION_DEFAULT_VAL).getCanonicalPath)
   }
 
-  CarbonContext.addInstance(sc, this)
+  def this(sc: SparkContext, storePath: String, existingSharedState: Option[SharedState]) = {
+    this(
+      sc,
+      existingSharedState,
+      storePath,
+      new File(CarbonCommonConstants.METASTORE_LOCATION_DEFAULT_VAL).getCanonicalPath)
+  }
+
+  CarbonSession.addInstance(sc, this)
   CarbonEnv.getInstance(this).carbonCatalog =
       sessionState.asInstanceOf[CarbonSessionState].catalog.metastoreCatalog
 
@@ -63,25 +74,27 @@ class CarbonContext(
     new CarbonSessionState(this, storePath)
   }
 
+  override def newSession(): SparkSession = this
+
   /**
    * State shared across sessions, including the [[SparkContext]], cached data, listener,
    * and a catalog that interacts with external systems.
    */
   @transient
   override lazy val sharedState: SharedState = {
-    new CarbonSharedState(sc)
+    existingSharedState.getOrElse(new CarbonSharedState(sc))
   }
 
 
   @transient
-  val LOGGER = LogServiceFactory.getLogService(CarbonContext.getClass.getName)
+  val LOGGER = LogServiceFactory.getLogService(CarbonSession.getClass.getName)
 
   override def sql(sqlText: String): DataFrame = {
     // queryId will be unique for each query, creting query detail holder
     val queryId: String = System.nanoTime() + ""
     sc.conf.set("queryId", queryId)
 
-    CarbonContext.updateCarbonPorpertiesPath(sc)
+    CarbonSession.updateCarbonPorpertiesPath(sc)
     val sqlString = sqlText.toUpperCase()
     LOGGER.info(s"Query [$sqlString]")
     super.sql(sqlString)
@@ -89,14 +102,14 @@ class CarbonContext(
 
 }
 
-object CarbonContext {
+object CarbonSession {
 
   val datasourceName: String = "org.apache.carbondata.format"
 
   val datasourceShortName: String = "carbondata"
 
   @transient
-  val LOGGER = LogServiceFactory.getLogService(CarbonContext.getClass.getName)
+  val LOGGER = LogServiceFactory.getLogService(CarbonSession.getClass.getName)
   /**
    * @param databaseName - Database Name
    * @param tableName   - Table Name
@@ -151,17 +164,17 @@ object CarbonContext {
 
   }
 
-  // this cache is used to avoid creating multiple CarbonContext from same SparkContext,
+  // this cache is used to avoid creating multiple CarbonSession from same SparkContext,
   // to avoid the derby problem for metastore
-  private val cache = collection.mutable.Map[SparkContext, CarbonContext]()
+  private val cache = collection.mutable.Map[SparkContext, CarbonSession]()
 
-  def getInstance(sc: SparkContext): CarbonContext = {
+  def getInstance(sc: SparkContext): CarbonSession = {
     cache(sc)
   }
 
-  def addInstance(sc: SparkContext, cc: CarbonContext): Unit = {
+  def addInstance(sc: SparkContext, cc: CarbonSession): Unit = {
     if (cache.contains(sc)) {
-      sys.error("creating multiple instances of CarbonContext is not " +
+      sys.error("creating multiple instances of CarbonSession is not " +
                 "allowed using the same SparkContext instance")
     }
     cache(sc) = cc

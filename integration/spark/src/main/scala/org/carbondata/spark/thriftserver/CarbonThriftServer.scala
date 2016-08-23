@@ -18,9 +18,9 @@
 package org.carbondata.spark.thriftserver
 
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.CarbonContext
+import org.apache.spark.sql.CarbonSession
+import org.apache.spark.sql.hive.CarbonContext
 import org.apache.spark.sql.hive.thriftserver.HiveThriftServer2
-
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.util.CarbonProperties
 
@@ -47,9 +47,10 @@ object CarbonThriftServer {
         Thread.sleep(30000)
     }
 
-    val cc = new CarbonContext(sc, args.head)
+    val cc = new CarbonSession(sc, args.head)
+    val dd = new CarbonContext(cc)
 
-    HiveThriftServer2.startWithContext(cc.sqlContext)
+    HiveThriftServer2.startWithContext(dd)
   }
 
 }

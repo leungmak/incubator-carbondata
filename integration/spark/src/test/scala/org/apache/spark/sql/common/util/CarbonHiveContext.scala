@@ -21,17 +21,18 @@ package org.apache.spark.sql.common.util
 
 import java.io.File
 
-import org.apache.spark.sql.CarbonContext
+import org.apache.spark.sql.CarbonSession
 import org.apache.spark.{SparkConf, SparkContext}
 
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.util.CarbonProperties
 
 class LocalSQLContext(val hdfsCarbonBasePath: String)
-  extends CarbonContext(new SparkContext(new SparkConf()
+  extends CarbonSession(new SparkContext(new SparkConf()
     .setAppName("CarbonSpark")
     .setMaster("local[2]")
     .set("spark.sql.shuffle.partitions", "20")),
+      None,
     hdfsCarbonBasePath,
     hdfsCarbonBasePath) {
 

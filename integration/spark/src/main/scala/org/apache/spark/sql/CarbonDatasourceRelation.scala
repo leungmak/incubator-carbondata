@@ -72,17 +72,17 @@ class CarbonSource
       parameters: Map[String, String],
       data: DataFrame): BaseRelation = {
 
-    // To avoid derby problem, dataframe need to be writen and read using CarbonContext
-    require(sqlContext.sparkSession.isInstanceOf[CarbonContext],
-      "Error in saving dataframe to carbon file, must use CarbonContext to save dataframe")
+    // To avoid derby problem, dataframe need to be writen and read using CarbonSession
+    require(sqlContext.sparkSession.isInstanceOf[CarbonSession],
+      "Error in saving dataframe to carbon file, must use CarbonSession to save dataframe")
 
     // User should not specify path since only one store is supported in carbon currently,
     // after we support multi-store, we can remove this limitation
     require(!parameters.contains("path"), "'path' should not be specified, " +
-        "the path to store carbon file is the 'storePath' specified when creating CarbonContext")
+        "the path to store carbon file is the 'storePath' specified when creating CarbonSession")
 
     val options = new CarbonOption(parameters)
-    val storePath = CarbonContext.getInstance(sqlContext.sparkContext).storePath
+    val storePath = CarbonSession.getInstance(sqlContext.sparkContext).storePath
     val tablePath = new Path(storePath + "/" + options.dbName + "/" + options.tableName)
     val isExists = tablePath.getFileSystem(sqlContext.sparkContext.hadoopConfiguration)
       .exists(tablePath)
@@ -90,7 +90,7 @@ class CarbonSource
       case (SaveMode.ErrorIfExists, true) =>
         sys.error(s"ErrorIfExists mode, path $storePath already exists.")
       case (SaveMode.Overwrite, true) =>
-        val cc = CarbonContext.getInstance(sqlContext.sparkContext)
+        val cc = CarbonSession.getInstance(sqlContext.sparkContext)
         cc.sql(s"DROP TABLE IF EXISTS ${ options.dbName }.${ options.tableName }")
         (true, false)
       case (SaveMode.Overwrite, false) | (SaveMode.ErrorIfExists, false) =>

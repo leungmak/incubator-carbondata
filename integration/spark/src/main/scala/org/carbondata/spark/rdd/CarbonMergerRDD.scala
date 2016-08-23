@@ -23,7 +23,7 @@ import java.util.{Collections, List}
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.CarbonContext
+import org.apache.spark.sql.CarbonSession
 import org.apache.spark.sql.execution.command.{CarbonMergerMapping, NodeInfo}
 import org.apache.spark.sql.hive.DistributionUtil
 import org.carbondata.common.logging.LogServiceFactory
@@ -238,7 +238,7 @@ class CarbonMergerRDD[K, V](
     val requiredExecutors = if (nodeMapping.size > confExecutors) {
       confExecutors
     } else { nodeMapping.size() }
-    CarbonContext.ensureExecutors(sparkContext, requiredExecutors)
+    CarbonSession.ensureExecutors(sparkContext, requiredExecutors)
     logInfo("No.of Executors required=" + requiredExecutors
       + " , spark.executor.instances=" + confExecutors
       + ", no.of.nodes where data present=" + nodeMapping.size())

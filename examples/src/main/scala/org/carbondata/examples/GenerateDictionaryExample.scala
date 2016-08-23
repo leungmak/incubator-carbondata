@@ -17,7 +17,7 @@
 
 package org.carbondata.examples
 
-import org.apache.spark.sql.CarbonContext
+import org.apache.spark.sql.CarbonSession
 import org.carbondata.core.carbon.CarbonTableIdentifier
 import org.carbondata.core.carbon.path.CarbonStorePath
 import org.carbondata.examples.util.InitForExamples
@@ -53,7 +53,7 @@ object GenerateDictionaryExample {
     printDictionary(cc, tableIdentifier, dictFolderPath)
   }
 
-  def printDictionary(cc: CarbonContext, carbonTableIdentifier: CarbonTableIdentifier,
+  def printDictionary(cc: CarbonSession, carbonTableIdentifier: CarbonTableIdentifier,
                       dictFolderPath: String) {
     val dataBaseName = carbonTableIdentifier.getDatabaseName
     val tableName = carbonTableIdentifier.getTableName
