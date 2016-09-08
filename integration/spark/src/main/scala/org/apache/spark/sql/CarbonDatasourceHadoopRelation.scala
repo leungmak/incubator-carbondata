@@ -63,33 +63,34 @@ private[sql] case class CarbonDatasourceHadoopRelation(
   lazy val absIdentifier = AbsoluteTableIdentifier.fromTablePath(paths.head)
   lazy val identifier = absIdentifier.getCarbonTableIdentifier
 
+  lazy val relationRaw = {
+    FileInputFormat.setInputPaths(job, paths.head)
+    CarbonInputFormat.setTableToAccess(job.getConfiguration, identifier)
+    val carbonTable = CarbonInputFormat.getCarbonTable(job.getConfiguration)
+    if (carbonTable == null) {
+      sys.error(s"Store path ${paths.head} is not valid or " +
+          s"table ${carbonTable.getTableUniqueName}  does not exist in path."
+      )
+    }
+    CarbonRelation(
+      carbonTable.getDatabaseName,
+      carbonTable.getFactTableName,
+      CarbonSparkUtil.createSparkMeta(carbonTable),
+      TableMeta(identifier,
+        paths.head,
+        carbonTable,
+        Partitioner(options.partitionClass,
+          Array(""),
+          options.partitionCount.toInt,
+          DistributionUtil.getNodeList(sqlContext.sparkContext)
+        )
+      ),
+      None
+    )(sqlContext)
+  }
+
   override def dataSchema: StructType = {
     if (tableSchema.isEmpty) {
-      val relationRaw: CarbonRelation = {
-        FileInputFormat.setInputPaths(job, paths.head)
-        CarbonInputFormat.setTableToAccess(job.getConfiguration, identifier)
-        val carbonTable = CarbonInputFormat.getCarbonTable(job.getConfiguration)
-        if (carbonTable == null) {
-          sys.error(s"Store path ${paths.head} is not valid or " +
-              s"table ${carbonTable.getTableUniqueName}  does not exist in path."
-          )
-        }
-        CarbonRelation(
-          carbonTable.getDatabaseName,
-          carbonTable.getFactTableName,
-          CarbonSparkUtil.createSparkMeta(carbonTable),
-          TableMeta(identifier,
-            paths.head,
-            carbonTable,
-            Partitioner(options.partitionClass,
-              Array(""),
-              options.partitionCount.toInt,
-              DistributionUtil.getNodeList(sqlContext.sparkContext)
-            )
-          ),
-          None
-        )(sqlContext)
-      }
       relationRaw.schema
     } else {
       tableSchema.get

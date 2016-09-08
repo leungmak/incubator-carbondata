@@ -149,9 +149,12 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
   public static CarbonTable getCarbonTable(Configuration configuration) throws IOException {
     String carbonTableStr = configuration.get(CARBON_TABLE);
     if (carbonTableStr == null) {
-      CarbonTable carbonTable = new SchemaReader()
-          .readCarbonTableFromStore(getTablePath(configuration), getTableToAccess(configuration),
-              getStorePathString(configuration));
+      SchemaReader reader = new SchemaReader();
+      CarbonTablePath path = getTablePath(configuration);
+      CarbonTableIdentifier identifier = getTableToAccess(configuration);
+      String store = getStorePathString(configuration);
+
+      CarbonTable carbonTable = reader.readCarbonTableFromStore(path, identifier, store);
       setCarbonTable(configuration, carbonTable);
       return carbonTable;
     }
@@ -230,7 +233,8 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     if (inputPaths.length == 0) {
       throw new IOException("No input paths specified in job");
     }
-    return CarbonInputFormatUtil.processPath(inputPaths[0]);
+    AbsoluteTableIdentifier absIdentifier = AbsoluteTableIdentifier.fromTablePath(inputPaths[0]);
+    return absIdentifier.getStorePath();
   }
 
   /**

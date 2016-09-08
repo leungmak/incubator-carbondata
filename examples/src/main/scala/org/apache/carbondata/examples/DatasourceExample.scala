@@ -17,6 +17,7 @@
 
 package org.apache.carbondata.examples
 
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.{SaveMode, SQLContext}
 
 import org.apache.carbondata.examples.util.InitForExamples
@@ -25,30 +26,36 @@ object DatasourceExample {
 
   def main(args: Array[String]) {
     // use CarbonContext to write CarbonData files
-    val cc = InitForExamples.createCarbonContext("DatasourceExample")
-    import cc.implicits._
-    val sc = cc.sparkContext
+//    val cc = InitForExamples.createCarbonContext("DatasourceExample")
+//    import cc.implicits._
+//    val sc = cc.sparkContext
     // create a dataframe, it can be from parquet or hive table
-    val df = sc.parallelize(1 to 1000)
-               .map(x => ("a", "b", x))
-               .toDF("c1", "c2", "c3")
-
-    // save dataframe to CarbonData files
-    df.write
-      .format("carbondata")
-      .option("tableName", "table1")
-      .mode(SaveMode.Overwrite)
-      .save()
+//    val df = sc.parallelize(1 to 1000)
+//               .map(x => ("a", "b", x))
+//               .toDF("c1", "c2", "c3")
+//
+//    // save dataframe to CarbonData files
+//    df.write
+//      .format("carbondata")
+//      .option("tableName", "table1")
+//      .mode(SaveMode.Overwrite)
+//      .save()
 
     // Use SQLContext to read CarbonData files
-    val sqlContext = new SQLContext(sc)
-    sqlContext.sql(
-      """
-        | CREATE TEMPORARY TABLE source
-        | (c1 string, c2 string, c3 long)
-        | USING org.apache.spark.sql.CarbonSource
-        | OPTIONS (path './examples/target/store/default/table1')
-      """.stripMargin)
-    sqlContext.sql("SELECT c1, c2, count(*) FROM source WHERE c3 > 100 GROUP BY c1, c2").show
+    val sqlContext = new SQLContext(new SparkContext(new SparkConf()
+        .setAppName("")
+        .setMaster("local[2]")))
+    sqlContext.sparkContext.setLogLevel("WARN")
+//    sqlContext.sql(
+//      """
+//        | CREATE TEMPORARY TABLE source
+//        | (c1 string, c2 string, c3 long)
+//        | USING org.apache.spark.sql.CarbonSource
+//        | OPTIONS (path './examples/target/store/default/table1')
+//      """.stripMargin)
+//    sqlContext.sql("SELECT c1, c2, count(*) FROM source WHERE c3 > 100 GROUP BY c1, c2").show
+
+//    sqlContext.sql("SELECT * FROM parquet.`wc.parquet`").show
+    sqlContext.sql("SELECT * FROM carbondata.`./examples/target/store/default/table1`").explain(true)
   }
 }
