@@ -89,13 +89,7 @@ private[sql] case class CarbonDatasourceHadoopRelation(
     )(sqlContext)
   }
 
-  override def dataSchema: StructType = {
-    if (tableSchema.isEmpty) {
-      relationRaw.schema
-    } else {
-      tableSchema.get
-    }
-  }
+  override def dataSchema: StructType = tableSchema.getOrElse(relationRaw.schema)
 
   override def prepareJobForWrite(job: Job): OutputWriterFactory = {
     // TODO

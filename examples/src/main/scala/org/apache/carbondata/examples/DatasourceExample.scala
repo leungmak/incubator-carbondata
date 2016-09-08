@@ -56,6 +56,6 @@ object DatasourceExample {
 //    sqlContext.sql("SELECT c1, c2, count(*) FROM source WHERE c3 > 100 GROUP BY c1, c2").show
 
 //    sqlContext.sql("SELECT * FROM parquet.`wc.parquet`").show
-    sqlContext.sql("SELECT * FROM carbondata.`./examples/target/store/default/table1`").explain(true)
+    sqlContext.sql("SELECT count(*) FROM carbondata.`./examples/target/store/default/table1`").show
   }
 }
