@@ -364,6 +364,16 @@ object GlobalDictionaryUtil extends Logging {
       .option("escape", carbonLoadModel.getEscapeChar)
       .option("ignoreLeadingWhiteSpace", "false")
       .option("ignoreTrailingWhiteSpace", "false")
+      .option("codec", "gzip")
+      .option("quote", {
+        if (StringUtils.isEmpty(carbonLoadModel.getQuoteChar)) {
+          "" + CSVWriter. DEFAULT_QUOTE_CHARACTER
+        }
+        else {
+          carbonLoadModel.getQuoteChar
+        }
+      })
+      .option("comment", carbonLoadModel.getCommentChar)
       .load(carbonLoadModel.getFactFilePath)
     df
   }
