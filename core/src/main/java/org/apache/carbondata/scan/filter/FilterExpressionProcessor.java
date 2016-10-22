@@ -18,6 +18,7 @@
  */
 package org.apache.carbondata.scan.filter;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
@@ -30,6 +31,7 @@ import org.apache.carbondata.core.carbon.datastore.DataRefNodeFinder;
 import org.apache.carbondata.core.carbon.datastore.IndexKey;
 import org.apache.carbondata.core.carbon.datastore.block.AbstractIndex;
 import org.apache.carbondata.core.carbon.datastore.block.SegmentProperties;
+import org.apache.carbondata.core.carbon.datastore.exception.IndexBuilderException;
 import org.apache.carbondata.core.carbon.datastore.impl.btree.BTreeDataRefNodeFinder;
 import org.apache.carbondata.core.carbon.metadata.datatype.DataType;
 import org.apache.carbondata.core.carbon.metadata.encoder.Encoding;
@@ -351,4 +353,18 @@ public class FilterExpressionProcessor implements FilterProcessor {
     return new RowLevelFilterResolverImpl(expression, false, false, tableIdentifier);
   }
 
+  public static FilterResolverIntf getResolvedFilter(AbsoluteTableIdentifier identifier,
+      Expression filterExpression)
+      throws IOException, IndexBuilderException, QueryExecutionException {
+    if (filterExpression == null) {
+      return null;
+    }
+    FilterExpressionProcessor filterExpressionProcessor = new FilterExpressionProcessor();
+    //get resolved filter
+    try {
+      return filterExpressionProcessor.getFilterResolver(filterExpression, identifier);
+    } catch (FilterUnsupportedException e) {
+      throw new QueryExecutionException(e.getMessage());
+    }
+  }
 }

@@ -61,7 +61,6 @@ import org.apache.carbondata.hadoop.util.SchemaReader;
 import org.apache.carbondata.lcm.status.SegmentStatusManager;
 import org.apache.carbondata.scan.executor.exception.QueryExecutionException;
 import org.apache.carbondata.scan.expression.Expression;
-import org.apache.carbondata.scan.expression.exception.FilterUnsupportedException;
 import org.apache.carbondata.scan.filter.FilterExpressionProcessor;
 import org.apache.carbondata.scan.filter.FilterUtil;
 import org.apache.carbondata.scan.filter.resolver.FilterResolverIntf;
@@ -130,6 +129,11 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     return (CarbonTable) ObjectSerializationUtil.convertStringToObject(carbonTableStr);
   }
 
+  public static void setTablePath(Configuration configuration, String tablePath)
+      throws IOException {
+    configuration.set(FileInputFormat.INPUT_DIR, tablePath);
+  }
+
   /**
    * It sets unresolved filter expression.
    *
@@ -151,7 +155,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
    * @param configuration
    * @param filterExpression
    */
-  public static void setFilterPredicates(Configuration configuration,
+  private static void setFilterPredicates(Configuration configuration,
       FilterResolverIntf filterExpression) {
     try {
       if (filterExpression == null) {
@@ -191,11 +195,11 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   /**
-   * Set List of segments to access
+   * Set list of segments to access
    */
   public static void setSegmentsToAccess(Configuration configuration, List<String> validSegments) {
-    configuration
-        .set(CarbonInputFormat.INPUT_SEGMENT_NUMBERS, CarbonUtil.getSegmentString(validSegments));
+    configuration.set(CarbonInputFormat.INPUT_SEGMENT_NUMBERS,
+        CarbonUtil.getSegmentString(validSegments));
   }
 
   /**
@@ -208,7 +212,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
    */
   private void addSegmentsIfEmpty(JobContext job, AbsoluteTableIdentifier absoluteTableIdentifier)
       throws IOException {
-    if (getSegmentsFromConfiguration(job).length == 0) {
+    if (getSegmentsToAccess(job).length == 0) {
       // Get the valid segments from the carbon store.
       SegmentStatusManager.ValidAndInvalidSegmentsInfo validAndInvalidSegments =
           new SegmentStatusManager(absoluteTableIdentifier).getValidAndInvalidSegments();
@@ -296,7 +300,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
         getAbsoluteTableIdentifier(job.getConfiguration());
 
     //for each segment fetch blocks matching filter in Driver BTree
-    for (String segmentNo : getSegmentsFromConfiguration(job)) {
+    for (String segmentNo : getSegmentsToAccess(job)) {
       List<DataRefNode> dataRefNodes =
           getDataBlocksOfSegment(job, filterExpressionProcessor, absoluteTableIdentifier,
               filterResolver, segmentNo);
@@ -336,7 +340,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     List<Future<Map<String, AbstractIndex>>> loadedBlocks =
         new ArrayList<Future<Map<String, AbstractIndex>>>();
     //for each segment fetch blocks matching filter in Driver BTree
-    for (String segmentNo : getSegmentsFromConfiguration(job)) {
+    for (String segmentNo : getSegmentsToAccess(job)) {
       // submitting the task
       loadedBlocks
           .add(threadPool.submit(new BlocksLoaderThread(job, absoluteTableIdentifier, segmentNo)));
@@ -359,30 +363,6 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
       throw new IndexBuilderException(e);
     }
     return rowCount;
-  }
-
-  /**
-   * {@inheritDoc}
-   * Configurations FileInputFormat.INPUT_DIR, CarbonInputFormat.INPUT_SEGMENT_NUMBERS
-   * are used to get table path to read.
-   *
-   * @return
-   * @throws IOException
-   */
-  public FilterResolverIntf getResolvedFilter(Configuration configuration,
-      Expression filterExpression)
-      throws IOException, IndexBuilderException, QueryExecutionException {
-    if (filterExpression == null) {
-      return null;
-    }
-    FilterExpressionProcessor filterExpressionProcessor = new FilterExpressionProcessor();
-    AbsoluteTableIdentifier absoluteTableIdentifier = getAbsoluteTableIdentifier(configuration);
-    //get resolved filter
-    try {
-      return filterExpressionProcessor.getFilterResolver(filterExpression, absoluteTableIdentifier);
-    } catch (FilterUnsupportedException e) {
-      throw new QueryExecutionException(e.getMessage());
-    }
   }
 
   private static AbsoluteTableIdentifier getAbsoluteTableIdentifier(Configuration configuration)
@@ -596,7 +576,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
 
   @Override protected List<FileStatus> listStatus(JobContext job) throws IOException {
     List<FileStatus> result = new ArrayList<FileStatus>();
-    String[] segmentsToConsider = getSegmentsFromConfiguration(job);
+    String[] segmentsToConsider = getSegmentsToAccess(job);
     if (segmentsToConsider.length == 0) {
       throw new IOException("No segments found");
     }
@@ -676,27 +656,14 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   /**
-   * @return updateExtension
+   * return valid segment to access
    */
-  private String[] getSegmentsFromConfiguration(JobContext job)
-      throws IOException {
+  private String[] getSegmentsToAccess(JobContext job) throws IOException {
     String segmentString = job.getConfiguration().get(INPUT_SEGMENT_NUMBERS, "");
-    // if no segments
     if (segmentString.trim().isEmpty()) {
       return new String[0];
     }
-
-    String[] segments = segmentString.split(",");
-    String[] segmentIds = new String[segments.length];
-    int i = 0;
-    try {
-      for (; i < segments.length; i++) {
-        segmentIds[i] = segments[i];
-      }
-    } catch (NumberFormatException e) {
-      throw new IOException("segment no:" + segments[i] + " should be integer");
-    }
-    return segmentIds;
+    return segmentString.split(",");
   }
 
   /**

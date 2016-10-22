@@ -33,10 +33,10 @@ import org.apache.spark.unsafe.types.UTF8String;
 
 public class SparkRowReadSupportImpl extends AbstractDictionaryDecodedReadSupport<Row> {
 
-  @Override public void intialize(CarbonColumn[] carbonColumns,
+  @Override public void initialize(CarbonColumn[] carbonColumns,
       AbsoluteTableIdentifier absoluteTableIdentifier) {
-    super.intialize(carbonColumns, absoluteTableIdentifier);
-    //can intialize and generate schema here.
+    super.initialize(carbonColumns, absoluteTableIdentifier);
+    //can initialize and generate schema here.
   }
 
   @Override public Row readRow(Object[] data) {
@@ -52,6 +52,8 @@ public class SparkRowReadSupportImpl extends AbstractDictionaryDecodedReadSuppor
           case TIMESTAMP:
             data[i] = new Timestamp((long) data[i] / 1000);
             break;
+          case LONG:
+            data[i] = data[i];
           default:
         }
       } else if (carbonColumns[i].hasEncoding(Encoding.DIRECT_DICTIONARY)) {

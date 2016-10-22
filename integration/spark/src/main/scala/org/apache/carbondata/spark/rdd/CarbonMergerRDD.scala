@@ -22,14 +22,12 @@ import java.util.{Collections, List}
 
 import scala.collection.JavaConverters._
 import scala.util.Random
-
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.CarbonContext
+import org.apache.spark.sql.{CarbonContext, CarbonSparkPartition}
 import org.apache.spark.sql.execution.command.{CarbonMergerMapping, NodeInfo}
 import org.apache.spark.sql.hive.DistributionUtil
-
 import org.apache.carbondata.common.logging.LogServiceFactory
 import org.apache.carbondata.core.carbon.{AbsoluteTableIdentifier, CarbonTableIdentifier}
 import org.apache.carbondata.core.carbon.datastore.block.{Distributable, SegmentProperties, TableBlockInfo, TableTaskInfo, TaskBlockInfo}
@@ -37,14 +35,16 @@ import org.apache.carbondata.core.carbon.metadata.blocklet.DataFileFooter
 import org.apache.carbondata.core.carbon.path.CarbonTablePath
 import org.apache.carbondata.core.constants.CarbonCommonConstants
 import org.apache.carbondata.core.util.{CarbonProperties, CarbonUtil, CarbonUtilException}
+import org.apache.carbondata.hadoop.util.CarbonInputFormatUtil
 import org.apache.carbondata.hadoop.{CarbonInputFormat, CarbonInputSplit}
 import org.apache.carbondata.integration.spark.merger.{CarbonCompactionExecutor, CarbonCompactionUtil, RowResultMerger}
 import org.apache.carbondata.processing.util.CarbonDataProcessorUtil
 import org.apache.carbondata.scan.result.iterator.RawResultIterator
 import org.apache.carbondata.spark.MergeResult
-import org.apache.carbondata.spark.load.{CarbonLoaderUtil, CarbonLoadModel}
+import org.apache.carbondata.spark.load.{CarbonLoadModel, CarbonLoaderUtil}
 import org.apache.carbondata.spark.splits.TableSplit
-import org.apache.carbondata.spark.util.QueryPlanUtil
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.mapred.JobConf
 
 
 class CarbonMergerRDD[K, V](
@@ -223,8 +223,9 @@ class CarbonMergerRDD[K, V](
     val absoluteTableIdentifier: AbsoluteTableIdentifier = new AbsoluteTableIdentifier(
       hdfsStoreLocation, new CarbonTableIdentifier(databaseName, factTableName, tableId)
     )
-    val (carbonInputFormat: CarbonInputFormat[Array[Object]], job: Job) =
-      QueryPlanUtil.createCarbonInputFormat(absoluteTableIdentifier)
+    val jobConf: JobConf = new JobConf(new Configuration)
+    val job: Job = new Job(jobConf)
+    val format = CarbonInputFormatUtil.createCarbonInputFormat(absoluteTableIdentifier, job)
     var defaultParallelism = sparkContext.defaultParallelism
     val result = new util.ArrayList[Partition](defaultParallelism)
 
@@ -248,7 +249,7 @@ class CarbonMergerRDD[K, V](
       job.getConfiguration.set(CarbonInputFormat.INPUT_SEGMENT_NUMBERS, eachSeg)
 
       // get splits
-      val splits = carbonInputFormat.getSplits(job)
+      val splits = format.getSplits(job)
       val carbonInputSplits = splits.asScala.map(_.asInstanceOf[CarbonInputSplit])
 
       // take the blocks of one segment.

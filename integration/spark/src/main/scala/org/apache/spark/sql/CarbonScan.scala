@@ -21,19 +21,18 @@ import java.util.ArrayList
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.execution.LeafNode
 import org.apache.spark.sql.hive.CarbonMetastoreCatalog
-
 import org.apache.carbondata.core.constants.CarbonCommonConstants
 import org.apache.carbondata.core.util.CarbonProperties
 import org.apache.carbondata.scan.model._
 import org.apache.carbondata.spark.{CarbonFilters, RawValue, RawValueImpl}
-import org.apache.carbondata.spark.rdd.CarbonScanRDD
+import org.apache.hadoop.mapreduce.Job
+import org.apache.spark.util.SerializableConfiguration
 
 case class CarbonScan(
     var attributesRaw: Seq[Attribute],
@@ -136,14 +135,11 @@ case class CarbonScan(
     selectedMsrs.foreach(plan.addMeasure)
   }
 
-
   def inputRdd: CarbonScanRDD[Array[Any]] = {
 
     val conf = new Configuration()
     val absoluteTableIdentifier = carbonTable.getAbsoluteTableIdentifier
-    val model = QueryModel.createModel(
-      absoluteTableIdentifier, buildCarbonPlan, carbonTable)
-    val kv: RawValue[Array[Any]] = new RawValueImpl
+
     // setting queryid
     buildCarbonPlan.setQueryId(ocRaw.getConf("queryId", System.nanoTime() + ""))
 
@@ -151,18 +147,14 @@ case class CarbonScan(
         .getTableCreationTime(relationRaw.databaseName, relationRaw.tableName)
     val schemaLastUpdatedTime = carbonCatalog
         .getSchemaLastUpdatedTime(relationRaw.databaseName, relationRaw.tableName)
-    val big = new CarbonScanRDD(
+    new CarbonScanRDD(
       ocRaw.sparkContext,
-      model,
+      attributesRaw,
       buildCarbonPlan.getFilterExpression,
-      kv,
-      conf,
-      tableCreationTime,
-      schemaLastUpdatedTime,
-      carbonCatalog.storePath)
-    big
+      absoluteTableIdentifier,
+      carbonTable
+    )
   }
-
 
   override def outputsUnsafeRows: Boolean =
     (attributesNeedToDecode.size() == 0) && useUnsafeCoversion
@@ -174,12 +166,14 @@ case class CarbonScan(
       new Iterator[InternalRow] {
         override def hasNext: Boolean = iter.hasNext
 
-        override def next(): InternalRow =
+        override def next(): InternalRow = {
+          val value = iter.next
           if (outUnsafeRows) {
-            unsafeProjection(new GenericMutableRow(iter.next()))
+            unsafeProjection(new GenericMutableRow(value))
           } else {
-            new GenericMutableRow(iter.next())
+            new GenericMutableRow(value)
           }
+        }
       }
     }
   }

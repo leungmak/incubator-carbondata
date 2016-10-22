@@ -44,11 +44,17 @@ object CarbonExample {
            """)
 
     cc.sql("""
-           SELECT country, count(salary) AS amount
+           SELECT country
            FROM t3
            WHERE country IN ('china','france')
-           GROUP BY country
            """).show()
+
+//    cc.sql("""
+//           SELECT country, count(salary) AS amount
+//           FROM t3
+//           WHERE country IN ('china','france')
+//           GROUP BY country
+//           """).show()
 
     cc.sql("DROP TABLE IF EXISTS t3")
   }

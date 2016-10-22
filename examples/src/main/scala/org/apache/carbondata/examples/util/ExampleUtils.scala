@@ -55,12 +55,12 @@ object ExampleUtils {
    * This func will write a sample CarbonData file containing following schema:
    * c1: String, c2: String, c3: Double
    */
-  def writeSampleCarbonFile(cc: CarbonContext, tableName: String): Unit = {
+  def writeSampleCarbonFile(cc: CarbonContext, tableName: String, numRows: Int = 1000): Unit = {
     // use CarbonContext to write CarbonData files
     import cc.implicits._
     val sc = cc.sparkContext
     // create a dataframe, it can be from parquet or hive table
-    val df = sc.parallelize(1 to 1000, 2)
+    val df = sc.parallelize(1 to numRows, 2)
         .map(x => ("a", "b", x))
         .toDF("c1", "c2", "c3")
 
