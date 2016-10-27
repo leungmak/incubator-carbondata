@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.spark.rdd
+package org.apache.spark.sql
 
 import java.text.SimpleDateFormat
 import java.util
@@ -36,7 +36,7 @@ import org.apache.carbondata.spark.load.CarbonLoaderUtil
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.mapreduce.task.{JobContextImpl, TaskAttemptContextImpl}
 import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId
-import org.apache.hadoop.mapreduce.{InputSplit, Job, JobID, TaskAttemptContext, TaskAttemptID}
+import org.apache.hadoop.mapreduce.{InputSplit, Job, JobID}
 import org.apache.spark.mapreduce.SparkHadoopMapReduceUtil
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
@@ -83,7 +83,7 @@ class CarbonScanRDD[V: ClassTag](
     formatter.format(new Date())
   }
 
-  private val jobId = new JobID(jobTrackerId, id)
+  @transient private val jobId = new JobID(jobTrackerId, id)
   @transient val LOGGER = LogServiceFactory.getLogService(this.getClass.getName)
 
   override def getPartitions: Array[Partition] = {
@@ -174,13 +174,12 @@ class CarbonScanRDD[V: ClassTag](
       )
     }
 
-    val taskAttempId = new TaskAttemptId()
-    val attemptContext = new TaskAttemptContextImpl(new Configuration(), jobId)
-    val jobContext = new JobContextImpl(new Configuration(), jobId)
-    val format = prepareInputFormatForExecutor(jobContext.getConfiguration)
+    val attemptId = newTaskAttemptID(jobTrackerId, id, isMap = true, split.index, 0)
+    val attemptContext = newTaskAttemptContext(new Configuration(), attemptId)
+    val format = prepareInputFormatForExecutor(attemptContext.getConfiguration)
     val inputSplit = split.asInstanceOf[CarbonSparkPartition].split.value
-    val reader = format.createRecordReader(inputSplit, jobContext)
-    reader.initialize(inputSplit, jobContext)
+    val reader = format.createRecordReader(inputSplit, attemptContext)
+    reader.initialize(inputSplit, attemptContext)
 
     val queryStartTime = System.currentTimeMillis
 

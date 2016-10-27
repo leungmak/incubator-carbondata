@@ -30,7 +30,6 @@ import org.apache.spark.sql.hive.CarbonMetastoreCatalog
 import org.apache.carbondata.core.constants.CarbonCommonConstants
 import org.apache.carbondata.core.util.CarbonProperties
 import org.apache.carbondata.scan.model._
-import org.apache.carbondata.spark.rdd.CarbonScanRDD
 import org.apache.carbondata.spark.{CarbonFilters, RawValue, RawValueImpl}
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark.util.SerializableConfiguration
