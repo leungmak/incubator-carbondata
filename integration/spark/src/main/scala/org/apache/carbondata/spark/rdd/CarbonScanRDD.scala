@@ -15,18 +15,16 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql
+package org.apache.carbondata.spark.rdd
 
 import java.text.SimpleDateFormat
 import java.util
 import java.util.Date
 
-import scala.collection.JavaConverters._
-import scala.reflect.ClassTag
 import org.apache.carbondata.common.logging.LogServiceFactory
 import org.apache.carbondata.core.carbon.AbsoluteTableIdentifier
 import org.apache.carbondata.core.carbon.datastore.SegmentTaskIndexStore
-import org.apache.carbondata.core.carbon.datastore.block.{BlockletInfos, Distributable, TableBlockInfo}
+import org.apache.carbondata.core.carbon.datastore.block.Distributable
 import org.apache.carbondata.core.carbon.metadata.schema.table.CarbonTable
 import org.apache.carbondata.core.carbon.querystatistics.{QueryStatistic, QueryStatisticsConstants}
 import org.apache.carbondata.core.util.CarbonTimeStatisticsFactory
@@ -36,12 +34,17 @@ import org.apache.carbondata.lcm.status.SegmentStatusManager
 import org.apache.carbondata.scan.expression.Expression
 import org.apache.carbondata.spark.load.CarbonLoaderUtil
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.mapreduce.{InputSplit, Job, JobID}
+import org.apache.hadoop.mapreduce.task.{JobContextImpl, TaskAttemptContextImpl}
+import org.apache.hadoop.mapreduce.v2.api.records.TaskAttemptId
+import org.apache.hadoop.mapreduce.{InputSplit, Job, JobID, TaskAttemptContext, TaskAttemptID}
 import org.apache.spark.mapreduce.SparkHadoopMapReduceUtil
 import org.apache.spark.rdd.RDD
-import org.apache.spark.{Logging, Partition, SparkContext, TaskContext, _}
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
 import org.apache.spark.sql.hive.DistributionUtil
+import org.apache.spark.{Logging, Partition, SparkContext, TaskContext, _}
+
+import scala.collection.JavaConverters._
+import scala.reflect.ClassTag
 
 class CarbonSparkPartition(
     val rddId: Int,
@@ -79,7 +82,8 @@ class CarbonScanRDD[V: ClassTag](
     val formatter = new SimpleDateFormat("yyyyMMddHHmm")
     formatter.format(new Date())
   }
-  @transient private val jobId = new JobID(jobTrackerId, id)
+
+  private val jobId = new JobID(jobTrackerId, id)
   @transient val LOGGER = LogServiceFactory.getLogService(this.getClass.getName)
 
   override def getPartitions: Array[Partition] = {
@@ -170,12 +174,13 @@ class CarbonScanRDD[V: ClassTag](
       )
     }
 
-    val attemptId = newTaskAttemptID(jobTrackerId, id, isMap = true, split.index, 0)
-    val attemptContext = newTaskAttemptContext(new Configuration(), attemptId)
-    val format = prepareInputFormatForExecutor(attemptContext.getConfiguration)
+    val taskAttempId = new TaskAttemptId()
+    val attemptContext = new TaskAttemptContextImpl(new Configuration(), jobId)
+    val jobContext = new JobContextImpl(new Configuration(), jobId)
+    val format = prepareInputFormatForExecutor(jobContext.getConfiguration)
     val inputSplit = split.asInstanceOf[CarbonSparkPartition].split.value
-    val reader = format.createRecordReader(inputSplit, attemptContext)
-    reader.initialize(inputSplit, attemptContext)
+    val reader = format.createRecordReader(inputSplit, jobContext)
+    reader.initialize(inputSplit, jobContext)
 
     val queryStartTime = System.currentTimeMillis
 

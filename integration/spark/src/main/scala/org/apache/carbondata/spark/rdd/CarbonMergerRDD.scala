@@ -27,7 +27,7 @@ import scala.util.Random
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{CarbonContext, CarbonSparkPartition}
+import org.apache.spark.sql.CarbonContext
 import org.apache.spark.sql.execution.command.{CarbonMergerMapping, NodeInfo}
 import org.apache.spark.sql.hive.DistributionUtil
 
