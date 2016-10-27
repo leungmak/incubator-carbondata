@@ -25,12 +25,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.carbondata.core.carbon.AbsoluteTableIdentifier;
 import org.apache.carbondata.core.carbon.datastore.DataRefNode;
@@ -50,7 +44,6 @@ import org.apache.carbondata.core.carbon.path.CarbonTablePath;
 import org.apache.carbondata.core.carbon.querystatistics.*;
 import org.apache.carbondata.core.constants.CarbonCommonConstants;
 import org.apache.carbondata.core.keygenerator.KeyGenException;
-import org.apache.carbondata.core.util.CarbonProperties;
 import org.apache.carbondata.core.util.CarbonTimeStatisticsFactory;
 import org.apache.carbondata.core.util.CarbonUtil;
 import org.apache.carbondata.hadoop.readsupport.CarbonReadSupport;
@@ -149,26 +142,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     }
   }
 
-  /**
-   * It sets the resolved filter expression
-   *
-   * @param configuration
-   * @param filterExpression
-   */
-  private static void setFilterPredicates(Configuration configuration,
-      FilterResolverIntf filterExpression) {
-    try {
-      if (filterExpression == null) {
-        return;
-      }
-      String filterString = ObjectSerializationUtil.convertObjectToString(filterExpression);
-      configuration.set(FILTER_PREDICATE, filterString);
-    } catch (Exception e) {
-      throw new RuntimeException("Error while setting filter expression to Job", e);
-    }
-  }
-
-  public static void setColumnProjection(CarbonProjection projection, Configuration configuration) {
+  public static void setColumnProjection(Configuration configuration, CarbonProjection projection) {
     if (projection == null || projection.isEmpty()) {
       return;
     }
@@ -228,7 +202,8 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
    * @return List<InputSplit> list of CarbonInputSplit
    * @throws IOException
    */
-  @Override public List<InputSplit> getSplits(JobContext job) throws IOException {
+  @Override
+  public List<InputSplit> getSplits(JobContext job) throws IOException {
     try {
       CarbonTable carbonTable = getCarbonTable(job.getConfiguration());
       Object filterPredicates = getFilterPredicates(job.getConfiguration());
@@ -315,56 +290,6 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     return result;
   }
 
-  /**
-   * get total number of rows. Same as count(*)
-   *
-   * @throws IOException
-   * @throws IndexBuilderException
-   */
-  public long getRowCount(JobContext job) throws IOException, IndexBuilderException {
-
-    long rowCount = 0;
-    AbsoluteTableIdentifier absoluteTableIdentifier =
-        getAbsoluteTableIdentifier(job.getConfiguration());
-    // no of core to load the blocks in driver
-    addSegmentsIfEmpty(job, absoluteTableIdentifier);
-    int numberOfCores = CarbonCommonConstants.NUMBER_OF_CORE_TO_LOAD_DRIVER_SEGMENT_DEFAULT_VALUE;
-    try {
-      numberOfCores = Integer.parseInt(CarbonProperties.getInstance()
-          .getProperty(CarbonCommonConstants.NUMBER_OF_CORE_TO_LOAD_DRIVER_SEGMENT));
-    } catch (NumberFormatException e) {
-      numberOfCores = CarbonCommonConstants.NUMBER_OF_CORE_TO_LOAD_DRIVER_SEGMENT_DEFAULT_VALUE;
-    }
-    // creating a thread pool
-    ExecutorService threadPool = Executors.newFixedThreadPool(numberOfCores);
-    List<Future<Map<String, AbstractIndex>>> loadedBlocks =
-        new ArrayList<Future<Map<String, AbstractIndex>>>();
-    //for each segment fetch blocks matching filter in Driver BTree
-    for (String segmentNo : getSegmentsToAccess(job)) {
-      // submitting the task
-      loadedBlocks
-          .add(threadPool.submit(new BlocksLoaderThread(job, absoluteTableIdentifier, segmentNo)));
-    }
-    threadPool.shutdown();
-    try {
-      threadPool.awaitTermination(1, TimeUnit.HOURS);
-    } catch (InterruptedException e) {
-      throw new IndexBuilderException(e);
-    }
-    try {
-      // adding all the rows of the blocks to get the total row
-      // count
-      for (Future<Map<String, AbstractIndex>> block : loadedBlocks) {
-        for (AbstractIndex abstractIndex : block.get().values()) {
-          rowCount += abstractIndex.getTotalNumberOfRows();
-        }
-      }
-    } catch (InterruptedException | ExecutionException e) {
-      throw new IndexBuilderException(e);
-    }
-    return rowCount;
-  }
-
   private static AbsoluteTableIdentifier getAbsoluteTableIdentifier(Configuration configuration)
       throws IOException {
     String dirs = configuration.get(INPUT_DIR, "");
@@ -432,16 +357,13 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
    * Below method will be used to get the table block info
    *
    * @param job                     job context
-   * @param absoluteTableIdentifier absolute table identifier
    * @param segmentId               number of segment id
    * @return list of table block
    * @throws IOException
    */
-  private List<TableBlockInfo> getTableBlockInfo(JobContext job,
-      AbsoluteTableIdentifier absoluteTableIdentifier, String segmentId) throws IOException {
-    // List<FileStatus> fileStatusList = new LinkedList<FileStatus>();
+  private List<TableBlockInfo> getTableBlockInfo(JobContext job, String segmentId)
+      throws IOException {
     List<TableBlockInfo> tableBlockInfoList = new ArrayList<TableBlockInfo>();
-    // getFileStatusOfSegments(job, new int[]{ segmentId }, fileStatusList);
 
     // get file location of all files of given segment
     JobContext newJob =
@@ -469,10 +391,8 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
 
     // if segment tree is not loaded, load the segment tree
     if (segmentIndexMap == null) {
-      // List<FileStatus> fileStatusList = new LinkedList<FileStatus>();
       List<TableBlockInfo> tableBlockInfoList =
-          getTableBlockInfo(job, absoluteTableIdentifier, segmentId);
-      // getFileStatusOfSegments(job, new int[]{ segmentId }, fileStatusList);
+          getTableBlockInfo(job, segmentId);
 
       Map<String, List<TableBlockInfo>> segmentToTableBlocksInfos = new HashMap<>();
       segmentToTableBlocksInfos.put(segmentId, tableBlockInfoList);
@@ -515,7 +435,8 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     return blocks;
   }
 
-  @Override public RecordReader<Void, T> createRecordReader(InputSplit inputSplit,
+  @Override
+  public RecordReader<Void, T> createRecordReader(InputSplit inputSplit,
       TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
     Configuration configuration = taskAttemptContext.getConfiguration();
     CarbonTable carbonTable = getCarbonTable(configuration);
@@ -566,15 +487,18 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     return readSupport;
   }
 
-  @Override protected long computeSplitSize(long blockSize, long minSize, long maxSize) {
+  @Override
+  protected long computeSplitSize(long blockSize, long minSize, long maxSize) {
     return super.computeSplitSize(blockSize, minSize, maxSize);
   }
 
-  @Override protected int getBlockIndex(BlockLocation[] blkLocations, long offset) {
+  @Override
+  protected int getBlockIndex(BlockLocation[] blkLocations, long offset) {
     return super.getBlockIndex(blkLocations, offset);
   }
 
-  @Override protected List<FileStatus> listStatus(JobContext job) throws IOException {
+  @Override
+  protected List<FileStatus> listStatus(JobContext job) throws IOException {
     List<FileStatus> result = new ArrayList<FileStatus>();
     String[] segmentsToConsider = getSegmentsToAccess(job);
     if (segmentsToConsider.length == 0) {
@@ -585,7 +509,8 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     return result;
   }
 
-  @Override protected boolean isSplitable(JobContext context, Path filename) {
+  @Override
+  protected boolean isSplitable(JobContext context, Path filename) {
     try {
       // Don't split the file if it is local file system
       FileSystem fileSystem = filename.getFileSystem(context.getConfiguration());
@@ -641,7 +566,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
    * @param job
    * @return the PathFilter for Fact Files.
    */
-  public PathFilter getDataFileFilter(JobContext job) {
+  private PathFilter getDataFileFilter(JobContext job) {
     return new CarbonPathFilter(getUpdateExtension());
   }
 
@@ -676,28 +601,4 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     return new String[] { "0" };
   }
 
-  /**
-   * Thread class to load the blocks
-   */
-  private class BlocksLoaderThread implements Callable<Map<String, AbstractIndex>> {
-    // job
-    private JobContext job;
-
-    // table identifier
-    private AbsoluteTableIdentifier absoluteTableIdentifier;
-
-    // segment id
-    private String segmentId;
-
-    private BlocksLoaderThread(JobContext job, AbsoluteTableIdentifier absoluteTableIdentifier,
-        String segmentId) {
-      this.job = job;
-      this.absoluteTableIdentifier = absoluteTableIdentifier;
-      this.segmentId = segmentId;
-    }
-
-    @Override public Map<String, AbstractIndex> call() throws Exception {
-      return getSegmentAbstractIndexs(job, absoluteTableIdentifier, segmentId);
-    }
-  }
 }

@@ -43,12 +43,9 @@ object DistributionUtil {
    * localhost for retriving executor list
    */
   def getNodeList(sparkContext: SparkContext): Array[String] = {
-
-    val arr =
-      sparkContext.getExecutorMemoryStatus.map {
-        kv =>
-          kv._1.split(":")(0)
-      }.toSeq
+    val arr = sparkContext.getExecutorMemoryStatus.map { kv =>
+      kv._1.split(":")(0)
+    }.toSeq
     val localhostIPs = getLocalhostIPs
     val selectedLocalIPList = localhostIPs.filter(arr.contains(_))
 
@@ -62,13 +59,11 @@ object DistributionUtil {
           addr.getHostName
         }
         nodeNames.toArray
-      }
-      else {
+      } else {
         // For Standalone cluster, node IPs will be returned.
         nodelist.toArray
       }
-    }
-    else {
+    } else {
       Seq(InetAddress.getLocalHost.getHostName).toArray
     }
   }
@@ -110,10 +105,9 @@ object DistributionUtil {
    * @param sparkContext
    * @return
    */
-  def ensureExecutorsAndGetNodeList(blockList: Array[Distributable],
-    sparkContext: SparkContext):
-  Array[String] = {
-    val nodeMapping = CarbonLoaderUtil.getRequiredExecutors(blockList.toSeq.asJava)
+  def ensureExecutorsAndGetNodeList(blockList: Seq[Distributable],
+    sparkContext: SparkContext): Seq[String] = {
+    val nodeMapping = CarbonLoaderUtil.getRequiredExecutors(blockList.asJava)
     var confExecutorsTemp: String = null
     if (sparkContext.getConf.contains("spark.executor.instances")) {
       confExecutorsTemp = sparkContext.getConf.get("spark.executor.instances")
@@ -128,16 +122,18 @@ object DistributionUtil {
     val confExecutors = if (null != confExecutorsTemp) confExecutorsTemp.toInt else 1
     val requiredExecutors = if (nodeMapping.size > confExecutors) {
       confExecutors
-    } else {nodeMapping.size()}
+    } else {
+      nodeMapping.size()
+    }
 
     val startTime = System.currentTimeMillis();
     CarbonContext.ensureExecutors(sparkContext, requiredExecutors)
     var nodes = DistributionUtil.getNodeList(sparkContext)
-    var maxTimes = 30;
+    var maxTimes = 30
     while (nodes.length < requiredExecutors && maxTimes > 0) {
-      Thread.sleep(500);
+      Thread.sleep(500)
       nodes = DistributionUtil.getNodeList(sparkContext)
-      maxTimes = maxTimes - 1;
+      maxTimes = maxTimes - 1
     }
     val timDiff = System.currentTimeMillis() - startTime;
     LOGGER.info("Total Time taken to ensure the required executors : " + timDiff)
