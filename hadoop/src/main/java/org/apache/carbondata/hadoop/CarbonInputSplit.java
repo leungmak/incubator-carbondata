@@ -40,6 +40,7 @@ public class CarbonInputSplit extends FileSplit implements Distributable, Serial
 
   private static final long serialVersionUID = 3520344046772190207L;
   private String segmentId;
+  public String taskId = "0";
 
   /*
    * Number of BlockLets in a block
@@ -49,6 +50,13 @@ public class CarbonInputSplit extends FileSplit implements Distributable, Serial
   public  CarbonInputSplit() {
   }
 
+  private void parserPath(Path path){
+	 String[] nameParts = path.getName().split("-");
+	 if(nameParts != null && nameParts.length >= 3){
+		 this.taskId = nameParts[2];
+	 }
+  }
+  
   private CarbonInputSplit(String segmentId, Path path, long start, long length,
       String[] locations) {
     super(path, start, length, locations);

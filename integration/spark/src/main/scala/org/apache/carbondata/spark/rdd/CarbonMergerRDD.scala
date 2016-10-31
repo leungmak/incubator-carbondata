@@ -220,7 +220,7 @@ class CarbonMergerRDD[K, V](
   }
 
   override def getPartitions: Array[Partition] = {
-
+    try{
     val startTime = System.currentTimeMillis()
     val absoluteTableIdentifier: AbsoluteTableIdentifier = new AbsoluteTableIdentifier(
       hdfsStoreLocation, new CarbonTableIdentifier(databaseName, factTableName, tableId))
@@ -253,48 +253,17 @@ class CarbonMergerRDD[K, V](
       // get splits
       val splits = format.getSplits(job)
       carbonInputSplits ++:= splits.asScala.map(_.asInstanceOf[CarbonInputSplit])
-
-      // take the blocks of one segment.
-//      val blocksOfOneSegment = carbonInputSplits.map { inputSplit =>
-//        new TableBlockInfo(inputSplit.getPath.toString,
-//          inputSplit.getStart, inputSplit.getSegmentId,
-//          inputSplit.getLocations, inputSplit.getLength)
-//      }
-
-      // keep on assigning till last one is reached.
-//      if (null != blocksOfOneSegment && blocksOfOneSegment.size > 0) {
-//        blocksOfLastSegment = blocksOfOneSegment.asJava
-//      }
-
-      // populate the task and its block mapping.
-//      carbonInputSplits.foreach { split =>
-//        val taskNo = CarbonTablePath.DataFileUtil.getTaskNo(tableBlockInfo.getFilePath)
-//        val blockList = taskIdMapping.get(taskNo)
-//        if (null == blockList) {
-//          val blockListTemp = new util.ArrayList[TableBlockInfo]()
-//          blockListTemp.add(tableBlockInfo)
-//          taskIdMapping.put(taskNo, blockListTemp)
-//        } else {
-//          blockList.add(tableBlockInfo)
-//        }
-//      }
-
-      noOfBlocks += carbonInputSplits.size
-//      taskIdMapping.asScala.foreach(
-//        entry =>
-//          taskInfoList.add(new TableTaskInfo(entry._1, entry._2).asInstanceOf[Distributable])
-//      )
     }
 
     // prepare the details required to extract the segment properties using last segment.
-    if (null != blocksOfLastSegment && blocksOfLastSegment.size > 0) {
-      val lastBlockInfo = blocksOfLastSegment.get(blocksOfLastSegment.size - 1)
+    if (null != carbonInputSplits && carbonInputSplits.size > 0) {
+      val carbonInputSplit = carbonInputSplits(carbonInputSplits.size - 1)
 
       var dataFileFooter: DataFileFooter = null
 
       try {
-        dataFileFooter = CarbonUtil.readMetadatFile(lastBlockInfo.getFilePath,
-          lastBlockInfo.getBlockOffset, lastBlockInfo.getBlockLength)
+        dataFileFooter = CarbonUtil.readMetadatFile(carbonInputSplit.getPath.toString(),
+          carbonInputSplit.getStart, carbonInputSplit.getLength)
       } catch {
         case e: CarbonUtilException =>
           logError("Exception in preparing the data file footer for compaction " + e.getMessage)
@@ -337,15 +306,14 @@ class CarbonMergerRDD[K, V](
 
       val taskBlockList = new util.ArrayList[NodeInfo](0)
       nodeTaskBlocksMap.put(nodeName, taskBlockList)
-
-      val list = new util.ArrayList[TableBlockInfo]
+      var blockletCount = 0
       blockList.asScala.foreach { taskInfo =>
-        val blocksPerNode = taskInfo.asInstanceOf[TableTaskInfo]
-        list.addAll(blocksPerNode.getTableBlockInfoList)
+        val blocksPerNode = taskInfo.asInstanceOf[CarbonInputSplit]
+        blockletCount = blockletCount + blocksPerNode.getNumberOfBlocklets
         taskBlockList.add(
-          NodeInfo(blocksPerNode.getTaskId, blocksPerNode.getTableBlockInfoList.size))
+          NodeInfo(blocksPerNode.taskId, blocksPerNode.getNumberOfBlocklets))
       }
-      if (list.size() != 0) {
+      if (blockletCount != 0) {
         val multiBlockSplit = new CarbonMultiBlockSplit(carbonInputSplits.asJava, nodeName)
         result.add(new CarbonSparkPartition(id, i, multiBlockSplit))
         i += 1
@@ -373,6 +341,11 @@ class CarbonMergerRDD[K, V](
       logInfo(s"Node: ${multiBlockSplit.getLocations.mkString(",")}, No.Of Blocks: ${blocks.size}")
     }
     result.toArray(new Array[Partition](result.size))
+    } catch {
+      case ex: Exception =>
+        logError("CarbonMergerRDD.getPartitions failure", ex)
+        throw ex
+    }
   }
 
 }

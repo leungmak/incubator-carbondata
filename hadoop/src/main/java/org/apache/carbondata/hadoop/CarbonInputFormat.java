@@ -210,6 +210,9 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
       AbsoluteTableIdentifier absoluteTableIdentifier =
           getAbsoluteTableIdentifier(job.getConfiguration());
       addSegmentsIfEmpty(job, absoluteTableIdentifier);
+      if(job.getConfiguration().get(CarbonInputFormat.INPUT_SEGMENT_NUMBERS).isEmpty()) {
+        return new ArrayList<InputSplit>(0);
+      }
       if (filterPredicates == null) {
         return getSplitsNonFilter(job);
       } else {
