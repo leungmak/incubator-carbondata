@@ -28,5 +28,5 @@ public interface CarbonFactHandler {
 
   void finish() throws CarbonDataWriterException;
 
-  void closeHandler() throws CarbonDataWriterException;
+  void closeHandler();
 }

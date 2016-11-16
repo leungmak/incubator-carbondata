@@ -33,6 +33,10 @@ public class CarbonRow {
     this.data = data;
   }
 
+  public int size() {
+    return data.length;
+  }
+
   public Object[] getData() {
     return data;
   }

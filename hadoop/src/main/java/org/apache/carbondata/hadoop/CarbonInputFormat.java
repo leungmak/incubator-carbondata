@@ -18,6 +18,7 @@
  */
 package org.apache.carbondata.hadoop;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -215,6 +216,25 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
       setSegmentsToAccess(job.getConfiguration(), validAndInvalidSegments.getValidSegments());
     }
   }
+
+  // TODO: for data load without sort, for testing only
+  public List<InputSplit> getAllSplits(JobContext job) throws IOException {
+    AbsoluteTableIdentifier absoluteTableIdentifier =
+        getAbsoluteTableIdentifier(job.getConfiguration());
+    addSegmentsIfEmpty(job, absoluteTableIdentifier);
+    if (getSegmentsFromConfiguration(job).length == 0) {
+      return new ArrayList<>(0);
+    }
+    List<InputSplit> splits = super.getSplits(job);
+    List<InputSplit> carbonSplits = new ArrayList<InputSplit>(splits.size());
+    for(InputSplit split : splits) {
+      FileSplit fileSplit = (FileSplit) split;
+      carbonSplits.add(new CarbonInputSplit("0", fileSplit.getPath(), fileSplit.getStart(),
+          fileSplit.getLength(), fileSplit.getLocations()));
+    }
+    return carbonSplits;
+  }
+
   /**
    * {@inheritDoc}
    * Configurations FileInputFormat.INPUT_DIR
@@ -225,28 +245,34 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
    * @throws IOException
    */
   @Override public List<InputSplit> getSplits(JobContext job) throws IOException {
-    try {
-      CarbonTable carbonTable = getCarbonTable(job.getConfiguration());
-      Object filterPredicates = getFilterPredicates(job.getConfiguration());
-      AbsoluteTableIdentifier absoluteTableIdentifier =
-          getAbsoluteTableIdentifier(job.getConfiguration());
-      addSegmentsIfEmpty(job, absoluteTableIdentifier);
-      if (filterPredicates == null) {
-        return getSplitsNonFilter(job);
-      } else {
-        if (filterPredicates instanceof Expression) {
-          //process and resolve the expression.
-          CarbonInputFormatUtil.processFilterExpression((Expression) filterPredicates, carbonTable);
-          return getSplits(job, CarbonInputFormatUtil
-              .resolveFilter((Expression) filterPredicates, absoluteTableIdentifier));
-        } else {
-          //It means user sets already resolved expression.
-          return getSplits(job, (FilterResolverIntf) filterPredicates);
-        }
-      }
-    } catch (Exception ex) {
-      throw new IOException(ex);
-    }
+    AbsoluteTableIdentifier absoluteTableIdentifier =
+        getAbsoluteTableIdentifier(job.getConfiguration());
+    addSegmentsIfEmpty(job, absoluteTableIdentifier);
+     return getAllSplits(job);
+    // TODO
+//    try {
+//      CarbonTable carbonTable = getCarbonTable(job.getConfiguration());
+//      Object filterPredicates = getFilterPredicates(job.getConfiguration());
+//      AbsoluteTableIdentifier absoluteTableIdentifier =
+//          getAbsoluteTableIdentifier(job.getConfiguration());
+//      addSegmentsIfEmpty(job, absoluteTableIdentifier);
+//
+//      if (filterPredicates == null) {
+//        return getSplitsNonFilter(job);
+//      } else {
+//        if (filterPredicates instanceof Expression) {
+//          //process and resolve the expression.
+//          CarbonInputFormatUtil.processFilterExpression((Expression) filterPredicates, carbonTable);
+//          return getSplits(job, CarbonInputFormatUtil
+//              .resolveFilter((Expression) filterPredicates, absoluteTableIdentifier));
+//        } else {
+//          //It means user sets already resolved expression.
+//          return getSplits(job, (FilterResolverIntf) filterPredicates);
+//        }
+//      }
+//    } catch (Exception ex) {
+//      throw new IOException(ex);
+//    }
   }
 
   /**
@@ -598,7 +624,9 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     List<FileStatus> result = new ArrayList<FileStatus>();
     String[] segmentsToConsider = getSegmentsFromConfiguration(job);
     if (segmentsToConsider.length == 0) {
-      throw new IOException("No segments found");
+      // TODO: why throw Exception?
+//      throw new IOException("No segments found");
+      return new ArrayList<>(0);
     }
 
     getFileStatusOfSegments(job, segmentsToConsider, result);

@@ -1138,7 +1138,7 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
   /**
    * below method will be used to close the handler
    */
-  public void closeHandler() throws CarbonDataWriterException {
+  public void closeHandler() {
     if (null != this.dataWriter) {
       // wait until all blocklets have been finished writing
       while (blockletProcessingCount.get() > 0) {

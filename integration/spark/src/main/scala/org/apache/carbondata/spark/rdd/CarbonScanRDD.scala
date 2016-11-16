@@ -19,26 +19,15 @@ package org.apache.carbondata.spark.rdd
 
 import java.util
 
-import scala.collection.JavaConverters._
-import scala.reflect.ClassTag
-
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.mapreduce.InputSplit
-import org.apache.hadoop.mapreduce.Job
-import org.apache.spark.{Logging, Partition, SparkContext, TaskContext}
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.hive.DistributionUtil
-
 import org.apache.carbondata.common.CarbonIterator
 import org.apache.carbondata.common.logging.LogServiceFactory
 import org.apache.carbondata.core.cache.dictionary.Dictionary
-import org.apache.carbondata.core.carbon.datastore.block.{BlockletInfos, TableBlockInfo}
 import org.apache.carbondata.core.carbon.datastore.SegmentTaskIndexStore
+import org.apache.carbondata.core.carbon.datastore.block.{BlockletInfos, TableBlockInfo}
 import org.apache.carbondata.core.carbon.querystatistics.{QueryStatistic, QueryStatisticsConstants}
 import org.apache.carbondata.core.util.CarbonTimeStatisticsFactory
 import org.apache.carbondata.hadoop.{CarbonInputFormat, CarbonInputSplit}
 import org.apache.carbondata.lcm.status.SegmentStatusManager
-import org.apache.carbondata.scan.executor.QueryExecutor
 import org.apache.carbondata.scan.executor.QueryExecutorFactory
 import org.apache.carbondata.scan.expression.Expression
 import org.apache.carbondata.scan.model.QueryModel
@@ -47,6 +36,14 @@ import org.apache.carbondata.scan.result.iterator.ChunkRowIterator
 import org.apache.carbondata.spark.RawValue
 import org.apache.carbondata.spark.load.CarbonLoaderUtil
 import org.apache.carbondata.spark.util.QueryPlanUtil
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.mapreduce.Job
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.hive.DistributionUtil
+import org.apache.spark.{Logging, Partition, SparkContext, TaskContext}
+
+import scala.collection.JavaConverters._
+import scala.reflect.ClassTag
 
 
 
@@ -116,8 +113,9 @@ class CarbonScanRDD[V: ClassTag](
         LOGGER.error(e)
         sys.error("Exception occurred in query execution :: " + e.getMessage)
     }
-    // get splits
-    val splits = carbonInputFormat.getSplits(job)
+    // get splits, TODO
+    //val splits = carbonInputFormat.getSplits(job)
+    val splits = carbonInputFormat.getAllSplits(job)
     if (!splits.isEmpty) {
       val carbonInputSplits = splits.asScala.map(_.asInstanceOf[CarbonInputSplit])
       queryModel.setInvalidSegmentIds(validAndInvalidSegments.getInvalidSegments)

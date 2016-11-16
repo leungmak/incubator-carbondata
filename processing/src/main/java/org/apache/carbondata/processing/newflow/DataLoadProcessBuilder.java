@@ -35,6 +35,7 @@ import org.apache.carbondata.core.util.CarbonProperties;
 import org.apache.carbondata.processing.model.CarbonLoadModel;
 import org.apache.carbondata.processing.newflow.constants.DataLoadProcessorConstants;
 import org.apache.carbondata.processing.newflow.exception.CarbonDataLoadingException;
+import org.apache.carbondata.processing.newflow.steps.CarbonRowWriterProcessorStepImpl;
 import org.apache.carbondata.processing.newflow.steps.DataConverterProcessorStepImpl;
 import org.apache.carbondata.processing.newflow.steps.DataWriterProcessorStepImpl;
 import org.apache.carbondata.processing.newflow.steps.InputProcessorStepImpl;
@@ -49,7 +50,7 @@ public final class DataLoadProcessBuilder {
   private static final LogService LOGGER =
       LogServiceFactory.getLogService(DataLoadProcessBuilder.class.getName());
 
-  public AbstractDataLoadProcessorStep build(CarbonLoadModel loadModel, String storeLocation,
+  public AbstractDataLoadProcessorStep buildWithSort(CarbonLoadModel loadModel, String storeLocation,
       Iterator[] inputIterators) throws Exception {
     CarbonDataLoadConfiguration configuration =
         createConfiguration(loadModel, storeLocation);
@@ -66,6 +67,23 @@ public final class DataLoadProcessBuilder {
     // 4. Writes the sorted data in carbondata format.
     AbstractDataLoadProcessorStep writerProcessorStep =
         new DataWriterProcessorStepImpl(configuration, sortProcessorStep);
+    return writerProcessorStep;
+  }
+
+  public AbstractDataLoadProcessorStep build(CarbonLoadModel loadModel, String storeLocation,
+      Iterator[] inputIterators) throws Exception {
+    CarbonDataLoadConfiguration configuration =
+        createConfiguration(loadModel, storeLocation);
+    // 1. Reads the data input iterators and parses the data.
+    AbstractDataLoadProcessorStep inputProcessorStep =
+        new InputProcessorStepImpl(configuration, inputIterators);
+    // 2. Converts the data like dictionary or non dictionary or complex objects depends on
+    // data types and configurations.
+    AbstractDataLoadProcessorStep converterProcessorStep =
+        new DataConverterProcessorStepImpl(configuration, inputProcessorStep);
+    // 3. Writes the data in carbondata format.
+    AbstractDataLoadProcessorStep writerProcessorStep =
+        new CarbonRowWriterProcessorStepImpl(configuration, converterProcessorStep);
     return writerProcessorStep;
   }
 
