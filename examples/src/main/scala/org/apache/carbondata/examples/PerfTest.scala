@@ -114,8 +114,10 @@ class QueryRunner(sqlContext: SQLContext, dataFrame: DataFrame, datasources: Seq
    * load data to each datasource
    */
   def loadData: Seq[QueryResult] = {
-    // load data into all datasources
     var results = Seq[QueryResult]()
+    createCarbonTable()
+    val csvFileName = PerfTest.savePath("temp")
+
     datasources.foreach { datasource =>
       val time = withTime {
         datasource match {
@@ -126,14 +128,11 @@ class QueryRunner(sqlContext: SQLContext, dataFrame: DataFrame, datasources: Seq
             dataFrame.sqlContext.sparkContext.hadoopConfiguration.set("orc.compress", "SNAPPY")
             loadToNative(datasource)
           case "carbon" =>
-            sqlContext.sql(s"DROP TABLE IF EXISTS ${PerfTest.makeTableName(datasource)}")
             println(s"loading data into $datasource, path: " +
                 s"${dataFrame.sqlContext.asInstanceOf[CarbonContext].storePath}")
-            dataFrame.write
-                .format("org.apache.spark.sql.CarbonSource")
-                .option("tableName", PerfTest.makeTableName(datasource))
-                .mode(SaveMode.Overwrite)
-                .save()
+            sqlContext.sql(s"LOAD DATA INPATH '$csvFileName' INTO TABLE " +
+                           s"${PerfTest.makeTableName(datasource)} " +
+                           s"OPTIONS('USE_KETTLE'='false')")
           case _ => sys.error("unsupported data source")
         }
       }
@@ -141,6 +140,17 @@ class QueryRunner(sqlContext: SQLContext, dataFrame: DataFrame, datasources: Seq
       results :+= QueryResult(datasource, null, time, time)
     }
     results
+  }
+
+  def createCarbonTable(): DataFrame = {
+    sqlContext.sql(s"DROP TABLE IF EXISTS ${PerfTest.makeTableName("carbon")}")
+    val schema = dataFrame.schema.map { s =>
+      if (s.dataType.typeName.equals("integer")) s"${s.name} int"
+      else s"${s.name} ${s.dataType.typeName}"
+    }
+    val createTable = s"CREATE TABLE ${PerfTest.makeTableName("carbon")} " +
+        s"(${schema.mkString(",")}) STORED BY 'carbondata'"
+    sqlContext.sql(createTable)
   }
 
   def shutDown(): Unit = {
@@ -201,8 +211,15 @@ class TableGenerator(sqlContext: SQLContext) {
       Row.fromSeq(dimSeq ++ msrSeq)
     }
     val df = sqlContext.createDataFrame(data, schema)
-    df.write.mode(SaveMode.Overwrite).parquet(PerfTest.savePath("temp"))
-    sqlContext.parquetFile(PerfTest.savePath("temp"))
+    df.write
+        .format("com.databricks.spark.csv")
+        .option("header", "true")
+        .mode(SaveMode.Overwrite)
+        .save(PerfTest.savePath("temp"))
+    sqlContext.read
+        .format("com.databricks.spark.csv")
+        .option("header", "true")
+        .load(PerfTest.savePath("temp"))
   }
 }
 
