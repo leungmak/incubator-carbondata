@@ -103,7 +103,7 @@ public final class CarbonCommonConstants {
   /**
    * default value of number of cores to be used
    */
-  public static final String NUM_CORES_DEFAULT_VAL = "2";
+  public static final String NUM_CORES_DEFAULT_VAL = "8";
   /**
    * min value of number of cores to be used
    */
