@@ -836,23 +836,23 @@ case class CreateTable(cm: tableModel) extends RunnableCommand {
       val catalog = CarbonEnv.get.carbonMetastore
       // Need to fill partitioner class when we support partition
       val tablePath = catalog.createTableFromThrift(tableInfo, dbName, tbName, null)(sparkSession)
-      try {
-        sparkSession.sql(
-          s"""CREATE TABLE $dbName.$tbName USING carbondata""" +
-          s""" OPTIONS (tableName "$dbName.$tbName", tablePath "$tablePath") """)
-          .collect
-      } catch {
-        case e: Exception =>
-          val identifier: TableIdentifier = TableIdentifier(tbName, Some(dbName))
-          // call the drop table to delete the created table.
-
-          CarbonEnv.get.carbonMetastore
-            .dropTable(catalog.storePath, identifier)(sparkSession)
-
-          LOGGER.audit(s"Table creation with Database name [$dbName] " +
-                       s"and Table name [$tbName] failed")
-          throw e
-      }
+//      try {
+//        sparkSession.sql(
+//          s"""CREATE TABLE $dbName.$tbName USING carbondata""" +
+//          s""" OPTIONS (tableName "$dbName.$tbName", tablePath "$tablePath") """)
+//          .collect
+//      } catch {
+//        case e: Exception =>
+//          val identifier: TableIdentifier = TableIdentifier(tbName, Some(dbName))
+//          // call the drop table to delete the created table.
+//
+//          CarbonEnv.get.carbonMetastore
+//            .dropTable(catalog.storePath, identifier)(sparkSession)
+//
+//          LOGGER.audit(s"Table creation with Database name [$dbName] " +
+//                       s"and Table name [$tbName] failed")
+//          throw e
+//      }
 
       LOGGER.audit(s"Table created with Database name [$dbName] and Table name [$tbName]")
     }

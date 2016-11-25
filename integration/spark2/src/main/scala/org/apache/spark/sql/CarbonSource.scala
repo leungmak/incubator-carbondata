@@ -20,14 +20,15 @@ package org.apache.spark.sql
 import org.apache.carbondata.core.constants.CarbonCommonConstants
 
 import scala.language.implicitConversions
-
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.execution.CarbonLateDecodeStrategy
 import org.apache.spark.sql.optimizer.CarbonLateDecodeRule
-
 import org.apache.carbondata.spark.CarbonOption
+import org.apache.carbondata.spark.exception.MalformedCarbonCommandException
+import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
+import org.apache.spark.sql.execution.command.{CreateTable, Field}
 
 /**
  * Carbon relation provider compliant to data source api.
@@ -102,6 +103,7 @@ class CarbonSource extends RelationProvider
       dataSchema: StructType): BaseRelation = {
     CarbonEnv.init(sqlContext)
     addLateCodeOptimization(sqlContext.sparkSession)
+    createTableIfNotExists(sqlContext.sparkSession, parameters, dataSchema)
     parameters.get("path") match {
       case Some(path) =>
         CarbonDatasourceHadoopRelation(sqlContext.sparkSession, Array(path), parameters, Option(dataSchema))
@@ -114,4 +116,42 @@ class CarbonSource extends RelationProvider
     ss.sessionState.experimentalMethods.extraStrategies = Seq(new CarbonLateDecodeStrategy)
     ss.sessionState.experimentalMethods.extraOptimizations = Seq(new CarbonLateDecodeRule)
   }
+
+  private def createTableIfNotExists(sparkSession: SparkSession, parameters: Map[String, String],
+                                     dataSchema: StructType):
+  Unit
+  = {
+    val options = new CarbonOption(parameters)
+    try {
+      CarbonEnv.get.carbonMetastore.lookupRelation(Option(options.dbName), options.tableName)
+    } catch {
+      case ex: NoSuchTableException =>
+        val fields = dataSchema.map { col =>
+          val column = col.name
+          val dataType = Option(col.dataType.toString)
+          val name = Option(col.name)
+          // This is to parse complex data types
+          val x = col.name + ' ' + col.dataType
+          val f: Field = Field(column, dataType, name, None, null)
+          // the data type of the decimal type will be like decimal(10,0)
+          // so checking the start of the string and taking the precision and scale.
+          // resetting the data type with decimal
+          if (f.dataType.getOrElse("").startsWith("decimal")) {
+            val (precision, scale) = TableCreator.getScaleAndPrecision(col.dataType.toString)
+            f.precision = precision
+            f.scale = scale
+            f.dataType = Some("decimal")
+          }
+          f
+        }
+        val map = scala.collection.mutable.Map[String, String]();
+        parameters.foreach { x => map.put(x._1, x._2) }
+        val cm = TableCreator.prepareTableModel(false, Option(options.dbName), options.tableName,
+          fields, Nil, map)
+        CreateTable(cm).run(sparkSession)
+
+      case _ =>
+    }
+  }
+
 }
