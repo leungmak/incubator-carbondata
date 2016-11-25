@@ -42,6 +42,7 @@ import org.apache.carbondata.spark.partition.api.impl.QueryPartitionHelper;
 import org.apache.carbondata.spark.splits.TableSplit;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.spark.SparkContext;
 import org.apache.spark.sql.execution.command.Partitioner;
 /**
  * This utilty parses the Carbon query plan to actual query model object.
@@ -57,7 +58,7 @@ public final class CarbonQueryUtil {
    * It creates the one split for each region server.
    */
   public static synchronized TableSplit[] getTableSplits(String databaseName, String tableName,
-      CarbonQueryPlan queryPlan) throws IOException {
+      CarbonQueryPlan queryPlan, SparkContext sparkContext) throws IOException {
 
     //Just create splits depends on locations of region servers
     List<Partition> allPartitions = null;

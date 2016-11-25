@@ -36,34 +36,6 @@ import org.apache.carbondata.spark.CarbonFilters
 import org.apache.spark.sql.execution.command.RunnableCommand
 
 /**
- * Carbon Optimizer to add dictionary decoder.
- */
-object CarbonOptimizer {
-
-  def optimizer(optimizer: Optimizer, conf: CarbonSQLConf, version: String): Optimizer = {
-    CodeGenerateFactory.getInstance().optimizerFactory.createOptimizer(optimizer, conf)
-  }
-
-  def execute(plan: LogicalPlan, optimizer: Optimizer): LogicalPlan = {
-    val executedPlan: LogicalPlan = optimizer.execute(plan)
-    val relations = CarbonOptimizer.collectCarbonRelation(plan)
-    if (relations.nonEmpty) {
-      new ResolveCarbonFunctions(relations).apply(executedPlan)
-    } else {
-      executedPlan
-    }
-  }
-
-  // get the carbon relation from plan.
-  def collectCarbonRelation(plan: LogicalPlan): Seq[CarbonDecoderRelation] = {
-    plan collect {
-      case l: LogicalRelation if l.relation.isInstanceOf[CarbonDatasourceHadoopRelation] =>
-        CarbonDecoderRelation(l.attributeMap, l.relation.asInstanceOf[CarbonDatasourceHadoopRelation])
-    }
-  }
-}
-
-/**
  * It does two jobs.
  * 1. Change the datatype for dictionary encoded column
  * 2. Add the dictionary decoder plan.
@@ -178,39 +150,6 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
             Sort(sort.order, sort.global, child)
           }
 
-        case union: Union
-          if !(union.left.isInstanceOf[CarbonDictionaryTempDecoder] ||
-               union.right.isInstanceOf[CarbonDictionaryTempDecoder]) =>
-          val leftCondAttrs = new util.HashSet[AttributeReferenceWrapper]
-          val rightCondAttrs = new util.HashSet[AttributeReferenceWrapper]
-          union.left.output.foreach(attr =>
-            leftCondAttrs.add(AttributeReferenceWrapper(aliasMap.getOrElse(attr, attr))))
-          union.right.output.foreach(attr =>
-            rightCondAttrs.add(AttributeReferenceWrapper(aliasMap.getOrElse(attr, attr))))
-          var leftPlan = union.left
-          var rightPlan = union.right
-          if (hasCarbonRelation(leftPlan) && leftCondAttrs.size() > 0 &&
-              !leftPlan.isInstanceOf[CarbonDictionaryCatalystDecoder]) {
-            leftPlan = CarbonDictionaryTempDecoder(leftCondAttrs,
-              new util.HashSet[AttributeReferenceWrapper](),
-              union.left)
-          }
-          if (hasCarbonRelation(rightPlan) && rightCondAttrs.size() > 0 &&
-              !rightPlan.isInstanceOf[CarbonDictionaryCatalystDecoder]) {
-            rightPlan = CarbonDictionaryTempDecoder(rightCondAttrs,
-              new util.HashSet[AttributeReferenceWrapper](),
-              union.right)
-          }
-          if (!decoder) {
-            decoder = true
-            CarbonDictionaryTempDecoder(new util.HashSet[AttributeReferenceWrapper](),
-              new util.HashSet[AttributeReferenceWrapper](),
-              Union(leftPlan, rightPlan),
-              isOuter = true)
-          } else {
-            Union(leftPlan, rightPlan)
-          }
-
         case agg: Aggregate if !agg.child.isInstanceOf[CarbonDictionaryTempDecoder] =>
           val attrsOndimAggs = new util.HashSet[AttributeReferenceWrapper]
           agg.aggregateExpressions.map {
@@ -269,10 +208,10 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
             decoder = true
             CarbonDictionaryTempDecoder(new util.HashSet[AttributeReferenceWrapper](),
               new util.HashSet[AttributeReferenceWrapper](),
-              CodeGenerateFactory.getInstance().expandFactory.createExpand(expand, child),
+              Expand(expand.projections, expand.output, child),
               isOuter = true)
           } else {
-            CodeGenerateFactory.getInstance().expandFactory.createExpand(expand, child)
+            Expand(expand.projections, expand.output, child)
           }
         case filter: Filter if !filter.child.isInstanceOf[CarbonDictionaryTempDecoder] =>
           val attrsOnConds = new util.HashSet[AttributeReferenceWrapper]
@@ -388,7 +327,7 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
 
         case wd: Window if !wd.child.isInstanceOf[CarbonDictionaryTempDecoder] =>
           val attrsOnProjects = new util.HashSet[AttributeReferenceWrapper]
-          wd.projectList.map {
+          wd.output.map {
             case attr: AttributeReference =>
             case others =>
               others.collect {
@@ -438,13 +377,13 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
             decoder = true
             CarbonDictionaryTempDecoder(new util.HashSet[AttributeReferenceWrapper](),
               new util.HashSet[AttributeReferenceWrapper](),
-              Window(wd.projectList, wd.windowExpressions, wd.partitionSpec, wd.orderSpec, child),
+              Window(wd.windowExpressions, wd.partitionSpec, wd.orderSpec, child),
               isOuter = true)
           } else {
-            Window(wd.projectList, wd.windowExpressions, wd.partitionSpec, wd.orderSpec, child)
+            Window(wd.windowExpressions, wd.partitionSpec, wd.orderSpec, child)
           }
 
-        case l: LogicalRelation if l.relation.isInstanceOf[CarbonDatasourceRelation] =>
+        case l: LogicalRelation if l.relation.isInstanceOf[CarbonHadoopFSPartition] =>
           if (!decoder) {
             decoder = true
             CarbonDictionaryTempDecoder(new util.HashSet[AttributeReferenceWrapper](),
@@ -552,7 +491,7 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
         }.asInstanceOf[Seq[NamedExpression]]
         Project(prExps, p.child)
       case wd: Window if relations.nonEmpty =>
-        val prExps = wd.projectList.map { prExp =>
+        val prExps = wd.output.map { prExp =>
           prExp.transform {
             case attr: AttributeReference =>
               updateDataType(attr, attrMap, allAttrsNotDecode, aliasMap)
@@ -576,9 +515,9 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
               updateDataType(attr, attrMap, allAttrsNotDecode, aliasMap)
           }
         }.asInstanceOf[Seq[SortOrder]]
-        Window(prExps, wdExps, partitionSpec, orderSpec, wd.child)
+        Window(wdExps, partitionSpec, orderSpec, wd.child)
 
-      case l: LogicalRelation if l.relation.isInstanceOf[CarbonDatasourceRelation] =>
+      case l: LogicalRelation if l.relation.isInstanceOf[CarbonDatasourceHadoopRelation] =>
         allAttrsNotDecode = marker.revokeJoin()
         l
       case others => others
@@ -665,7 +604,7 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
           val newAttr = AttributeReference(attr.name,
             IntegerType,
             attr.nullable,
-            attr.metadata)(attr.exprId, attr.qualifiers)
+            attr.metadata)(attr.exprId)
           newAttr
         case _ => attr
       }
