@@ -64,7 +64,7 @@ object GenerateDictionaryExample {
     val dataBaseName = carbonTableIdentifier.getDatabaseName
     val tableName = carbonTableIdentifier.getTableName
     val carbonRelation = CarbonEnv.getInstance(cc).carbonCatalog.
-      lookupRelation1(Option(dataBaseName),
+      lookupRelation(Option(dataBaseName),
         tableName) (cc).asInstanceOf[CarbonRelation]
     val carbonTable = carbonRelation.tableMeta.carbonTable
     val dimensions = carbonTable.getDimensionByTableName(tableName.toLowerCase())
