@@ -20,10 +20,8 @@ package org.apache.spark.sql.hive
 import java.net.{InetAddress, InterfaceAddress, NetworkInterface}
 
 import scala.collection.JavaConverters._
-
 import org.apache.spark.SparkContext
-import org.apache.spark.sql.CarbonContext
-
+import org.apache.spark.sql.CarbonEnv
 import org.apache.carbondata.common.logging.LogServiceFactory
 import org.apache.carbondata.core.carbon.datastore.block.Distributable
 import org.apache.carbondata.spark.load.CarbonLoaderUtil
@@ -33,7 +31,7 @@ import org.apache.carbondata.spark.load.CarbonLoaderUtil
  */
 object DistributionUtil {
   @transient
-  val LOGGER = LogServiceFactory.getLogService(CarbonContext.getClass.getName)
+  val LOGGER = LogServiceFactory.getLogService(this.getClass.getName)
 
   /*
    * This method will return the list of executers in the cluster.
@@ -109,8 +107,7 @@ object DistributionUtil {
    * @param sparkContext
    * @return
    */
-  def ensureExecutorsAndGetNodeList(blockList: Array[Distributable],
-      sparkContext: SparkContext):
+  def ensureExecutorsAndGetNodeList(blockList: Array[Distributable], sparkContext: SparkContext):
   Array[String] = {
     val nodeMapping = CarbonLoaderUtil.getRequiredExecutors(blockList.toSeq.asJava)
     var confExecutorsTemp: String = null
@@ -134,7 +131,7 @@ object DistributionUtil {
     } else { nodeMapping.size() }
 
     val startTime = System.currentTimeMillis()
-    CarbonContext.ensureExecutors(sparkContext, requiredExecutors)
+    CarbonEnv.ensureExecutors(sparkContext, requiredExecutors)
     var nodes = DistributionUtil.getNodeList(sparkContext)
     var maxTimes = 30
     while (nodes.length < requiredExecutors && maxTimes > 0) {
