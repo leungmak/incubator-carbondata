@@ -123,7 +123,7 @@ class CarbonSource extends RelationProvider
   = {
     val options = new CarbonOption(parameters)
     try {
-      CarbonEnv.get.carbonMetastore.lookupRelation(Option(options.dbName), options.tableName)
+      CarbonEnv.get.carbonMetastore.lookupRelation(Option(options.dbName), options.tableName)(sparkSession)
     } catch {
       case ex: NoSuchTableException =>
         val fields = dataSchema.map { col =>

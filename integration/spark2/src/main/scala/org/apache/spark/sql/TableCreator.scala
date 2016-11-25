@@ -324,14 +324,6 @@ object TableCreator {
     noInvertedIdxCols
   }
 
-  private def getScaleAndPrecision(dataType: String): (Int, Int) = {
-    val m: Matcher = Pattern.compile("^decimal\\(([^)]+)\\)").matcher(dataType)
-    m.find()
-    val matchedString: String = m.group(1)
-    val scaleAndPrecision = matchedString.split(",")
-    (Integer.parseInt(scaleAndPrecision(0).trim), Integer.parseInt(scaleAndPrecision(1).trim))
-  }
-
   private def normalizeType(field: Field): Field = {
     val dataType = field.dataType.getOrElse("NIL")
     dataType match {
