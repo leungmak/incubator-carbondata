@@ -88,53 +88,11 @@ public final class QueryPartitionHelper {
 
   }
 
-  private void checkInitialization(String tableUniqueName) {
-    //Initialise if not done earlier
-
-    //String nodeListString = null;
-    if (properties == null) {
-      properties = loadProperties();
-
-      // nodeListString = properties.getProperty("nodeList", "master,slave1,slave2,slave3");
-
-      defaultPartitionerClass = properties.getProperty("partitionerClass",
-          "org.apache.carbondata.spark.partition.api.impl.SampleDataPartitionerImpl");
-
-      LOGGER.info(this.getClass().getSimpleName() + " is using following configurations.");
-      LOGGER.info("partitionerClass : " + defaultPartitionerClass);
-    }
-
-    if (partitionerMap.get(tableUniqueName) == null) {
-      DataPartitioner dataPartitioner;
-      try {
-        dataPartitioner =
-            (DataPartitioner) Class.forName(partitioner.partitionClass()).newInstance();
-        dataPartitioner.initialize("", new String[0], partitioner);
-
-        List<Partition> partitions = dataPartitioner.getAllPartitions();
-        DefaultLoadBalancer loadBalancer =
-            new DefaultLoadBalancer(Arrays.asList(partitioner.nodeList()), partitions);
-        partitionerMap.put(tableUniqueName, dataPartitioner);
-        loadBalancerMap.put(tableUniqueName, loadBalancer);
-      } catch (ClassNotFoundException e) {
-        LOGGER.error(e,
-            e.getMessage());
-      } catch (InstantiationException e) {
-        LOGGER.error(e,
-            e.getMessage());
-      } catch (IllegalAccessException e) {
-        LOGGER.error(e,
-            e.getMessage());
-      }
-    }
-  }
-
   /**
    * Get partitions applicable for query based on filters applied in query
    */
   public List<Partition> getPartitionsForQuery(CarbonQueryPlan queryPlan) {
     String tableUniqueName = queryPlan.getDatabaseName() + '_' + queryPlan.getTableName();
-    checkInitialization(tableUniqueName);
 
     DataPartitioner dataPartitioner = partitionerMap.get(tableUniqueName);
 
@@ -144,7 +102,6 @@ public final class QueryPartitionHelper {
 
   public List<Partition> getAllPartitions(String databaseName, String tableName) {
     String tableUniqueName = databaseName + '_' + tableName;
-    checkInitialization(tableUniqueName);
 
     DataPartitioner dataPartitioner = partitionerMap.get(tableUniqueName);
 
@@ -156,7 +113,6 @@ public final class QueryPartitionHelper {
    */
   public String getLocation(Partition partition, String databaseName, String tableName) {
     String tableUniqueName = databaseName + '_' + tableName;
-    checkInitialization(tableUniqueName);
 
     DefaultLoadBalancer loadBalancer = loadBalancerMap.get(tableUniqueName);
     return loadBalancer.getNodeForPartitions(partition);

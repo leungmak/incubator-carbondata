@@ -134,11 +134,8 @@ public final class CarbonDataMergerUtil {
     AbsoluteTableIdentifier absoluteTableIdentifier =
         carbonLoadModel.getCarbonDataLoadSchema().getCarbonTable().getAbsoluteTableIdentifier();
 
-    SegmentStatusManager segmentStatusManager =
-        new SegmentStatusManager(absoluteTableIdentifier);
-
     ICarbonLock carbonLock =
-        segmentStatusManager.getTableStatusLock();
+        SegmentStatusManager.getTableStatusLock(absoluteTableIdentifier);
 
     try {
       if (carbonLock.lockWithRetries()) {
@@ -151,7 +148,7 @@ public final class CarbonDataMergerUtil {
 
         String statusFilePath = carbonTablePath.getTableStatusFilePath();
 
-        LoadMetadataDetails[] loadDetails = segmentStatusManager.readLoadMetadata(metaDataFilepath);
+        LoadMetadataDetails[] loadDetails = SegmentStatusManager.readLoadMetadata(metaDataFilepath);
 
         String mergedLoadNumber = MergedLoadName.substring(
             MergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER)
@@ -195,7 +192,7 @@ public final class CarbonDataMergerUtil {
         updatedDetailsList.add(loadMetadataDetails);
 
         try {
-          segmentStatusManager.writeLoadDetailsIntoFile(statusFilePath,
+          SegmentStatusManager.writeLoadDetailsIntoFile(statusFilePath,
               updatedDetailsList.toArray(new LoadMetadataDetails[updatedDetailsList.size()]));
           tableStatusUpdationStatus = true;
         } catch (IOException e) {

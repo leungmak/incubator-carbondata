@@ -9,6 +9,7 @@ object SparkPi {
   def main(args: Array[String]) {
     val spark = SparkSession
       .builder
+      .master("local")
       .appName("Spark Pi")
       .getOrCreate()
     val sc = spark.sparkContext

@@ -74,8 +74,7 @@ public final class CarbonQueryUtil {
       splits[i] = new TableSplit();
       List<String> locations = new ArrayList<String>(CarbonCommonConstants.CONSTANT_SIZE_TEN);
       Partition partition = allPartitions.get(i);
-      String location = QueryPartitionHelper.getInstance()
-          .getLocation(partition, databaseName, tableName);
+      String location = QueryPartitionHelper.getInstance().getLocation(partition, databaseName, tableName);
       locations.add(location);
       splits[i].setPartition(partition);
       splits[i].setLocations(locations);

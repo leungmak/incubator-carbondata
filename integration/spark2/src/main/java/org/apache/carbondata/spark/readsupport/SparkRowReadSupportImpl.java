@@ -33,12 +33,6 @@ import org.apache.spark.unsafe.types.UTF8String;
 
 public class SparkRowReadSupportImpl extends AbstractDictionaryDecodedReadSupport<Row> {
 
-  @Override public void intialize(CarbonColumn[] carbonColumns,
-      AbsoluteTableIdentifier absoluteTableIdentifier) {
-    super.intialize(carbonColumns, absoluteTableIdentifier);
-    //can intialize and generate schema here.
-  }
-
   @Override public Row readRow(Object[] data) {
     for (int i = 0; i < dictionaries.length; i++) {
       if (dictionaries[i] != null) {

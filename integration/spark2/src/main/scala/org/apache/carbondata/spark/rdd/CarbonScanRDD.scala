@@ -23,14 +23,12 @@ import java.util.Date
 
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.mapreduce.{InputSplit, Job, JobID, TaskAttemptID, TaskType}
 import org.apache.spark.{Partition, SerializableWritable, SparkContext, TaskContext, TaskKilledException}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.hive.DistributionUtil
-
 import org.apache.carbondata.common.logging.LogServiceFactory
 import org.apache.carbondata.core.carbon.AbsoluteTableIdentifier
 import org.apache.carbondata.core.carbon.datastore.block.Distributable
@@ -47,7 +45,7 @@ class CarbonSparkPartition(
     val rddId: Int,
     val idx: Int,
     @transient val multiBlockSplit: CarbonMultiBlockSplit)
-    extends Partition {
+  extends Partition {
 
   val split = new SerializableWritable[CarbonMultiBlockSplit](multiBlockSplit)
 
@@ -67,7 +65,7 @@ class CarbonScanRDD[V: ClassTag](
     filterExpression: Expression,
     identifier: AbsoluteTableIdentifier,
     @transient carbonTable: CarbonTable)
-    extends RDD[V](sc, Nil) {
+  extends RDD[V](sc, Nil) {
 
   private val queryId = sparkContext.getConf.get("queryId", System.nanoTime() + "")
   private val jobTrackerId: String = {
@@ -109,8 +107,7 @@ class CarbonScanRDD[V: ClassTag](
       val blockList = splits.asScala.map(_.asInstanceOf[Distributable])
 
       // get the list of executors and map blocks to executors based on locality
-      val activeNodes = DistributionUtil.ensureExecutorsAndGetNodeList(blockList.toArray,
-        sparkContext)
+      val activeNodes = DistributionUtil.ensureExecutorsAndGetNodeList(blockList.toArray, sparkContext)
 
       // divide the blocks among the tasks of the nodes as per the data locality
       val nodeBlockMapping = CarbonLoaderUtil.nodeBlockTaskMapping(blockList.asJava, -1,
