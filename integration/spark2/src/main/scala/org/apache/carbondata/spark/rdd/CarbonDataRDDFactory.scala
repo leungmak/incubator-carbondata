@@ -86,8 +86,7 @@ object CarbonDataRDDFactory {
       storePath: String,
       dateField: String,
       dateFieldActualName: String,
-      dateValue: String,
-      partitioner: Partitioner) {
+      dateValue: String) {
 
     val sc = sqlContext
     // Delete the records based on data
@@ -104,7 +103,6 @@ object CarbonDataRDDFactory {
       dateField,
       dateFieldActualName,
       dateValue,
-      partitioner,
       table.getFactTableName,
       tableName,
       storePath,
@@ -1111,8 +1109,7 @@ object CarbonDataRDDFactory {
   def cleanFiles(
       sc: SparkContext,
       carbonLoadModel: CarbonLoadModel,
-      storePath: String,
-      partitioner: Partitioner) {
+      storePath: String) {
     val table = org.apache.carbondata.core.carbon.metadata.CarbonMetadata.getInstance
       .getCarbonTable(carbonLoadModel.getDatabaseName + "_" + carbonLoadModel.getTableName)
     val metaDataPath: String = table.getMetaDataFilepath
@@ -1125,7 +1122,6 @@ object CarbonDataRDDFactory {
         LOGGER.info("Clean files lock has been successfully acquired.")
         deleteLoadsAndUpdateMetadata(carbonLoadModel,
           table,
-          partitioner,
           storePath,
           isForceDeletion = true)
       } else {

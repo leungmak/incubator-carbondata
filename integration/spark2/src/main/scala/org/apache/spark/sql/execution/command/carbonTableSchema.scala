@@ -1478,7 +1478,7 @@ private[sql] case class DeleteLoadByDate(
       new CarbonDataLoadSchema(carbonTable),
       dbName,
       tableName,
-      CarbonEnv.getInstance(sqlContext).carbonCatalog.storePath,
+      CarbonEnv.get.carbonMetastore.storePath,
       level,
       actualColName,
       dateValue)
@@ -1495,12 +1495,11 @@ private[sql] case class CleanFiles(
   val LOGGER = LogServiceFactory.getLogService(this.getClass.getCanonicalName)
 
   def run(sqlContext: SQLContext): Seq[Row] = {
-    val dbName = getDB.getDatabaseName(databaseNameOp, sqlContext)
+    val dbName = databaseNameOp.getOrElse(sqlContext.sparkSession.catalog.currentDatabase)
     LOGGER.audit(s"The clean files request has been received for $dbName.$tableName")
     val identifier = TableIdentifier(tableName, Option(dbName))
-    val relation = CarbonEnv.getInstance(sqlContext).carbonCatalog
-      .lookupRelation(identifier)(sqlContext).
-      asInstanceOf[CarbonRelation]
+    val relation = CarbonEnv.get.carbonMetastore
+      .lookupRelation(identifier)(sqlContext.sparkSession).asInstanceOf[CarbonRelation]
     if (relation == null) {
       LOGGER.audit(s"The clean files request is failed. Table $dbName.$tableName does not exist")
       sys.error(s"Table $dbName.$tableName does not exist")
