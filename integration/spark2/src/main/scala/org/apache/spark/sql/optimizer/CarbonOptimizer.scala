@@ -383,7 +383,7 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
             Window(wd.windowExpressions, wd.partitionSpec, wd.orderSpec, child)
           }
 
-        case l: LogicalRelation if l.relation.isInstanceOf[CarbonHadoopFSPartition] =>
+        case l: LogicalRelation if l.relation.isInstanceOf[CarbonDatasourceHadoopRelation] =>
           if (!decoder) {
             decoder = true
             CarbonDictionaryTempDecoder(new util.HashSet[AttributeReferenceWrapper](),

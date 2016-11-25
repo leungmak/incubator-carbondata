@@ -105,7 +105,6 @@ class CarbonDataFrameWriter(sqlContext: SQLContext, val dataFrame: DataFrame) {
   /**
     * Loading DataFrame directly without saving DataFrame to CSV files.
     * @param options
-    * @param sqlContext
     */
   private def loadDataFrame(options: CarbonOption): Unit = {
     val header = dataFrame.columns.mkString(",")
@@ -117,7 +116,7 @@ class CarbonDataFrameWriter(sqlContext: SQLContext, val dataFrame: DataFrame) {
       Map("fileheader" -> header),
       isOverwriteExist = false,
       null,
-      Some(dataFrame)).run(sqlContext)
+      Some(dataFrame)).run(sqlContext.sparkSession)
   }
 
   private def csvPackage: String = "com.databricks.spark.csv.newapi"
