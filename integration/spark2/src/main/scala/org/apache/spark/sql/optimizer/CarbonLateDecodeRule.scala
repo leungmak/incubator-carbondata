@@ -21,29 +21,40 @@ import java.util
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
+
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate._
-import org.apache.spark.sql.catalyst.optimizer.Optimizer
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
+import org.apache.spark.sql.execution.command.RunnableCommand
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.types.{IntegerType, StringType}
+
 import org.apache.carbondata.common.logging.LogServiceFactory
 import org.apache.carbondata.core.carbon.querystatistics.QueryStatistic
 import org.apache.carbondata.core.util.CarbonTimeStatisticsFactory
 import org.apache.carbondata.spark.CarbonFilters
-import org.apache.spark.sql.execution.command.RunnableCommand
+
 
 /**
- * It does two jobs.
+ * Carbon Optimizer to add dictionary decoder. It does two jobs.
  * 1. Change the datatype for dictionary encoded column
- * 2. Add the dictionary decoder plan.
+ * 2. Add the dictionary decoder operator at appropriate place.
  */
-class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
-  extends Rule[LogicalPlan] with PredicateHelper {
+class CarbonLateDecodeRule extends Rule[LogicalPlan] with PredicateHelper {
   val LOGGER = LogServiceFactory.getLogService(this.getClass.getName)
+  private var relations: Seq[CarbonDecoderRelation] = _
+
+  private def collectCarbonRelation(plan: LogicalPlan): Seq[CarbonDecoderRelation] = {
+    plan collect {
+      case l: LogicalRelation if l.relation.isInstanceOf[CarbonDatasourceHadoopRelation] =>
+        CarbonDecoderRelation(l.attributeMap, l.relation.asInstanceOf[CarbonDatasourceHadoopRelation])
+    }
+  }
+
   def apply(plan: LogicalPlan): LogicalPlan = {
+    relations = collectCarbonRelation(plan)
     if (relations.nonEmpty && !isOptimized(plan)) {
       LOGGER.info("Starting to optimize plan")
       val recorder = CarbonTimeStatisticsFactory.createExecutorRecorder("")
