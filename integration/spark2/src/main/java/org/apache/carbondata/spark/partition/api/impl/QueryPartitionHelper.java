@@ -132,9 +132,9 @@ public final class QueryPartitionHelper {
   /**
    * Get partitions applicable for query based on filters applied in query
    */
-  public List<Partition> getPartitionsForQuery(CarbonQueryPlan queryPlan, Partitioner partitioner) {
+  public List<Partition> getPartitionsForQuery(CarbonQueryPlan queryPlan) {
     String tableUniqueName = queryPlan.getDatabaseName() + '_' + queryPlan.getTableName();
-    checkInitialization(tableUniqueName, partitioner);
+    checkInitialization(tableUniqueName);
 
     DataPartitioner dataPartitioner = partitionerMap.get(tableUniqueName);
 
@@ -151,28 +151,14 @@ public final class QueryPartitionHelper {
     return dataPartitioner.getAllPartitions();
   }
 
-  public void removePartition(String databaseName, String tableName) {
-    String tableUniqueName = databaseName + '_' + tableName;
-    partitionerMap.remove(tableUniqueName);
-  }
-
   /**
    * Get the node name where the partition is assigned to.
    */
-  public String getLocation(Partition partition, String databaseName, String tableName,
-      Partitioner partitioner) {
+  public String getLocation(Partition partition, String databaseName, String tableName) {
     String tableUniqueName = databaseName + '_' + tableName;
-    checkInitialization(tableUniqueName, partitioner);
+    checkInitialization(tableUniqueName);
 
     DefaultLoadBalancer loadBalancer = loadBalancerMap.get(tableUniqueName);
     return loadBalancer.getNodeForPartitions(partition);
-  }
-
-  public String[] getPartitionedColumns(String databaseName, String tableName,
-      Partitioner partitioner) {
-    String tableUniqueName = databaseName + '_' + tableName;
-    checkInitialization(tableUniqueName, partitioner);
-    DataPartitioner dataPartitioner = partitionerMap.get(tableUniqueName);
-    return dataPartitioner.getPartitionedColumns();
   }
 }

@@ -14,12 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.spark.sql.hive
 
+package org.apache.spark.sql.hive
 
 import java.net.{InetAddress, InterfaceAddress, NetworkInterface}
 
 import scala.collection.JavaConverters._
+
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.CarbonEnv
 import org.apache.carbondata.common.logging.LogServiceFactory
