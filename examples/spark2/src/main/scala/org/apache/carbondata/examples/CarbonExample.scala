@@ -29,16 +29,13 @@ object CarbonExample {
         .enableHiveSupport()
         .getOrCreate()
 
-    spark.sessionState.experimentalMethods.extraStrategies = Seq(new CarbonLateDecodeStrategy)
-    spark.sessionState.experimentalMethods.extraOptimizations = Seq()
-
     val csvPath = ""
 
     // Create table
     spark.sql(
       s"""
          | CREATE TABLE carbon_table
-         | USING org.apache.spark.sql.CarbonSource)
+         | USING carbondata)
        """.stripMargin)
 
     spark.sql(

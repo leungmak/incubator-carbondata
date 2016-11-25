@@ -20,16 +20,20 @@ package org.apache.spark.sql
 import org.apache.carbondata.core.constants.CarbonCommonConstants
 
 import scala.language.implicitConversions
+
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.StructType
-import org.apache.carbondata.spark.{CarbonOption, _}
+import org.apache.spark.sql.execution.CarbonLateDecodeStrategy
+import org.apache.spark.sql.optimizer.CarbonLateDecodeRule
+
+import org.apache.carbondata.spark.CarbonOption
 
 /**
  * Carbon relation provider compliant to data source api.
  * Creates carbon relations
  */
-class CarbonRelationProvider extends RelationProvider
+class CarbonSource extends RelationProvider
     with CreatableRelationProvider with SchemaRelationProvider with DataSourceRegister {
 
   override def shortName(): String = "carbondata"
@@ -45,6 +49,7 @@ class CarbonRelationProvider extends RelationProvider
     // if path is provided we can directly create Hadoop relation. \
     // Otherwise create datasource relation
     CarbonEnv.init(sqlContext)
+    addLateCodeOptimization(sqlContext.sparkSession)
     parameters.get("path") match {
       case Some(path) => CarbonDatasourceHadoopRelation(sqlContext.sparkSession, Array(path), parameters, None)
       case _ => CarbonDatasourceHadoopRelation(sqlContext.sparkSession, Array.empty[String], parameters, None)
@@ -96,11 +101,17 @@ class CarbonRelationProvider extends RelationProvider
       parameters: Map[String, String],
       dataSchema: StructType): BaseRelation = {
     CarbonEnv.init(sqlContext)
+    addLateCodeOptimization(sqlContext.sparkSession)
     parameters.get("path") match {
       case Some(path) =>
         CarbonDatasourceHadoopRelation(sqlContext.sparkSession, Array(path), parameters, Option(dataSchema))
       case _ =>
         CarbonDatasourceHadoopRelation(sqlContext.sparkSession, Array.empty[String], parameters, Option(dataSchema))
     }
+  }
+
+  private def addLateCodeOptimization(ss: SparkSession): Unit = {
+    ss.sessionState.experimentalMethods.extraStrategies = Seq(new CarbonLateDecodeStrategy)
+    ss.sessionState.experimentalMethods.extraOptimizations = Seq(new CarbonLateDecodeRule)
   }
 }
