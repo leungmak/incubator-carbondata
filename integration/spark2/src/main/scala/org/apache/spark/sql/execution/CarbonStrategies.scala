@@ -33,6 +33,7 @@ private[sql] class CarbonLateDecodeStrategy extends SparkStrategy {
           aliasMap,
           planLater(child)
         ) :: Nil
+      case _ => Nil
     }
   }
 }

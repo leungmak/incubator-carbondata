@@ -43,9 +43,6 @@ private[sql] case class CarbonDatasourceHadoopRelation(
 
   lazy val absIdentifier = AbsoluteTableIdentifier.fromTablePath(paths.head)
   lazy val carbonTable = SchemaReader.readCarbonTableFromStore(absIdentifier)
-  if (carbonTable == null) {
-    sys.error(s"CarbonData file path ${paths.head} is not valid")
-  }
   lazy val relationRaw: CarbonRelation = {
     CarbonRelation(
       carbonTable.getDatabaseName,

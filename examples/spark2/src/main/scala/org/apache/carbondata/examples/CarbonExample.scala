@@ -25,17 +25,21 @@ object CarbonExample {
   def main(args: Array[String]): Unit = {
     val spark = SparkSession
         .builder()
+        .master("local")
         .appName("CarbonExample")
         .enableHiveSupport()
         .getOrCreate()
 
     val csvPath = ""
+    // Drop table
+    spark.sql("DROP TABLE IF EXISTS carbon_table")
+    spark.sql("DROP TABLE IF EXISTS csv_table")
 
     // Create table
     spark.sql(
       s"""
          | CREATE TABLE carbon_table
-         | USING carbondata)
+         | USING org.apache.spark.sql.CarbonSource
        """.stripMargin)
 
     spark.sql(
@@ -50,11 +54,11 @@ object CarbonExample {
          | salary int)
        """.stripMargin)
 
-    spark.sql(
-      s"""
-         | LOAD DATA LOCAL INPATH '$csvPath'
-         | INTO TABLE csv_table
-       """.stripMargin)
+//    spark.sql(
+//      s"""
+//         | LOAD DATA LOCAL INPATH '$csvPath'
+//         | INTO TABLE csv_table
+//       """.stripMargin)
 
     spark.sql(
       s"""
