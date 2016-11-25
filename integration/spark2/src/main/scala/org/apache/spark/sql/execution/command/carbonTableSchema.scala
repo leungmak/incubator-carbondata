@@ -143,7 +143,6 @@ case class DataLoadTableFileMapping(table: String, loadPath: String)
 
 case class CarbonMergerMapping(storeLocation: String,
     storePath: String,
-    partitioner: Partitioner,
     metadataFilePath: String,
     mergedLoadName: String,
     kettleHomePath: String,

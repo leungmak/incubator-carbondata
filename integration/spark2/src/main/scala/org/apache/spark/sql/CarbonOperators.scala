@@ -25,19 +25,19 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.execution.LeafExecNode
+import org.apache.spark.sql.hive.CarbonRelation
 import org.apache.carbondata.core.constants.CarbonCommonConstants
 import org.apache.carbondata.core.util.CarbonProperties
 import org.apache.carbondata.scan.model._
-import org.apache.carbondata.spark.{CarbonFilters, RawValue, RawValueImpl}
+import org.apache.carbondata.spark.CarbonFilters
 import org.apache.carbondata.spark.rdd.CarbonScanRDD
-import org.apache.spark.sql.execution.LeafExecNode
-import org.apache.spark.sql.hive.CarbonRelation
 
 case class CarbonScan(
-    var attributesRaw: Seq[Attribute],
-    relationRaw: CarbonRelation,
-    dimensionPredicatesRaw: Seq[Expression],
-    useUnsafeCoversion: Boolean = true)(@transient val ocRaw: SQLContext) extends LeafExecNode {
+   var attributesRaw: Seq[Attribute],
+   relationRaw: CarbonRelation,
+   dimensionPredicatesRaw: Seq[Expression],
+   useUnsafeCoversion: Boolean = true)(@transient val sqlc: SQLContext) extends LeafExecNode {
   val carbonTable = relationRaw.metaData.carbonTable
   val selectedDims = scala.collection.mutable.MutableList[QueryDimension]()
   val selectedMsrs = scala.collection.mutable.MutableList[QueryMeasure]()
@@ -53,7 +53,6 @@ case class CarbonScan(
 
     plan.setOutLocationPath(
       CarbonProperties.getInstance().getProperty(CarbonCommonConstants.STORE_LOCATION_HDFS))
-    plan.setQueryId(ocRaw.getConf("queryId", System.nanoTime() + ""))
     processFilterExpressions(plan)
     plan
   }
@@ -134,31 +133,22 @@ case class CarbonScan(
     selectedMsrs.foreach(plan.addMeasure)
   }
 
-
   def inputRdd: CarbonScanRDD[Array[Any]] = {
 
     val conf = new Configuration()
     val absoluteTableIdentifier = carbonTable.getAbsoluteTableIdentifier
-    val model = QueryModel.createModel(
-      absoluteTableIdentifier, buildCarbonPlan, carbonTable)
-    val kv: RawValue[Array[Any]] = new RawValueImpl
-    // setting queryid
-    buildCarbonPlan.setQueryId(ocRaw.getConf("queryId", System.nanoTime() + ""))
 
     val tableCreationTime = carbonCatalog
-        .getTableCreationTime(relationRaw.databaseName, relationRaw.tableName)
+      .getTableCreationTime(relationRaw.databaseName, relationRaw.tableName)
     val schemaLastUpdatedTime = carbonCatalog
-        .getSchemaLastUpdatedTime(relationRaw.databaseName, relationRaw.tableName)
-    val big = new CarbonScanRDD(
-      ocRaw.sparkContext,
-      model,
+      .getSchemaLastUpdatedTime(relationRaw.databaseName, relationRaw.tableName)
+    new CarbonScanRDD(
+      sqlc.sparkSession.sparkContext,
+      attributesRaw,
       buildCarbonPlan.getFilterExpression,
-      kv,
-      conf,
-      tableCreationTime,
-      schemaLastUpdatedTime,
-      carbonCatalog.storePath)
-    big
+      absoluteTableIdentifier,
+      carbonTable
+    )
   }
 
   override def doExecute(): RDD[InternalRow] = {
@@ -168,12 +158,14 @@ case class CarbonScan(
       new Iterator[InternalRow] {
         override def hasNext: Boolean = iter.hasNext
 
-        override def next(): InternalRow =
+        override def next(): InternalRow = {
+          val value = iter.next
           if (outUnsafeRows) {
-            unsafeProjection(new GenericMutableRow(iter.next()))
+            unsafeProjection(new GenericMutableRow(value))
           } else {
-            new GenericMutableRow(iter.next())
+            new GenericMutableRow(value)
           }
+        }
       }
     }
   }

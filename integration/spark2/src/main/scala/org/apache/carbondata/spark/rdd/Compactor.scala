@@ -31,8 +31,8 @@ import org.apache.carbondata.spark.load.CarbonLoaderUtil
 import org.apache.carbondata.spark.merger.CarbonDataMergerUtil
 
 /**
- * Compactor class which handled the compaction cases.
- */
+  * Compactor class which handled the compaction cases.
+  */
 object Compactor {
 
   val logger = LogServiceFactory.getLogService(Compactor.getClass.getName)
@@ -40,7 +40,6 @@ object Compactor {
   def triggerCompaction(compactionCallableModel: CompactionCallableModel): Unit = {
 
     val storePath = compactionCallableModel.storePath
-    val partitioner = compactionCallableModel.partitioner
     val storeLocation = compactionCallableModel.storeLocation
     val carbonTable = compactionCallableModel.carbonTable
     val kettleHomePath = compactionCallableModel.kettleHomePath
@@ -60,7 +59,6 @@ object Compactor {
     val mergeLoadStartTime = CarbonLoaderUtil.readCurrentTime()
     val carbonMergerMapping = CarbonMergerMapping(storeLocation,
       storePath,
-      partitioner,
       carbonTable.getMetaDataFilepath,
       mergedLoadName,
       kettleHomePath,
@@ -73,17 +71,8 @@ object Compactor {
       maxSegmentColumnSchemaList = null
     )
     carbonLoadModel.setStorePath(carbonMergerMapping.storePath)
-    val segmentStatusManager = new SegmentStatusManager(new AbsoluteTableIdentifier
-    (CarbonProperties.getInstance().getProperty(CarbonCommonConstants.STORE_LOCATION),
-      new CarbonTableIdentifier(carbonLoadModel.getDatabaseName,
-        carbonLoadModel.getTableName,
-        carbonTable.getAbsoluteTableIdentifier.getCarbonTableIdentifier.getTableId
-      )
-    )
-    )
-    carbonLoadModel.setLoadMetadataDetails(segmentStatusManager
-      .readLoadMetadata(carbonTable.getMetaDataFilepath).toList.asJava
-    )
+    carbonLoadModel.setLoadMetadataDetails(
+      SegmentStatusManager.readLoadMetadata(carbonTable.getMetaDataFilepath).toList.asJava)
     var execInstance = "1"
     // in case of non dynamic executor allocation, number of executors are fixed.
     if (sc.sparkContext.getConf.contains("spark.executor.instances")) {
@@ -120,24 +109,24 @@ object Compactor {
           mergedLoadName, carbonLoadModel, mergeLoadStartTime, compactionType
         )) {
         logger.audit(s"Compaction request failed for table ${ carbonLoadModel.getDatabaseName }." +
-                     s"${ carbonLoadModel.getTableName }")
+          s"${ carbonLoadModel.getTableName }")
         logger.error(s"Compaction request failed for table ${ carbonLoadModel.getDatabaseName }." +
-                     s"${ carbonLoadModel.getTableName }")
+          s"${ carbonLoadModel.getTableName }")
         throw new Exception(s"Compaction failed to update metadata for table" +
-                            s" ${ carbonLoadModel.getDatabaseName }." +
-                            s"${ carbonLoadModel.getTableName }")
+          s" ${ carbonLoadModel.getDatabaseName }." +
+          s"${ carbonLoadModel.getTableName }")
       } else {
         logger.audit(s"Compaction request completed for table " +
-                     s"${ carbonLoadModel.getDatabaseName }.${ carbonLoadModel.getTableName }")
+          s"${ carbonLoadModel.getDatabaseName }.${ carbonLoadModel.getTableName }")
         logger.info("Compaction request completed for table ${ carbonLoadModel.getDatabaseName } " +
-                    s".${ carbonLoadModel.getTableName }")
+          s".${ carbonLoadModel.getTableName }")
       }
     } else {
       logger.audit("Compaction request failed for table ${ carbonLoadModel.getDatabaseName } " +
-                   s".${ carbonLoadModel.getTableName }"
+        s".${ carbonLoadModel.getTableName }"
       )
       logger.error("Compaction request failed for table ${ carbonLoadModel.getDatabaseName } " +
-                   s".${ carbonLoadModel.getTableName }")
+        s".${ carbonLoadModel.getTableName }")
       throw new Exception("Compaction Failure in Merger Rdd.")
     }
   }

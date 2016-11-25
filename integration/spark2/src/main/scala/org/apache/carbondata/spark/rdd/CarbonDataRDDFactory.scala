@@ -87,14 +87,13 @@ object CarbonDataRDDFactory {
       dateField: String,
       dateFieldActualName: String,
       dateValue: String) {
-
     val sc = sqlContext
     // Delete the records based on data
     val table = org.apache.carbondata.core.carbon.metadata.CarbonMetadata.getInstance
       .getCarbonTable(databaseName + "_" + tableName)
-    val segmentStatusManager = new SegmentStatusManager(table.getAbsoluteTableIdentifier)
     val loadMetadataDetailsArray =
-      segmentStatusManager.readLoadMetadata(table.getMetaDataFilepath()).toList
+      SegmentStatusManager.readLoadMetadata(table.getMetaDataFilepath).toList
+
     val resultMap = new CarbonDeleteLoadByDateRDD(
       sc.sparkContext,
       new DeletedLoadResultImpl(),
@@ -776,9 +775,7 @@ object CarbonDataRDDFactory {
           var splits = Array[TableSplit]()
           if (carbonLoadModel.isDirectLoad) {
             // get all table Splits, this part means files were divide to different partitions
-            splits = CarbonQueryUtil.getTableSplitsForDirectLoad(carbonLoadModel.getFactFilePath,
-              partitioner.nodeList, partitioner.partitionCount
-            )
+            splits = CarbonQueryUtil.getTableSplitsForDirectLoad(carbonLoadModel.getFactFilePath)
             // get all partition blocks from file list
             blocksGroupBy = splits.map {
               split =>
@@ -1034,10 +1031,7 @@ object CarbonDataRDDFactory {
 
   def readLoadMetadataDetails(model: CarbonLoadModel, storePath: String): Unit = {
     val metadataPath = model.getCarbonDataLoadSchema.getCarbonTable.getMetaDataFilepath
-    val segmentStatusManager =
-      new SegmentStatusManager(
-        model.getCarbonDataLoadSchema.getCarbonTable.getAbsoluteTableIdentifier)
-    val details = segmentStatusManager.readLoadMetadata(metadataPath)
+    val details = SegmentStatusManager.readLoadMetadata(metadataPath)
     model.setLoadMetadataDetails(details.toList.asJava)
   }
 
@@ -1045,21 +1039,18 @@ object CarbonDataRDDFactory {
       carbonLoadModel: CarbonLoadModel,
       table: CarbonTable,
       storePath: String,
-      isForceDeletion: Boolean) {
+      isForceDeletion: Boolean): Unit = {
     if (LoadMetadataUtil.isLoadDeletionRequired(carbonLoadModel)) {
       val loadMetadataFilePath = CarbonLoaderUtil
         .extractLoadMetadataFileLocation(carbonLoadModel)
-      val segmentStatusManager = new SegmentStatusManager(table.getAbsoluteTableIdentifier)
-      val details = segmentStatusManager
-        .readLoadMetadata(loadMetadataFilePath)
+      val details = SegmentStatusManager.readLoadMetadata(loadMetadataFilePath)
       val carbonTableStatusLock = CarbonLockFactory
         .getCarbonLockObj(table.getAbsoluteTableIdentifier.getCarbonTableIdentifier,
           LockUsage.TABLE_STATUS_LOCK)
 
       // Delete marked loads
       val isUpdationRequired = DeleteLoadFolders
-        .deleteLoadFoldersFromFileSystem(carbonLoadModel, storePath,
-          partitioner.partitionCount, isForceDeletion, details)
+        .deleteLoadFoldersFromFileSystem(carbonLoadModel, storePath, isForceDeletion, details)
 
       if (isUpdationRequired) {
         try {
@@ -1068,7 +1059,7 @@ object CarbonDataRDDFactory {
             LOGGER.info("Table status lock has been successfully acquired.")
 
             // read latest table status again.
-            val latestMetadata = segmentStatusManager.readLoadMetadata(loadMetadataFilePath)
+            val latestMetadata = SegmentStatusManager.readLoadMetadata(loadMetadataFilePath)
 
             // update the metadata details from old to new status.
             val latestStatus = CarbonLoaderUtil
@@ -1077,18 +1068,16 @@ object CarbonDataRDDFactory {
             CarbonLoaderUtil.writeLoadMetadata(
               carbonLoadModel.getCarbonDataLoadSchema,
               carbonLoadModel.getDatabaseName,
-              carbonLoadModel.getTableName, latestStatus
-            )
+              carbonLoadModel.getTableName, latestStatus)
           } else {
             val errorMsg = "Clean files request is failed for " +
-                           s"${ carbonLoadModel.getDatabaseName }." +
-                           s"${ carbonLoadModel.getTableName }" +
-                           ". Not able to acquire the table status lock due to other operation " +
-                           "running in the background."
+              s"${ carbonLoadModel.getDatabaseName }." +
+              s"${ carbonLoadModel.getTableName }" +
+              ". Not able to acquire the table status lock due to other operation " +
+              "running in the background."
             LOGGER.audit(errorMsg)
             LOGGER.error(errorMsg)
             throw new Exception(errorMsg + " Please try after some time.")
-
           }
         } finally {
           CarbonLockUtil.fileUnlock(carbonTableStatusLock, LockUsage.TABLE_STATUS_LOCK)

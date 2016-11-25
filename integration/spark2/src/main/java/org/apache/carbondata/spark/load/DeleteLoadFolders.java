@@ -231,7 +231,7 @@ public final class DeleteLoadFolders {
    *
    */
   public static boolean deleteLoadFoldersFromFileSystem(CarbonLoadModel loadModel,
-      String storeLocation, int partitionCount, boolean isForceDelete,
+      String storeLocation, boolean isForceDelete,
       LoadMetadataDetails[] details) {
     String path = null;
     List<LoadMetadataDetails> deletedLoads =
@@ -243,11 +243,8 @@ public final class DeleteLoadFolders {
       for (LoadMetadataDetails oneLoad : details) {
         if (checkIfLoadCanBeDeleted(oneLoad, isForceDelete)) {
           boolean deletionStatus = false;
-
-          for (int partitionId = 0; partitionId < partitionCount; partitionId++) {
-            path = getSegmentPath(loadModel, storeLocation, partitionId, oneLoad);
-            deletionStatus = physicalFactAndMeasureMetadataDeletion(path);
-          }
+          path = getSegmentPath(loadModel, storeLocation, 0, oneLoad);
+          deletionStatus = physicalFactAndMeasureMetadataDeletion(path);
           if (deletionStatus) {
             isDeleted = true;
             oneLoad.setVisibility("false");

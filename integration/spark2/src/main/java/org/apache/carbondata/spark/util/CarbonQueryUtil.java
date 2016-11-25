@@ -58,7 +58,7 @@ public final class CarbonQueryUtil {
    * It creates the one split for each region server.
    */
   public static synchronized TableSplit[] getTableSplits(String databaseName, String tableName,
-      CarbonQueryPlan queryPlan, SparkContext sparkContext) throws IOException {
+      CarbonQueryPlan queryPlan) throws IOException {
 
     //Just create splits depends on locations of region servers
     List<Partition> allPartitions = null;
@@ -87,14 +87,13 @@ public final class CarbonQueryUtil {
   /**
    * It creates the one split for each region server.
    */
-  public static TableSplit[] getTableSplitsForDirectLoad(String sourcePath, String[] nodeList,
-      int partitionCount) throws Exception {
+  public static TableSplit[] getTableSplitsForDirectLoad(String sourcePath) throws Exception {
 
     //Just create splits depends on locations of region servers
     FileType fileType = FileFactory.getFileType(sourcePath);
     DefaultLoadBalancer loadBalancer = null;
-    List<Partition> allPartitions = getAllFilesForDataLoad(sourcePath, fileType, partitionCount);
-    loadBalancer = new DefaultLoadBalancer(Arrays.asList(nodeList), allPartitions);
+    List<Partition> allPartitions = getAllFilesForDataLoad(sourcePath);
+    loadBalancer = new DefaultLoadBalancer(new ArrayList<String>(), allPartitions);
     TableSplit[] tblSplits = new TableSplit[allPartitions.size()];
     for (int i = 0; i < tblSplits.length; i++) {
       tblSplits[i] = new TableSplit();
@@ -170,20 +169,18 @@ public final class CarbonQueryUtil {
     }
   }
 
-  private static List<Partition> getAllFilesForDataLoad(String sourcePath, FileType fileType,
-      int partitionCount) throws Exception {
+  private static List<Partition> getAllFilesForDataLoad(String sourcePath) throws Exception {
     List<String> files = new ArrayList<String>(CarbonCommonConstants.CONSTANT_SIZE_TEN);
     splitFilePath(sourcePath, files, CarbonCommonConstants.COMMA);
     List<Partition> partitionList =
         new ArrayList<Partition>(CarbonCommonConstants.CONSTANT_SIZE_TEN);
     Map<Integer, List<String>> partitionFiles = new HashMap<Integer, List<String>>();
 
-    for (int i = 0; i < partitionCount; i++) {
-      partitionFiles.put(i, new ArrayList<String>(CarbonCommonConstants.CONSTANT_SIZE_TEN));
-      partitionList.add(new PartitionMultiFileImpl(i + "", partitionFiles.get(i)));
-    }
+    partitionFiles.put(0, new ArrayList<String>(CarbonCommonConstants.CONSTANT_SIZE_TEN));
+    partitionList.add(new PartitionMultiFileImpl(0 + "", partitionFiles.get(0)));
+
     for (int i = 0; i < files.size(); i++) {
-      partitionFiles.get(i % partitionCount).add(files.get(i));
+      partitionFiles.get(i % 1).add(files.get(i));
     }
     return partitionList;
   }

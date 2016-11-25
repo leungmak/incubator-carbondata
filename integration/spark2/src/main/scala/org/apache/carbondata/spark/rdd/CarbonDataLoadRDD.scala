@@ -199,11 +199,10 @@ class DataFileLoaderRDD[K, V](
       // for table split partition
       var splits = Array[TableSplit]()
       if (carbonLoadModel.isDirectLoad) {
-        splits = CarbonQueryUtil.getTableSplitsForDirectLoad(carbonLoadModel.getFactFilePath,
-          partitioner.nodeList, partitioner.partitionCount)
+        splits = CarbonQueryUtil.getTableSplitsForDirectLoad(carbonLoadModel.getFactFilePath)
       } else {
         splits = CarbonQueryUtil.getTableSplits(carbonLoadModel.getDatabaseName,
-          carbonLoadModel.getTableName, null, partitioner)
+          carbonLoadModel.getTableName, null)
       }
 
       splits.zipWithIndex.map { case (split, index) =>
