@@ -44,11 +44,7 @@ case class CarbonDictionaryDecoder(
     profile: CarbonProfile,
     aliasMap: CarbonAliasDecoderRelation,
     child: SparkPlan)
-  (@transient sqlContext: SQLContext)
   extends UnaryExecNode {
-
-
-  override def otherCopyArgs: Seq[AnyRef] = sqlContext :: Nil
 
   override val output: Seq[Attribute] = {
     child.output.map { a =>
@@ -144,13 +140,11 @@ case class CarbonDictionaryDecoder(
   override def doExecute(): RDD[InternalRow] = {
     attachTree(this, "execute") {
       val storePath = CarbonEnv.get.carbonMetastore.storePath
-      val queryId = sqlContext.getConf("queryId", System.nanoTime() + "")
       val absoluteTableIdentifiers = relations.map { relation =>
         val carbonTable = relation.carbonRelation.relationRaw.metaData.carbonTable
         (carbonTable.getFactTableName, carbonTable.getAbsoluteTableIdentifier)
       }.toMap
 
-      val recorder = CarbonTimeStatisticsFactory.createExecutorRecorder(queryId)
       if (isRequiredToDecode) {
         val dataTypes = child.output.map { attr => attr.dataType }
         child.execute().mapPartitions { iter =>
@@ -174,17 +168,7 @@ case class CarbonDictionaryDecoder(
             val unsafeProjection = UnsafeProjection.create(output.map(_.dataType).toArray)
             var flag = true
             var total = 0L
-            override final def hasNext: Boolean = {
-              flag = iter.hasNext
-              if (!flag && total > 0) {
-                val queryStatistic = new QueryStatistic()
-                queryStatistic
-                  .addFixedTimeStatistic(QueryStatisticsConstants.PREPARE_RESULT, total)
-                recorder.recordStatistics(queryStatistic)
-                recorder.logStatistics()
-              }
-              flag
-            }
+            override final def hasNext: Boolean = iter.hasNext
             override final def next(): InternalRow = {
               val startTime = System.currentTimeMillis()
               val row: InternalRow = iter.next()

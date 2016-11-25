@@ -17,15 +17,14 @@
 
 package org.apache.carbondata.examples
 
-import org.apache.spark.sql.{CarbonContext, CarbonEnv, CarbonRelation}
-
 import org.apache.carbondata.core.cache.dictionary.DictionaryColumnUniqueIdentifier
-import org.apache.carbondata.core.carbon.{CarbonTableIdentifier, ColumnIdentifier}
+import org.apache.carbondata.core.carbon.CarbonTableIdentifier
 import org.apache.carbondata.core.carbon.metadata.schema.table.column.CarbonDimension
 import org.apache.carbondata.core.carbon.path.CarbonStorePath
 import org.apache.carbondata.core.constants.CarbonCommonConstants
 import org.apache.carbondata.examples.util.ExampleUtils
 import org.apache.carbondata.spark.load.CarbonLoaderUtil
+import org.apache.spark.sql.{CarbonContext, CarbonEnv, CarbonRelation}
 
 /**
  * example for global dictionary generation
