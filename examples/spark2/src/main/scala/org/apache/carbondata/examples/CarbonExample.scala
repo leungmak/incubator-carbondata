@@ -37,29 +37,29 @@ object CarbonExample {
     val csvPath = ""
 
     // Drop table
-    spark.sql("DROP TABLE IF EXISTS carbon_table")
-
-    spark.sql("DROP TABLE IF EXISTS csv_table")
-    // Create table
-    spark.sql(
-      s"""
-         | CREATE TABLE carbon_table(
-         |    ID int,
-         |    date timestamp,
-         |    country string,
-         |    name string,
-         |    phonetype string,
-         |    serialname string,
-         |    salary int
-         | )
-         | USING org.apache.spark.sql.CarbonSource
-       """.stripMargin)
-
-      val prop = "/home/david/Documents/incubator-carbondata/conf/dataload.properties.template"
-      val tableName = "carbon_table"
-      val path = "/home/david/Documents/incubator-carbondata/examples/spark/src/main/resources" +
-          "/data.csv"
-      TableLoader.main(Array[String](prop, tableName, path))
+//    spark.sql("DROP TABLE IF EXISTS carbon_table")
+//
+//    spark.sql("DROP TABLE IF EXISTS csv_table")
+//    // Create table
+//    spark.sql(
+//      s"""
+//         | CREATE TABLE carbon_table(
+//         |    ID int,
+//         |    date string,
+//         |    country string,
+//         |    name string,
+//         |    phonetype string,
+//         |    serialname string,
+//         |    salary int
+//         | )
+//         | USING org.apache.spark.sql.CarbonSource
+//       """.stripMargin)
+//
+//      val prop = "/home/david/Documents/incubator-carbondata/conf/dataload.properties.template"
+//      val tableName = "carbon_table"
+//      val path = "/home/david/Documents/incubator-carbondata/examples/spark/src/main/resources" +
+//          "/data.csv"
+//      TableLoader.main(Array[String](prop, tableName, path))
 //
 //    spark.sql(
 //      s"""
@@ -96,7 +96,8 @@ object CarbonExample {
     spark.sql("""
            SELECT *
            FROM carbon_table
-           """).explain(true)
+           limit 10
+           """).show(true)
 
     // Drop table
   //  spark.sql("DROP TABLE IF EXISTS carbon_table")
