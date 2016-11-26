@@ -51,7 +51,7 @@ case class CarbonDictionaryDecoder(
       val attr = aliasMap.getOrElse(a, a)
       val relation = relations.find(p => p.contains(attr))
       if(relation.isDefined && canBeDecoded(attr)) {
-        val carbonTable = relation.get.carbonRelation.relationRaw.metaData.carbonTable
+        val carbonTable = relation.get.carbonRelation.carbonRelation.metaData.carbonTable
         val carbonDimension = carbonTable
           .getDimensionByName(carbonTable.getFactTableName, attr.name)
         if (carbonDimension != null &&
@@ -59,7 +59,7 @@ case class CarbonDictionaryDecoder(
             !carbonDimension.hasEncoding(Encoding.DIRECT_DICTIONARY)) {
           val newAttr = AttributeReference(a.name,
             convertCarbonToSparkDataType(carbonDimension,
-              relation.get.carbonRelation.relationRaw),
+              relation.get.carbonRelation.carbonRelation),
             a.nullable,
             a.metadata)(a.exprId).asInstanceOf[Attribute]
           newAttr
@@ -118,7 +118,7 @@ case class CarbonDictionaryDecoder(
       val attr = aliasMap.getOrElse(a, a)
       val relation = relations.find(p => p.contains(attr))
       if(relation.isDefined && canBeDecoded(attr)) {
-        val carbonTable = relation.get.carbonRelation.relationRaw.metaData.carbonTable
+        val carbonTable = relation.get.carbonRelation.carbonRelation.metaData.carbonTable
         val carbonDimension =
           carbonTable.getDimensionByName(carbonTable.getFactTableName, attr.name)
         if (carbonDimension != null &&
@@ -141,7 +141,7 @@ case class CarbonDictionaryDecoder(
     attachTree(this, "execute") {
       val storePath = CarbonEnv.get.carbonMetastore.storePath
       val absoluteTableIdentifiers = relations.map { relation =>
-        val carbonTable = relation.carbonRelation.relationRaw.metaData.carbonTable
+        val carbonTable = relation.carbonRelation.carbonRelation.metaData.carbonTable
         (carbonTable.getFactTableName, carbonTable.getAbsoluteTableIdentifier)
       }.toMap
 

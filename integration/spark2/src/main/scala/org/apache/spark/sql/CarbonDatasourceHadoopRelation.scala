@@ -43,7 +43,7 @@ private[sql] case class CarbonDatasourceHadoopRelation(
 
   lazy val absIdentifier = AbsoluteTableIdentifier.fromTablePath(paths.head)
   lazy val carbonTable = SchemaReader.readCarbonTableFromStore(absIdentifier)
-  lazy val relationRaw: CarbonRelation = {
+  lazy val carbonRelation: CarbonRelation = {
     CarbonRelation(
       carbonTable.getDatabaseName,
       carbonTable.getFactTableName,
@@ -58,7 +58,7 @@ private[sql] case class CarbonDatasourceHadoopRelation(
 
   override def sqlContext: SQLContext = sparkSession.sqlContext
 
-  override def schema: StructType = tableSchema.getOrElse(relationRaw.schema)
+  override def schema: StructType = tableSchema.getOrElse(carbonRelation.schema)
 
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
     val job = new Job(new JobConf())

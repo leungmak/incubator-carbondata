@@ -18,7 +18,6 @@
 package org.apache.spark.sql.examples
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.execution.CarbonLateDecodeStrategy
 
 object CarbonExample {
 
