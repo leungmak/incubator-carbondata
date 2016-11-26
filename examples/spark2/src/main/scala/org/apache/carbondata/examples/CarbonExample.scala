@@ -43,17 +43,17 @@ object CarbonExample {
     // Create table
     spark.sql(
       s"""
-         | CREATE TABLE carbon_table
-         | (ID int,
-         | date timestamp,
-         | country string,
-         | name string,
-         | phonetype string,
-         | serialname string,
-         | salary int)
+         | CREATE TABLE carbon_table(
+         |    ID int,
+         |    date timestamp,
+         |    country string,
+         |    name string,
+         |    phonetype string,
+         |    serialname string,
+         |    salary int
+         | )
          | USING org.apache.spark.sql.CarbonSource
        """.stripMargin)
-
 
       val prop = "/home/david/Documents/incubator-carbondata/conf/dataload.properties.template"
       val tableName = "carbon_table"
@@ -96,7 +96,7 @@ object CarbonExample {
     spark.sql("""
            SELECT *
            FROM carbon_table
-           """).show()
+           """).explain(true)
 
     // Drop table
   //  spark.sql("DROP TABLE IF EXISTS carbon_table")
