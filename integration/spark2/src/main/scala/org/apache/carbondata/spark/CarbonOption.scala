@@ -31,6 +31,8 @@ class CarbonOption(options: Map[String, String]) {
 
   def tableId: String = options.getOrElse("tableId", "default_table_id")
 
+  def tablePath: String = s"$dbName/$tableName"
+
   def partitionCount: String = options.getOrElse("partitionCount", "1")
 
   def partitionClass: String = {

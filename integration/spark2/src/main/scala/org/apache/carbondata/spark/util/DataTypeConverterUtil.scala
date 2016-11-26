@@ -22,19 +22,19 @@ import org.apache.carbondata.core.carbon.metadata.datatype.DataType
 object DataTypeConverterUtil {
   def convertToCarbonType(dataType: String): DataType = {
     dataType.toLowerCase match {
-      case "string" => DataType.STRING
-      case "int" => DataType.INT
-      case "integer" => DataType.INT
-      case "tinyint" => DataType.SHORT
-      case "short" => DataType.SHORT
-      case "long" => DataType.LONG
-      case "bigint" => DataType.LONG
-      case "numeric" => DataType.DOUBLE
-      case "double" => DataType.DOUBLE
-      case "decimal" => DataType.DECIMAL
-      case "timestamp" => DataType.TIMESTAMP
-      case "array" => DataType.ARRAY
-      case "struct" => DataType.STRUCT
+      case "stringtype" => DataType.STRING
+      case "inttype" => DataType.INT
+      case "integertype" => DataType.INT
+      case "tinyinttype" => DataType.SHORT
+      case "shorttype" => DataType.SHORT
+      case "longtype" => DataType.LONG
+      case "biginttype" => DataType.LONG
+      case "numerictype" => DataType.DOUBLE
+      case "doubletype" => DataType.DOUBLE
+      case "decimaltype" => DataType.DECIMAL
+      case "timestamptype" => DataType.TIMESTAMP
+      case "arraytype" => DataType.ARRAY
+      case "structtype" => DataType.STRUCT
       case _ => sys.error(s"Unsupported data type: $dataType")
     }
   }

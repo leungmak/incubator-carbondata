@@ -179,12 +179,12 @@ case class CompactionCallableModel(storePath: String,
     compactionType: CompactionType)
 
 object TableNewProcessor {
-  def apply(cm: tableModel, sqlContext: SQLContext): TableInfo = {
-    new TableNewProcessor(cm, sqlContext).process
+  def apply(cm: tableModel): TableInfo = {
+    new TableNewProcessor(cm).process
   }
 }
 
-class TableNewProcessor(cm: tableModel, sqlContext: SQLContext) {
+class TableNewProcessor(cm: tableModel) {
 
   var index = 0
   var rowGroup = 0
@@ -818,24 +818,23 @@ case class CreateTable(cm: tableModel) extends RunnableCommand {
     val dbName = cm.databaseName
     LOGGER.audit(s"Creating Table with Database name [$dbName] and Table name [$tbName]")
 
-    val tableInfo: TableInfo = TableNewProcessor(cm, sparkSession.sqlContext)
+    val tableInfo: TableInfo = TableNewProcessor(cm)
 
     if (tableInfo.getFactTable.getListOfColumns.size <= 0) {
       sys.error("No Dimensions found. Table should have at least one dimesnion !")
     }
 
-    if (sparkSession.sqlContext.tableNames(dbName).exists(_.equalsIgnoreCase(tbName))) {
-      if (!cm.ifNotExistsSet) {
-        LOGGER.audit(
-          s"Table creation with Database name [$dbName] and Table name [$tbName] failed. " +
-          s"Table [$tbName] already exists under database [$dbName]")
-        sys.error(s"Table [$tbName] already exists under database [$dbName]")
-      }
-    } else {
+//    if (sparkSession.sqlContext.tableNames(dbName).exists(_.equalsIgnoreCase(tbName))) {
+//      if (!cm.ifNotExistsSet) {
+//        LOGGER.audit(
+//          s"Table creation with Database name [$dbName] and Table name [$tbName] failed. " +
+//          s"Table [$tbName] already exists under database [$dbName]")
+//        sys.error(s"Table [$tbName] already exists under database [$dbName]")
+//      }
+//    } else {
       // Add Database to catalog and persist
       val catalog = CarbonEnv.get.carbonMetastore
-      // Need to fill partitioner class when we support partition
-      val tablePath = catalog.createTableFromThrift(tableInfo, dbName, tbName, null)(sparkSession)
+      val tablePath = catalog.createTableFromThrift(tableInfo, dbName, tbName)(sparkSession)
 //      try {
 //        sparkSession.sql(
 //          s"""CREATE TABLE $dbName.$tbName USING carbondata""" +
@@ -855,7 +854,7 @@ case class CreateTable(cm: tableModel) extends RunnableCommand {
 //      }
 
       LOGGER.audit(s"Table created with Database name [$dbName] and Table name [$tbName]")
-    }
+//    }
 
     Seq.empty
   }

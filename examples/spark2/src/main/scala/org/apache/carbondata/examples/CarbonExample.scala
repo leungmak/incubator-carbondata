@@ -32,19 +32,13 @@ object CarbonExample {
 
     val csvPath = ""
     // Drop table
-    spark.sql("DROP TABLE IF EXISTS carbon_table")
-    spark.sql("DROP TABLE IF EXISTS csv_table")
-
+    // spark.sql("DROP TABLE IF EXISTS carbon_table")
+    // spark.sql("DROP TABLE IF EXISTS csv_table")
+    // spark.sql("create database db1")
     // Create table
     spark.sql(
       s"""
          | CREATE TABLE carbon_table
-         | USING org.apache.spark.sql.CarbonSource
-       """.stripMargin)
-
-    spark.sql(
-      s"""
-         | CREATE TABLE csv_table
          | (ID int,
          | date timestamp,
          | country string,
@@ -52,7 +46,20 @@ object CarbonExample {
          | phonetype string,
          | serialname string,
          | salary int)
+         | USING org.apache.spark.sql.CarbonSource
        """.stripMargin)
+//
+//    spark.sql(
+//      s"""
+//         | CREATE TABLE csv_table
+//         | (ID int,
+//         | date timestamp,
+//         | country string,
+//         | name string,
+//         | phonetype string,
+//         | serialname string,
+//         | salary int)
+//       """.stripMargin)
 
 //    spark.sql(
 //      s"""
@@ -60,19 +67,19 @@ object CarbonExample {
 //         | INTO TABLE csv_table
 //       """.stripMargin)
 
-    spark.sql(
-      s"""
-         | INSERT INTO TABLE carbon_table
-         | SELECT * FROM csv_table
-       """.stripMargin)
+//    spark.sql(
+//      s"""
+//         | INSERT INTO TABLE carbon_table
+//         | SELECT * FROM csv_table
+//       """.stripMargin)
 
     // Perform a query
-    spark.sql("""
-           SELECT country, count(salary) AS amount
-           FROM carbon_table
-           WHERE country IN ('china','france')
-           GROUP BY country
-           """).show()
+//    spark.sql("""
+//           SELECT country, count(salary) AS amount
+//           FROM carbon_table
+//           WHERE country IN ('china','france')
+//           GROUP BY country
+//           """).show()
 
     // Drop table
     spark.sql("DROP TABLE IF EXISTS carbon_table")

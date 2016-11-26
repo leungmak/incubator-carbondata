@@ -37,7 +37,7 @@ object CarbonEnv extends Logging {
   def init(sqlContext: SQLContext): Unit = {
     if (!initialized) {
       val catalog = {
-        val storePath = sqlContext.sparkSession.conf.get(CarbonCommonConstants.STORE_LOCATION, "carbon_store")
+        val storePath = sqlContext.sparkSession.conf.get(CarbonCommonConstants.STORE_LOCATION, "/user/hive/warehouse/carbonstore")
         new CarbonMetastore(sqlContext.sparkSession.conf, storePath)
       }
       carbonEnv = CarbonEnv(catalog)

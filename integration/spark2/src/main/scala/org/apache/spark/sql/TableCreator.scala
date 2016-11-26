@@ -38,7 +38,8 @@ object TableCreator {
     * @param dimensionDatatype
     */
   def isDetectAsDimentionDatatype(dimensionDatatype: String): Boolean = {
-    val dimensionType = Array("string", "array", "struct", "timestamp")
+    val dimensionType =
+      Array("string", "stringtype", "array", "arraytype", "struct", "structtype", "timestamp", "timestamptype")
     dimensionType.exists(x => x.equalsIgnoreCase(dimensionDatatype))
   }
 

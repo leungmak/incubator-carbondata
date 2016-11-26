@@ -17,6 +17,8 @@
 
 package org.apache.spark.sql
 
+import java.io.File
+
 import org.apache.carbondata.core.constants.CarbonCommonConstants
 
 import scala.language.implicitConversions
@@ -26,7 +28,6 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.execution.CarbonLateDecodeStrategy
 import org.apache.spark.sql.optimizer.CarbonLateDecodeRule
 import org.apache.carbondata.spark.CarbonOption
-import org.apache.carbondata.spark.exception.MalformedCarbonCommandException
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
 import org.apache.spark.sql.execution.command.{CreateTable, Field}
 
@@ -34,28 +35,9 @@ import org.apache.spark.sql.execution.command.{CreateTable, Field}
  * Carbon relation provider compliant to data source api.
  * Creates carbon relations
  */
-class CarbonSource extends RelationProvider
-    with CreatableRelationProvider with SchemaRelationProvider with DataSourceRegister {
+class CarbonSource extends CreatableRelationProvider with SchemaRelationProvider with DataSourceRegister {
 
   override def shortName(): String = "carbondata"
-
-  /**
-   * Returns a new base relation with the given parameters.
-   * Note: the parameters' keywords are case insensitive and this insensitivity is enforced
-   * by the Map that is passed to the function.
-   */
-  override def createRelation(
-      sqlContext: SQLContext,
-      parameters: Map[String, String]): BaseRelation = {
-    // if path is provided we can directly create Hadoop relation. \
-    // Otherwise create datasource relation
-    CarbonEnv.init(sqlContext)
-    addLateCodeOptimization(sqlContext.sparkSession)
-    parameters.get("path") match {
-      case Some(path) => CarbonDatasourceHadoopRelation(sqlContext.sparkSession, Array(path), parameters, None)
-      case _ => CarbonDatasourceHadoopRelation(sqlContext.sparkSession, Array.empty[String], parameters, None)
-    }
-  }
 
   override def createRelation(
       sqlContext: SQLContext,
@@ -94,7 +76,7 @@ class CarbonSource extends RelationProvider
       new CarbonDataFrameWriter(sqlContext, data).appendToCarbonFile(parameters)
     }
 
-    createRelation(sqlContext, parameters)
+    createRelation(sqlContext, parameters, data.schema)
   }
 
   override def createRelation(
@@ -103,13 +85,9 @@ class CarbonSource extends RelationProvider
       dataSchema: StructType): BaseRelation = {
     CarbonEnv.init(sqlContext)
     addLateCodeOptimization(sqlContext.sparkSession)
-    createTableIfNotExists(sqlContext.sparkSession, parameters, dataSchema)
-    parameters.get("path") match {
-      case Some(path) =>
-        CarbonDatasourceHadoopRelation(sqlContext.sparkSession, Array(path), parameters, Option(dataSchema))
-      case _ =>
-        CarbonDatasourceHadoopRelation(sqlContext.sparkSession, Array.empty[String], parameters, Option(dataSchema))
-    }
+    val path = createTableIfNotExists(sqlContext.sparkSession, parameters, dataSchema)
+    CarbonDatasourceHadoopRelation(sqlContext.sparkSession, Array(path), parameters, Option(dataSchema))
+
   }
 
   private def addLateCodeOptimization(ss: SparkSession): Unit = {
@@ -118,12 +96,16 @@ class CarbonSource extends RelationProvider
   }
 
   private def createTableIfNotExists(sparkSession: SparkSession, parameters: Map[String, String],
-                                     dataSchema: StructType):
-  Unit
-  = {
-    val options = new CarbonOption(parameters)
+                                     dataSchema: StructType): String = {
+    val (dbName, tableName) = parameters.get("path") match {
+      case Some(path) =>
+        val p = path.split(File.separator)
+        ("default", p(p.length - 1))
+      case _ => throw new Exception("do not have dbname and tablename for carbon table")
+    }
     try {
-      CarbonEnv.get.carbonMetastore.lookupRelation(Option(options.dbName), options.tableName)(sparkSession)
+      CarbonEnv.get.carbonMetastore.lookupRelation(Option(dbName), tableName)(sparkSession)
+      CarbonEnv.get.carbonMetastore.storePath + s"/$dbName/$tableName"
     } catch {
       case ex: NoSuchTableException =>
         val fields = dataSchema.map { col =>
@@ -146,11 +128,10 @@ class CarbonSource extends RelationProvider
         }
         val map = scala.collection.mutable.Map[String, String]();
         parameters.foreach { x => map.put(x._1, x._2) }
-        val cm = TableCreator.prepareTableModel(false, Option(options.dbName), options.tableName,
-          fields, Nil, map)
+        val cm = TableCreator.prepareTableModel(false, Option(dbName), tableName, fields, Nil, map)
         CreateTable(cm).run(sparkSession)
-
-      case _ =>
+        CarbonEnv.get.carbonMetastore.storePath + s"/$dbName/$tableName"
+      case _ => throw new Exception("do not have dbname and tablename for carbon table")
     }
   }
 

@@ -279,7 +279,7 @@ class CarbonMetastore(conf: RuntimeConfig, val storePath: String) extends Loggin
    */
   def createTableFromThrift(
       tableInfo: org.apache.carbondata.core.carbon.metadata.schema.table.TableInfo,
-      dbName: String, tableName: String, partitioner: Partitioner)
+      dbName: String, tableName: String)
     (sparkSession: SparkSession): String = {
     if (tableExists(TableIdentifier(tableName, Some(dbName)))(sparkSession)) {
       sys.error(s"Table [$tableName] already exists under Database [$dbName]")
