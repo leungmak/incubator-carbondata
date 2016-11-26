@@ -17,8 +17,12 @@
 
 package org.apache.spark.sql.examples
 
+import java.io.File
+
+import org.apache.carbondata.core.constants.CarbonCommonConstants
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.execution.CarbonLateDecodeStrategy
+import org.apache.spark.util.TableLoader
 
 object CarbonExample {
 
@@ -28,11 +32,13 @@ object CarbonExample {
         .master("local")
         .appName("CarbonExample")
         .enableHiveSupport()
+        .config(CarbonCommonConstants.STORE_LOCATION,
+          "/home/david/Documents/incubator-carbondata/examples/spark2/target/store")
         .getOrCreate()
 
     val csvPath = ""
     // Drop table
-    // spark.sql("DROP TABLE IF EXISTS carbon_table")
+    spark.sql("DROP TABLE IF EXISTS carbon_table")
     // spark.sql("DROP TABLE IF EXISTS csv_table")
     // spark.sql("create database db1")
     // Create table
@@ -48,6 +54,13 @@ object CarbonExample {
          | salary int)
          | USING org.apache.spark.sql.CarbonSource
        """.stripMargin)
+
+
+      val prop = "/home/david/Documents/incubator-carbondata/conf/dataload.properties.template"
+      val tableName = "carbon_table"
+      val path = "/home/david/Documents/incubator-carbondata/examples/spark/src/main/resources" +
+          "/data.csv"
+      TableLoader.main(Array[String](prop, tableName, path))
 //
 //    spark.sql(
 //      s"""
@@ -82,8 +95,8 @@ object CarbonExample {
 //           """).show()
 
     // Drop table
-    spark.sql("DROP TABLE IF EXISTS carbon_table")
-    spark.sql("DROP TABLE IF EXISTS csv_table")
+  //  spark.sql("DROP TABLE IF EXISTS carbon_table")
+  //  spark.sql("DROP TABLE IF EXISTS csv_table")
   }
 
 }
