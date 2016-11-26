@@ -1004,16 +1004,14 @@ case class LoadTable(
     if (isOverwriteExist) {
       sys.error(s"Overwrite is not supported for carbon table with $dbName.$tableName")
     }
-    if (null == org.apache.carbondata.core.carbon.metadata.CarbonMetadata.getInstance
-      .getCarbonTable(dbName + "_" + tableName)) {
+    if (null == CarbonMetadata.getInstance.getCarbonTable(dbName + "_" + tableName)) {
       logError(s"Data loading failed. table not found: $dbName.$tableName")
       LOGGER.audit(s"Data loading failed. table not found: $dbName.$tableName")
       sys.error(s"Data loading failed. table not found: $dbName.$tableName")
     }
 
     val relation = CarbonEnv.get.carbonMetastore
-      .lookupRelation(Option(dbName), tableName)(sparkSession)
-      .asInstanceOf[CarbonRelation]
+        .lookupRelation(Option(dbName), tableName)(sparkSession).asInstanceOf[CarbonRelation]
     if (relation == null) {
       sys.error(s"Table $dbName.$tableName does not exist")
     }
@@ -1026,15 +1024,13 @@ case class LoadTable(
     try {
       if (carbonLock.lockWithRetries()) {
         logInfo("Successfully able to get the table metadata file lock")
-      }
-      else {
+      } else {
         sys.error("Table is locked for updation. Please try after some time")
       }
 
       val factPath = if (dataFrame.isDefined) {
         ""
-      }
-      else {
+      } else {
         FileUtils.getPaths(
           CarbonUtil.checkAndAppendHDFSUrl(factPathFromUser))
       }
@@ -1044,8 +1040,7 @@ case class LoadTable(
       carbonLoadModel.setStorePath(relation.tableMeta.storePath)
       if (dimFilesPath.isEmpty) {
         carbonLoadModel.setDimFolderPath(null)
-      }
-      else {
+      } else {
         val x = dimFilesPath.map(f => f.table + ":" + CarbonUtil.checkAndAppendHDFSUrl(f.loadPath))
         carbonLoadModel.setDimFolderPath(x.mkString(","))
       }
@@ -1056,14 +1051,13 @@ case class LoadTable(
       val dataLoadSchema = new CarbonDataLoadSchema(table)
       // Need to fill dimension relation
       carbonLoadModel.setCarbonDataLoadSchema(dataLoadSchema)
-      val configuredStore = CarbonLoaderUtil.getConfiguredLocalDirs(SparkEnv.get.conf)
 
       var partitionLocation = relation.tableMeta.storePath + "/partition/" +
                               relation.tableMeta.carbonTableIdentifier.getDatabaseName + "/" +
                               relation.tableMeta.carbonTableIdentifier.getTableName + "/"
 
 
-      val columinar = sparkSession.conf.get("carbon.is.columnar.storage", "true").toBoolean
+      val columnar = sparkSession.conf.get("carbon.is.columnar.storage", "true").toBoolean
       val kettleHomePath = CarbonScalaUtil.getKettleHome(sparkSession.sqlContext)
 
       // TODO It will be removed after kettle is removed.
@@ -1147,7 +1141,7 @@ case class LoadTable(
             carbonLoadModel,
             relation.tableMeta.storePath,
             kettleHomePath,
-            columinar,
+            columnar,
             partitionStatus,
             useKettle,
             dataFrame)
