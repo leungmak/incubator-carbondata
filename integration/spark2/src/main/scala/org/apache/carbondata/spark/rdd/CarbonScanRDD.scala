@@ -39,6 +39,7 @@ import org.apache.carbondata.hadoop.{CarbonInputFormat, CarbonInputSplit, Carbon
 import org.apache.carbondata.hadoop.readsupport.impl.RawDataReadSupport
 import org.apache.carbondata.scan.expression.Expression
 import org.apache.carbondata.spark.load.CarbonLoaderUtil
+import org.apache.carbondata.spark.readsupport.SparkRowReadSupportImpl
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl
 
 class CarbonSparkPartition(
@@ -210,7 +211,7 @@ class CarbonScanRDD[V: ClassTag](
   }
 
   private def prepareInputFormatForExecutor(conf: Configuration): CarbonInputFormat[V] = {
-    CarbonInputFormat.setCarbonReadSupport(classOf[RawDataReadSupport], conf)
+    CarbonInputFormat.setCarbonReadSupport(classOf[SparkRowReadSupportImpl], conf)
     createInputFormat(conf)
   }
 
