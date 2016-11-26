@@ -18,7 +18,6 @@
 package org.apache.spark.sql.examples
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.execution.CarbonLateDecodeStrategy
 
 object CarbonExample {
 
@@ -31,10 +30,11 @@ object CarbonExample {
         .getOrCreate()
 
     val csvPath = ""
+
     // Drop table
-    // spark.sql("DROP TABLE IF EXISTS carbon_table")
-    // spark.sql("DROP TABLE IF EXISTS csv_table")
-    // spark.sql("create database db1")
+    spark.sql("DROP TABLE IF EXISTS carbon_table")
+    spark.sql("DROP TABLE IF EXISTS csv_table")
+
     // Create table
     spark.sql(
       s"""
@@ -80,6 +80,11 @@ object CarbonExample {
 //           WHERE country IN ('china','france')
 //           GROUP BY country
 //           """).show()
+
+    spark.sql("""
+           SELECT *
+           FROM carbon_table
+           """).show()
 
     // Drop table
     spark.sql("DROP TABLE IF EXISTS carbon_table")

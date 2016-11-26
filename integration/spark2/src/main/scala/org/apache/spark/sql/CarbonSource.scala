@@ -25,8 +25,6 @@ import scala.language.implicitConversions
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.execution.CarbonLateDecodeStrategy
-import org.apache.spark.sql.optimizer.CarbonLateDecodeRule
 import org.apache.carbondata.spark.CarbonOption
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
 import org.apache.spark.sql.execution.command.{CreateTable, Field}
@@ -35,10 +33,12 @@ import org.apache.spark.sql.execution.command.{CreateTable, Field}
  * Carbon relation provider compliant to data source api.
  * Creates carbon relations
  */
-class CarbonSource extends CreatableRelationProvider with SchemaRelationProvider with DataSourceRegister {
+class CarbonSource extends CreatableRelationProvider
+    with SchemaRelationProvider with DataSourceRegister {
 
   override def shortName(): String = "carbondata"
 
+  // called by any write operation like INSERT INTO DDL or DataFrame.write API
   override def createRelation(
       sqlContext: SQLContext,
       mode: SaveMode,
@@ -59,7 +59,7 @@ class CarbonSource extends CreatableRelationProvider with SchemaRelationProvider
       case (SaveMode.ErrorIfExists, true) =>
         sys.error(s"ErrorIfExists mode, path $storePath already exists.")
       case (SaveMode.Overwrite, true) =>
-        sqlContext.sparkSession.sql(s"DROP TABLE IF EXISTS ${ options.dbName }.${ options.tableName }")
+        sqlContext.sparkSession.sql(s"DROP TABLE IF EXISTS ${options.dbName}.${options.tableName}")
         (true, false)
       case (SaveMode.Overwrite, false) | (SaveMode.ErrorIfExists, false) =>
         (true, false)
@@ -79,6 +79,7 @@ class CarbonSource extends CreatableRelationProvider with SchemaRelationProvider
     createRelation(sqlContext, parameters, data.schema)
   }
 
+  // called by DDL operation with a USING clause
   override def createRelation(
       sqlContext: SQLContext,
       parameters: Map[String, String],
@@ -86,13 +87,14 @@ class CarbonSource extends CreatableRelationProvider with SchemaRelationProvider
     CarbonEnv.init(sqlContext)
     addLateCodeOptimization(sqlContext.sparkSession)
     val path = createTableIfNotExists(sqlContext.sparkSession, parameters, dataSchema)
-    CarbonDatasourceHadoopRelation(sqlContext.sparkSession, Array(path), parameters, Option(dataSchema))
+    CarbonDatasourceHadoopRelation(sqlContext.sparkSession, Array(path), parameters,
+      Option(dataSchema))
 
   }
 
   private def addLateCodeOptimization(ss: SparkSession): Unit = {
-    ss.sessionState.experimentalMethods.extraStrategies = Seq(new CarbonLateDecodeStrategy)
-    ss.sessionState.experimentalMethods.extraOptimizations = Seq(new CarbonLateDecodeRule)
+    //ss.sessionState.experimentalMethods.extraStrategies = Seq(new CarbonLateDecodeStrategy)
+    //ss.sessionState.experimentalMethods.extraOptimizations = Seq(new CarbonLateDecodeRule)
   }
 
   private def createTableIfNotExists(sparkSession: SparkSession, parameters: Map[String, String],

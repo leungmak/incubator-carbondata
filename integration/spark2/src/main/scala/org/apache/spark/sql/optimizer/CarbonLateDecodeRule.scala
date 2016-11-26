@@ -675,7 +675,7 @@ case class CarbonDecoderRelation(
     }
   }
 
-  lazy val dictionaryMap = carbonRelation.relationRaw.metaData.dictionaryMap
+  lazy val dictionaryMap = carbonRelation.carbonRelation.metaData.dictionaryMap
 }
 
 case class CarbonAliasDecoderRelation() {
