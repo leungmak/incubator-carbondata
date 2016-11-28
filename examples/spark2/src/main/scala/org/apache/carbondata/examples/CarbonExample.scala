@@ -18,7 +18,6 @@
 package org.apache.spark.sql.examples
 
 import org.apache.carbondata.core.constants.CarbonCommonConstants
-import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.util.TableLoader
 
@@ -36,8 +35,6 @@ object CarbonExample {
         .getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
-    val csvPath = ""
-
     // Drop table
     spark.sql("DROP TABLE IF EXISTS carbon_table")
 
@@ -48,10 +45,9 @@ object CarbonExample {
          | CREATE TABLE carbon_table(
          |    shortField short,
          |    intField int,
-         |    bigintField bigint,
+         |    bigintField long,
          |    doubleField double,
-         |    stringField string,
-         |    timestampField timestamp
+         |    stringField string
          | )
          | USING org.apache.spark.sql.CarbonSource
        """.stripMargin)
@@ -94,9 +90,9 @@ object CarbonExample {
 //           """).show()
 
     spark.sql("""
-           SELECT *
+           SELECT sum(intField), stringField
            FROM carbon_table
-           limit 10
+           GROUP BY stringField
            """).show
 
     // Drop table
