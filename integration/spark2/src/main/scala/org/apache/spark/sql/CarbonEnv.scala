@@ -32,7 +32,7 @@ object CarbonEnv extends Logging {
 
   @volatile private var carbonEnv: CarbonEnv  = _
 
-  var initialized = false // maybe this no need
+  var initialized = false
 
   def init(sqlContext: SQLContext): Unit = {
     if (!initialized) {
@@ -41,6 +41,7 @@ object CarbonEnv extends Logging {
         new CarbonMetastore(sqlContext.sparkSession.conf, storePath)
       }
       carbonEnv = CarbonEnv(catalog)
+      initialized = true
     }
   }
 
