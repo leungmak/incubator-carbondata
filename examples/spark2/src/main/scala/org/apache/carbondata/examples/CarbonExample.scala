@@ -24,6 +24,7 @@ import org.apache.spark.util.TableLoader
 object CarbonExample {
 
   def main(args: Array[String]): Unit = {
+    // rootPath is the root folder of the carbon project
     val rootPath = "/Users/jackylk/code/incubator-carbondata"
     val spark = SparkSession
         .builder()
