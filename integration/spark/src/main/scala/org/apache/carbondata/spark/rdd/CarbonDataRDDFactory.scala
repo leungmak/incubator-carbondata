@@ -24,16 +24,17 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 import scala.util.control.Breaks._
+
+import com.databricks.spark.csv.newapi.CarbonTextFile
 import org.apache.hadoop.conf.{Configurable, Configuration}
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.mapreduce.Job
 import org.apache.hadoop.mapreduce.lib.input.{FileInputFormat, FileSplit}
+import org.apache.spark.{SparkContext, SparkEnv, SparkException}
+import org.apache.spark.sql.{CarbonEnv, DataFrame, SQLContext}
 import org.apache.spark.sql.execution.command.{AlterTableModel, CompactionCallableModel, CompactionModel, Partitioner}
 import org.apache.spark.sql.hive.DistributionUtil
-import org.apache.spark.sql.{CarbonEnv, DataFrame, SQLContext}
 import org.apache.spark.util.SplitUtils
-import org.apache.spark.{SparkContext, SparkEnv, SparkException}
-import com.databricks.spark.csv.newapi.CarbonTextFile
 
 import org.apache.carbondata.common.logging.LogServiceFactory
 import org.apache.carbondata.core.carbon.{CarbonDataLoadSchema, CarbonTableIdentifier}
