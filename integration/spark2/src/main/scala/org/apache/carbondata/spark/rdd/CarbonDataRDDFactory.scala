@@ -15,27 +15,25 @@
  * limitations under the License.
  */
 
-
 package org.apache.carbondata.spark.rdd
 
 import java.util
 import java.util.concurrent._
 
+import com.databricks.spark.csv.newapi.CarbonTextFile
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.util.Random
 import scala.util.control.Breaks._
-
 import org.apache.hadoop.conf.{Configurable, Configuration}
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.mapreduce.Job
 import org.apache.hadoop.mapreduce.lib.input.{FileInputFormat, FileSplit}
-import org.apache.spark.{util => _, _}
 import org.apache.spark.sql.{CarbonEnv, DataFrame, SQLContext}
-import org.apache.spark.sql.execution.command.{AlterTableModel, CompactionCallableModel,
-CompactionModel, Partitioner}
+import org.apache.spark.sql.execution.command.{AlterTableModel, CompactionCallableModel, CompactionModel}
 import org.apache.spark.sql.hive.DistributionUtil
-import org.apache.spark.util.{FileUtils, SplitUtils}
+import org.apache.spark.util.SplitUtils
 
 import org.apache.carbondata.common.logging.LogServiceFactory
 import org.apache.carbondata.core.carbon.{CarbonDataLoadSchema, CarbonTableIdentifier}
@@ -45,8 +43,7 @@ import org.apache.carbondata.core.carbon.metadata.schema.table.CarbonTable
 import org.apache.carbondata.core.constants.CarbonCommonConstants
 import org.apache.carbondata.core.load.{BlockDetails, LoadMetadataDetails}
 import org.apache.carbondata.core.util.CarbonProperties
-import org.apache.carbondata.integration.spark.merger.{CarbonCompactionUtil, CompactionCallable,
-CompactionType}
+import org.apache.carbondata.integration.spark.merger.{CarbonCompactionUtil, CompactionCallable, CompactionType}
 import org.apache.carbondata.lcm.locks.{CarbonLockFactory, CarbonLockUtil, ICarbonLock, LockUsage}
 import org.apache.carbondata.lcm.status.SegmentStatusManager
 import org.apache.carbondata.processing.etl.DataLoadingException
@@ -57,6 +54,7 @@ import org.apache.carbondata.spark.load._
 import org.apache.carbondata.spark.merger.CarbonDataMergerUtil
 import org.apache.carbondata.spark.splits.TableSplit
 import org.apache.carbondata.spark.util.{CarbonQueryUtil, LoadMetadataUtil}
+import org.apache.spark.{SparkContext, SparkEnv, SparkException}
 
 
 /**
@@ -71,8 +69,7 @@ object CarbonDataRDDFactory {
       sqlContext: SQLContext,
       carbonLoadModel: CarbonLoadModel,
       storeLocation: String,
-      storePath: String,
-      partitioner: Partitioner) {
+      storePath: String) {
     val table = CarbonMetadata.getInstance()
       .getCarbonTable(carbonLoadModel.getDatabaseName + "_" + carbonLoadModel.getTableName)
     val metaDataPath: String = table.getMetaDataFilepath
@@ -174,30 +171,6 @@ object CarbonDataRDDFactory {
       LOGGER.audit(s"The delete load by date is failed for $databaseName.$tableName")
       sys.error("Delete by Date request is failed, potential causes " +
                 "Empty store or Invalid column type, For more details please refer logs.")
-    }
-  }
-
-  def configSplitMaxSize(context: SparkContext, filePaths: String,
-      hadoopConfiguration: Configuration): Unit = {
-    val defaultParallelism = if (context.defaultParallelism < 1) {
-      1
-    } else {
-      context.defaultParallelism
-    }
-    val spaceConsumed = FileUtils.getSpaceOccupied(filePaths)
-    val blockSize =
-      hadoopConfiguration.getLongBytes("dfs.blocksize", CarbonCommonConstants.CARBON_256MB)
-    LOGGER.info("[Block Distribution]")
-    // calculate new block size to allow use all the parallelism
-    if (spaceConsumed < defaultParallelism * blockSize) {
-      var newSplitSize: Long = spaceConsumed / defaultParallelism
-      if (newSplitSize < CarbonCommonConstants.CARBON_16MB) {
-        newSplitSize = CarbonCommonConstants.CARBON_16MB
-      }
-      hadoopConfiguration.set(FileInputFormat.SPLIT_MAXSIZE, newSplitSize.toString)
-      LOGGER.info(s"totalInputSpaceConsumed: $spaceConsumed , " +
-                  s"defaultParallelism: $defaultParallelism")
-      LOGGER.info(s"mapreduce.input.fileinputformat.split.maxsize: ${ newSplitSize.toString }")
     }
   }
 
@@ -827,7 +800,7 @@ object CarbonDataRDDFactory {
                org.apache.hadoop.io.compress.DefaultCodec,
                org.apache.hadoop.io.compress.BZip2Codec""".stripMargin)
 
-          configSplitMaxSize(sqlContext.sparkContext, filePaths, hadoopConfiguration)
+          CarbonTextFile.configSplitMaxSize(sqlContext.sparkContext, filePaths, hadoopConfiguration)
 
           val inputFormat = new org.apache.hadoop.mapreduce.lib.input.TextInputFormat
           inputFormat match {
@@ -837,7 +810,6 @@ object CarbonDataRDDFactory {
           }
           val jobContext = new Job(hadoopConfiguration)
           val rawSplits = inputFormat.getSplits(jobContext).toArray
-          val result = new Array[Partition](rawSplits.size)
           val blockList = rawSplits.map(inputSplit => {
             val fileSplit = inputSplit.asInstanceOf[FileSplit]
             new TableBlockInfo(fileSplit.getPath.toString,
@@ -1088,10 +1060,9 @@ object CarbonDataRDDFactory {
   def dropTable(
       sc: SparkContext,
       schema: String,
-      table: String,
-      partitioner: Partitioner) {
+      table: String) {
     val v: Value[Array[Object]] = new ValueImpl()
-    new CarbonDropTableRDD(sc, v, schema, table, partitioner).collect
+    new CarbonDropTableRDD(sc, v, schema, table).collect
   }
 
   def cleanFiles(

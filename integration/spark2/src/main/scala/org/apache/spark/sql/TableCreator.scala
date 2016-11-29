@@ -7,7 +7,7 @@ import org.apache.carbondata.core.constants.CarbonCommonConstants
 import org.apache.carbondata.core.util.DataTypeUtil
 import org.apache.carbondata.spark.exception.MalformedCarbonCommandException
 import org.apache.carbondata.spark.util.CommonUtil
-import org.apache.spark.sql.execution.command._
+import org.apache.spark.sql.execution.command.{ColumnProperty, Field, PartitionerField, TableModel}
 
 import scala.collection.mutable.{LinkedHashSet, Map}
 
@@ -180,16 +180,16 @@ object TableCreator {
     }
   }
 
-  protected def fillAllChildrenColumnProperty(parent: String, fieldChildren: Option[List[Field]],
-                                              tableProperties: Map[String, String],
-                                              colPropMap: java.util.HashMap[String, java.util.List[ColumnProperty]]) {
-    fieldChildren.foreach(fields => {
-      fields.foreach(field => {
+  protected def fillAllChildrenColumnProperty(
+      parent: String,
+      fieldChildren: Option[List[Field]],
+      tableProperties: Map[String, String],
+      colPropMap: java.util.HashMap[String, java.util.List[ColumnProperty]]) {
+    fieldChildren.foreach { fields =>
+      fields.foreach { field =>
         fillColumnProperty(Some(parent), field.column, tableProperties, colPropMap)
       }
-      )
     }
-    )
   }
 
   protected def extractColumnProperties(fields: Seq[Field], tableProperties: Map[String, String]):
@@ -434,7 +434,7 @@ object TableCreator {
   def prepareTableModel(ifNotExistPresent: Boolean, dbName: Option[String]
                         , tableName: String, fields: Seq[Field],
                         partitionCols: Seq[PartitionerField],
-                        tableProperties: Map[String, String]): tableModel
+                        tableProperties: Map[String, String]): TableModel
   = {
 
     val (dims: Seq[Field], noDictionaryDims: Seq[String]) = extractDimColsAndNoDictionaryFields(
@@ -462,23 +462,18 @@ object TableCreator {
     // get no inverted index columns from table properties.
     val noInvertedIdxCols = extractNoInvertedIndexColumns(fields, tableProperties)
 
-    val partitioner: Option[Partitioner] = None
     // validate the tableBlockSize from table properties
     CommonUtil.validateTableBlockSize(tableProperties)
 
-    tableModel(ifNotExistPresent,
+    TableModel(ifNotExistPresent,
       dbName.getOrElse(CarbonCommonConstants.DATABASE_DEFAULT_NAME),
       dbName,
       tableName,
       tableProperties,
       reorderDimensions(dims.map(f => normalizeType(f)).map(f => addParent(f))),
       msrs.map(f => normalizeType(f)),
-      "",
-      null,
-      "",
       Option(noDictionaryDims),
       Option(noInvertedIdxCols),
-      partitioner,
       groupCols,
       Some(colProps))
   }

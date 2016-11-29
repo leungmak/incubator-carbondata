@@ -21,13 +21,13 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.mapred.JobConf
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.hive.{CarbonRelation, TableMeta}
+import org.apache.spark.sql.hive.CarbonRelation
 import org.apache.spark.sql.sources.{BaseRelation, Filter, PrunedFilteredScan}
 import org.apache.spark.sql.types.StructType
-
 import org.apache.carbondata.core.carbon.AbsoluteTableIdentifier
 import org.apache.carbondata.hadoop.{CarbonInputFormat, CarbonProjection}
 import org.apache.carbondata.hadoop.util.SchemaReader
+import org.apache.carbondata.integration.spark.merger.TableMeta
 import org.apache.carbondata.scan.expression.Expression
 import org.apache.carbondata.scan.expression.logical.AndExpression
 import org.apache.carbondata.spark.CarbonFilters
@@ -49,10 +49,7 @@ private[sql] case class CarbonDatasourceHadoopRelation(
       carbonTable.getDatabaseName,
       carbonTable.getFactTableName,
       CarbonSparkUtil.createSparkMeta(carbonTable),
-      TableMeta(absIdentifier.getCarbonTableIdentifier,
-        paths.head,
-        carbonTable
-      ),
+      new TableMeta(absIdentifier.getCarbonTableIdentifier, paths.head, carbonTable),
       None
     )
   }

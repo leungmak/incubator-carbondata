@@ -30,7 +30,6 @@ import org.apache.spark.sql.catalyst.analysis.{MultiInstanceRelation, NoSuchTabl
 import org.apache.spark.sql.catalyst.plans.logical.{LeafNode, LogicalPlan, Statistics}
 import org.apache.spark.sql.execution.command.Partitioner
 import org.apache.spark.sql.types._
-
 import org.apache.carbondata.common.logging.LogServiceFactory
 import org.apache.carbondata.core.carbon.CarbonTableIdentifier
 import org.apache.carbondata.core.carbon.metadata.CarbonMetadata
@@ -47,8 +46,10 @@ import org.apache.carbondata.core.reader.ThriftReader
 import org.apache.carbondata.core.util.{CarbonProperties, CarbonTimeStatisticsFactory, CarbonUtil}
 import org.apache.carbondata.core.writer.ThriftWriter
 import org.apache.carbondata.format.{SchemaEvolutionEntry, TableInfo}
+import org.apache.carbondata.integration.spark.merger.TableMeta
 import org.apache.carbondata.lcm.locks.ZookeeperInit
 import org.apache.carbondata.lcm.status.SegmentStatusManager
+import org.apache.carbondata.spark.util.CarbonSparkUtil
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.{RuntimeConfig, SparkSession}
 import org.apache.spark.sql.catalyst.expressions.AttributeReference
@@ -59,9 +60,6 @@ case class CarbonMetaData(dims: Seq[String],
     msrs: Seq[String],
     carbonTable: CarbonTable,
     dictionaryMap: DictionaryMap)
-
-case class TableMeta(carbonTableIdentifier: CarbonTableIdentifier, storePath: String,
-    var carbonTable: CarbonTable)
 
 object CarbonMetastore {
 
@@ -251,9 +249,7 @@ class CarbonMetastore(conf: RuntimeConfig, val storePath: String) extends Loggin
                   val carbonTable =
                     org.apache.carbondata.core.carbon.metadata.CarbonMetadata.getInstance()
                       .getCarbonTable(tableUniqueName)
-                  metaDataBuffer += TableMeta(
-                    carbonTable.getCarbonTableIdentifier,
-                    storePath,
+                  metaDataBuffer += new TableMeta(carbonTable.getCarbonTableIdentifier, storePath,
                     carbonTable)
                 }
               }
@@ -299,9 +295,7 @@ class CarbonMetastore(conf: RuntimeConfig, val storePath: String) extends Loggin
     tableInfo.setMetaDataFilepath(schemaMetadataPath)
     tableInfo.setStorePath(storePath)
     CarbonMetadata.getInstance().loadTableMetadata(tableInfo)
-    val tableMeta = TableMeta(
-      carbonTableIdentifier,
-      storePath,
+    val tableMeta = new TableMeta(carbonTableIdentifier, storePath,
       CarbonMetadata.getInstance().getCarbonTable(dbName + "_" + tableName))
 
     val fileType = FileFactory.getFileType(schemaMetadataPath)
@@ -345,28 +339,6 @@ class CarbonMetastore(conf: RuntimeConfig, val storePath: String) extends Loggin
       .setMetaDataFilepath(CarbonTablePath.getFolderContainingFile(schemaFilePath))
     wrapperTableInfo.setStorePath(storePath)
     updateMetadataByWrapperTable(wrapperTableInfo)
-  }
-
-
-  def getDimensions(carbonTable: CarbonTable,
-      aggregateAttributes: List[AggregateTableAttributes]): Array[String] = {
-    var dimArray = Array[String]()
-    aggregateAttributes.filter { agg => null == agg.aggType }.foreach { agg =>
-      val colName = agg.colName
-      if (null != carbonTable.getMeasureByName(carbonTable.getFactTableName, colName)) {
-        sys
-          .error(s"Measure must be provided along with aggregate function :: $colName")
-      }
-      if (null == carbonTable.getDimensionByName(carbonTable.getFactTableName, colName)) {
-        sys
-          .error(s"Invalid column name. Cannot create an aggregate table :: $colName")
-      }
-      if (dimArray.contains(colName)) {
-        sys.error(s"Duplicate column name. Cannot create an aggregate table :: $colName")
-      }
-      dimArray :+= colName
-    }
-    dimArray
   }
 
   /**
