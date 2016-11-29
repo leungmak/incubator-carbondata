@@ -50,6 +50,7 @@ object CarbonExample {
          |    stringField string
          | )
          | USING org.apache.spark.sql.CarbonSource
+         | options(dbname default, tablename carbon_table)
        """.stripMargin)
 
     val prop = s"$rootPath/conf/dataload.properties.template"
