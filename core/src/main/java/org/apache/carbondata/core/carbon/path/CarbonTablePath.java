@@ -30,6 +30,8 @@ import static org.apache.carbondata.core.constants.CarbonCommonConstants.INVALID
 
 import org.apache.hadoop.fs.Path;
 
+
+
 /**
  * Helps to get Table content paths.
  */
@@ -209,9 +211,9 @@ public class CarbonTablePath extends Path {
    * @return absolute path of data file stored in carbon data format
    */
   public String getCarbonDataFilePath(String partitionId, String segmentId, Integer filePartNo,
-      Integer taskNo, String factUpdateTimeStamp) {
+      Integer taskNo, int bucketNumber, String factUpdateTimeStamp) {
     return getSegmentDir(partitionId, segmentId) + File.separator + getCarbonDataFileName(
-        filePartNo, taskNo, factUpdateTimeStamp);
+        filePartNo, taskNo, bucketNumber, factUpdateTimeStamp);
   }
 
   /**
@@ -224,14 +226,15 @@ public class CarbonTablePath extends Path {
    * @return full qualified carbon index path
    */
   public String getCarbonIndexFilePath(final String taskId, final String partitionId,
-      final String segmentId) {
+      final String segmentId, final String bucketNumber) {
     String segmentDir = getSegmentDir(partitionId, segmentId);
     CarbonFile carbonFile =
         FileFactory.getCarbonFile(segmentDir, FileFactory.getFileType(segmentDir));
 
     CarbonFile[] files = carbonFile.listFiles(new CarbonFileFilter() {
       @Override public boolean accept(CarbonFile file) {
-        return file.getName().startsWith(taskId) && file.getName().endsWith(INDEX_FILE_EXT);
+        return file.getName().startsWith(taskId + "-" + bucketNumber) && file.getName()
+            .endsWith(INDEX_FILE_EXT);
       }
     });
     return files[0].getAbsolutePath();
@@ -259,9 +262,9 @@ public class CarbonTablePath extends Path {
    * @return absolute path of data file stored in carbon data format
    */
   public String getCarbonAggDataFilePath(String aggTableID, String partitionId, String segmentId,
-      Integer filePartNo, Integer taskNo, String factUpdateTimeStamp) {
+      Integer filePartNo, Integer taskNo, int bucketNumber, String factUpdateTimeStamp) {
     return getAggSegmentDir(aggTableID, partitionId, segmentId) + File.separator
-        + getCarbonDataFileName(filePartNo, taskNo, factUpdateTimeStamp);
+        + getCarbonDataFileName(filePartNo, taskNo, bucketNumber, factUpdateTimeStamp);
   }
 
   /**
@@ -272,10 +275,10 @@ public class CarbonTablePath extends Path {
    * @param factUpdateTimeStamp unique identifier to identify an update
    * @return gets data file name only with out path
    */
-  public String getCarbonDataFileName(Integer filePartNo, Integer taskNo,
+  public String getCarbonDataFileName(Integer filePartNo, Integer taskNo, int bucketNumber,
       String factUpdateTimeStamp) {
-    return DATA_PART_PREFIX + "-" + filePartNo + "-" + taskNo + "-" + factUpdateTimeStamp
-        + CARBON_DATA_EXT;
+    return DATA_PART_PREFIX + "-" + filePartNo + "-" + taskNo + "-" + bucketNumber + "-"
+        + factUpdateTimeStamp + CARBON_DATA_EXT;
   }
 
   /**
@@ -285,8 +288,8 @@ public class CarbonTablePath extends Path {
    * @param factUpdatedTimeStamp time stamp
    * @return filename
    */
-  public String getCarbonIndexFileName(int taskNo, String factUpdatedTimeStamp) {
-    return taskNo + "-" + factUpdatedTimeStamp + INDEX_FILE_EXT;
+  public String getCarbonIndexFileName(int taskNo, int bucketNumber, String factUpdatedTimeStamp) {
+    return taskNo + "-" + bucketNumber + "-" + factUpdatedTimeStamp + INDEX_FILE_EXT;
   }
 
   private String getSegmentDir(String partitionId, String segmentId) {
@@ -371,6 +374,24 @@ public class CarbonTablePath extends Path {
       int firstDashPos = fileName.indexOf("-");
       int startIndex = fileName.indexOf("-", firstDashPos + 1) + 1;
       int endIndex = fileName.indexOf("-", startIndex);
+      return fileName.substring(startIndex, endIndex);
+    }
+
+    /**
+     * gets updated timestamp information from given carbon data file name
+     */
+    public static String getBucketNo(String carbonDataFileName) {
+      // Get the file name from path
+      String fileName = getFileName(carbonDataFileName);
+      // + 1 for size of "-"
+      int firstDashPos = fileName.indexOf("-");
+      int secondDash = fileName.indexOf("-", firstDashPos + 1);
+      int startIndex = fileName.indexOf("-", secondDash + 1) + 1;
+      int endIndex = fileName.indexOf("-", startIndex);
+      // to support backward compatability
+      if (startIndex == -1 || endIndex == -1) {
+        return "0";
+      }
       return fileName.substring(startIndex, endIndex);
     }
 

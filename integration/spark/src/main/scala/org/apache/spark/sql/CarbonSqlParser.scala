@@ -330,6 +330,7 @@ class CarbonSqlParser() extends AbstractSparkSQLParser {
         var ifNotExistPresent: Boolean = false
         var dbName: Option[String] = None
         var tableName: String = ""
+        var bucketFields: Option[BucketFields] = None
 
         try {
 
@@ -419,6 +420,13 @@ class CarbonSqlParser() extends AbstractSparkSQLParser {
 
             case Token("TOK_LIKETABLE", child :: Nil) =>
               likeTableName = child.getChild(0).getText()
+            case Token("TOK_ALTERTABLE_BUCKETS",
+                  Token("TOK_TABCOLNAME", list)::numberOfBuckets) =>
+              val cols = list.map(_.getText)
+              if (cols != null) {
+                bucketFields = Some(BucketFields(cols,
+                  numberOfBuckets.head.getText.toInt))
+              }
 
             case _ => // Unsupport features
           }
@@ -434,6 +442,7 @@ class CarbonSqlParser() extends AbstractSparkSQLParser {
             tableName,
             fields,
             partitionCols,
+            bucketFields,
             tableProperties)
 
           // get logical plan.
@@ -503,8 +512,8 @@ class CarbonSqlParser() extends AbstractSparkSQLParser {
   protected def prepareTableModel(ifNotExistPresent: Boolean, dbName: Option[String]
       , tableName: String, fields: Seq[Field],
       partitionCols: Seq[PartitionerField],
-      tableProperties: Map[String, String]): TableModel
-  = {
+      bucketFields: Option[BucketFields],
+      tableProperties: Map[String, String]): TableModel = {
 
     fields.zipWithIndex.foreach { x =>
       x._1.schemaOrdinal = x._2
@@ -548,7 +557,8 @@ class CarbonSqlParser() extends AbstractSparkSQLParser {
       Option(noDictionaryDims),
       Option(noInvertedIdxCols),
       groupCols,
-      Some(colProps))
+      Some(colProps),
+      bucketFields)
   }
 
   /**
