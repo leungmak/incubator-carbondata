@@ -17,8 +17,6 @@
 
 package org.apache.spark.sql.examples
 
-import java.io.File
-
 import org.apache.carbondata.core.constants.CarbonCommonConstants
 import org.apache.spark.sql.SparkSession
 

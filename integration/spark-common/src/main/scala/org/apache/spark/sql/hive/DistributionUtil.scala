@@ -19,10 +19,8 @@ package org.apache.spark.sql.hive
 import java.net.{InetAddress, InterfaceAddress, NetworkInterface}
 
 import scala.collection.JavaConverters._
-
 import org.apache.spark.SparkContext
 import org.apache.spark.scheduler.cluster.CoarseGrainedSchedulerBackend
-
 import org.apache.carbondata.common.logging.LogServiceFactory
 import org.apache.carbondata.core.carbon.datastore.block.Distributable
 import org.apache.carbondata.spark.load.CarbonLoaderUtil
@@ -141,20 +139,20 @@ object DistributionUtil {
     LOGGER.info(s"Time elapsed to allocate the required executors: ${ (30 - maxTimes) * 500 }")
     nodes.distinct
   }
-
   /**
-   * Requesting the extra executors other than the existing ones.
-   *
-   * @param sc
-   * @param numExecutors
-   * @return
-   */
-  def ensureExecutors(sc: SparkContext, numExecutors: Int): Boolean = {
+    *
+    * Requesting the extra executors other than the existing ones.
+    *
+    * @param sc
+    * @param numExecutors
+    * @return
+    */
+  final def ensureExecutors(sc: SparkContext, numExecutors: Int): Boolean = {
     sc.schedulerBackend match {
       case b: CoarseGrainedSchedulerBackend =>
-        val requiredExecutors = numExecutors - b.numExistingExecutors
-        LOGGER.info(s"number of executors is =$numExecutors existing executors are =" +
-            s"${ b.numExistingExecutors }")
+        val requiredExecutors = numExecutors - b.getExecutorIds().size
+        LOGGER.info(s"number of executors is = $numExecutors existing executors are = " +
+                    s"${ b.getExecutorIds().size }")
         if (requiredExecutors > 0) {
           b.requestExecutors(requiredExecutors)
         }
@@ -163,4 +161,26 @@ object DistributionUtil {
         false
     }
   }
+
+//  /**
+//   * Requesting the extra executors other than the existing ones.
+//   *
+//   * @param sc
+//   * @param numExecutors
+//   * @return
+//   */
+//  def ensureExecutors(sc: SparkContext, numExecutors: Int): Boolean = {
+//    sc.schedulerBackend match {
+//      case b: CoarseGrainedSchedulerBackend =>
+//        val requiredExecutors = numExecutors - b.numExistingExecutors
+//        LOGGER.info(s"number of executors is =$numExecutors existing executors are =" +
+//            s"${ b.numExistingExecutors }")
+//        if (requiredExecutors > 0) {
+//          b.requestExecutors(requiredExecutors)
+//        }
+//        true
+//      case _ =>
+//        false
+//    }
+//  }
 }

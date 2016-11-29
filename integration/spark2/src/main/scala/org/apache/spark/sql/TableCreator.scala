@@ -468,11 +468,19 @@ object TableCreator {
 
     tableModel(ifNotExistPresent,
       dbName.getOrElse(CarbonCommonConstants.DATABASE_DEFAULT_NAME),
-      dbName, tableName, tableProperties,
+      dbName,
+      tableName,
+      tableProperties,
       reorderDimensions(dims.map(f => normalizeType(f)).map(f => addParent(f))),
-      msrs.map(f => normalizeType(f)), "", null, "",
-      None, Seq(), null, Option(noDictionaryDims), Option(noInvertedIdxCols), null, partitioner,
-      groupCols, Some(colProps))
+      msrs.map(f => normalizeType(f)),
+      "",
+      null,
+      "",
+      Option(noDictionaryDims),
+      Option(noInvertedIdxCols),
+      partitioner,
+      groupCols,
+      Some(colProps))
   }
 
 }

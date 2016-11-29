@@ -48,31 +48,6 @@ object CarbonEnv extends Logging {
   def get: CarbonEnv = {
     carbonEnv
   }
-
-  /**
-    *
-    * Requesting the extra executors other than the existing ones.
-    *
-    * @param sc
-    * @param numExecutors
-    * @return
-    */
-  final def ensureExecutors(sc: SparkContext, numExecutors: Int): Boolean = {
-    sc.schedulerBackend match {
-      case b: CoarseGrainedSchedulerBackend =>
-        val requiredExecutors = numExecutors - b.getExecutorIds().size
-        logInfo(s"number of executors is =$numExecutors existing executors are =" +
-            s"${ b.getExecutorIds().size }"
-          )
-        if (requiredExecutors > 0) {
-          b.requestExecutors(requiredExecutors)
-        }
-        true
-      case _ =>
-        false
-    }
-
-  }
 }
 
 

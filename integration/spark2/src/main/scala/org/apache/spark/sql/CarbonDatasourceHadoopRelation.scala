@@ -24,6 +24,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.hive.{CarbonRelation, TableMeta}
 import org.apache.spark.sql.sources.{BaseRelation, Filter, PrunedFilteredScan}
 import org.apache.spark.sql.types.StructType
+
 import org.apache.carbondata.core.carbon.AbsoluteTableIdentifier
 import org.apache.carbondata.hadoop.{CarbonInputFormat, CarbonProjection}
 import org.apache.carbondata.hadoop.util.SchemaReader
@@ -32,7 +33,7 @@ import org.apache.carbondata.scan.expression.logical.AndExpression
 import org.apache.carbondata.spark.CarbonFilters
 import org.apache.carbondata.spark.rdd.CarbonScanRDD
 import org.apache.carbondata.spark.readsupport.SparkRowReadSupportImpl
-import org.apache.carbondata.spark.util.CarbonScalaUtil.CarbonSparkUtil
+import org.apache.carbondata.spark.util.CarbonSparkUtil
 
 private[sql] case class CarbonDatasourceHadoopRelation(
     sparkSession: SparkSession,

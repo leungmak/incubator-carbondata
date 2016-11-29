@@ -503,10 +503,9 @@ object CarbonDataRDDFactory {
           if (!isConcurrentCompactionAllowed) {
             LOGGER.info("System level compaction lock is enabled.")
             val skipCompactionTables = ListBuffer[CarbonTableIdentifier]()
-            var tableForCompaction = CarbonCompactionUtil
-              .getNextTableToCompact(CarbonEnv.get.carbonMetastore.metadata
-                .tablesMeta.toArray, skipCompactionTables.toList.asJava
-              )
+            var tableForCompaction = CarbonCompactionUtil.getNextTableToCompact(
+              CarbonEnv.get.carbonMetastore.metadata.tablesMeta.toArray,
+              skipCompactionTables.toList.asJava)
             while (null != tableForCompaction) {
               LOGGER.info("Compaction request has been identified for table " +
                           s"${ tableForCompaction.carbonTable.getDatabaseName }." +

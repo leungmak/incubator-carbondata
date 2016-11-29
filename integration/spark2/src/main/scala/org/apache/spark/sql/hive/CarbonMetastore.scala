@@ -28,8 +28,9 @@ import scala.util.parsing.combinator.RegexParsers
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.{MultiInstanceRelation, NoSuchTableException}
 import org.apache.spark.sql.catalyst.plans.logical.{LeafNode, LogicalPlan, Statistics}
-import org.apache.spark.sql.execution.command.{AggregateTableAttributes, Partitioner}
+import org.apache.spark.sql.execution.command.Partitioner
 import org.apache.spark.sql.types._
+
 import org.apache.carbondata.common.logging.LogServiceFactory
 import org.apache.carbondata.core.carbon.CarbonTableIdentifier
 import org.apache.carbondata.core.carbon.metadata.CarbonMetadata
@@ -48,7 +49,6 @@ import org.apache.carbondata.core.writer.ThriftWriter
 import org.apache.carbondata.format.{SchemaEvolutionEntry, TableInfo}
 import org.apache.carbondata.lcm.locks.ZookeeperInit
 import org.apache.carbondata.lcm.status.SegmentStatusManager
-import org.apache.carbondata.spark.util.CarbonScalaUtil.CarbonSparkUtil
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.{RuntimeConfig, SparkSession}
 import org.apache.spark.sql.catalyst.expressions.AttributeReference
