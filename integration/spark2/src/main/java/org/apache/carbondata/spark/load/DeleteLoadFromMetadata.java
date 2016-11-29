@@ -17,22 +17,28 @@
  * under the License.
  */
 
-package org.apache.carbondata.integration.spark.merger;
+/**
+ * Project Name  : Carbon
+ * Module Name   : CARBON Data Processor
+ * Author    : R00903928
+ * Created Date  : 21-Sep-2015
+ * FileName   : DeleteLoadFromMetadata.java
+ * Description   : Kettle step to generate MD Key
+ * Class Version  : 1.0
+ */
+package org.apache.carbondata.spark.load;
 
-import org.apache.carbondata.core.carbon.CarbonTableIdentifier;
-import org.apache.carbondata.core.carbon.metadata.schema.table.CarbonTable;
+import org.apache.carbondata.common.logging.LogService;
+import org.apache.carbondata.common.logging.LogServiceFactory;
 
-public class TableMeta {
+public final class DeleteLoadFromMetadata {
 
-  public CarbonTableIdentifier carbonTableIdentifier;
-  public String storePath;
-  public CarbonTable carbonTable;
+  private static final LogService LOGGER =
+      LogServiceFactory.getLogService(DeleteLoadFromMetadata.class.getName());
 
-  public TableMeta(CarbonTableIdentifier carbonTableIdentifier, String storePath,
-      CarbonTable carbonTable) {
-    this.carbonTableIdentifier = carbonTableIdentifier;
-    this.storePath = storePath;
-    this.carbonTable = carbonTable;
+  private DeleteLoadFromMetadata() {
+
   }
+
 
 }

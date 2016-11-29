@@ -17,8 +17,6 @@
 
 package org.apache.spark.sql.catalyst
 
-import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
-
 /**
  * Implicit functions for [TableIdentifier]
  */
@@ -29,7 +27,7 @@ object CarbonTableIdentifierImplicit {
     tableIdentifier match {
       case Seq(dbName, tableName) => TableIdentifier(tableName, Some(dbName))
       case Seq(tableName) => TableIdentifier(tableName, None)
-      case _ => throw new NoSuchTableException
+      case _ => throw new IllegalArgumentException("invalid table identifier: " + tableIdentifier)
     }
   }
 
