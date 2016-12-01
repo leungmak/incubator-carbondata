@@ -1434,6 +1434,7 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
     carbonDataWriterVo.setColCardinality(colCardinality);
     carbonDataWriterVo.setSegmentProperties(segmentProperties);
     carbonDataWriterVo.setTableBlocksize(tableBlockSize);
+    carbonDataWriterVo.setBucketNumber(bucketNumber);
     return carbonDataWriterVo;
   }
 

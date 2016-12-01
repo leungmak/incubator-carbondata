@@ -38,24 +38,25 @@ object CarbonExample {
            CREATE TABLE IF NOT EXISTS t3
            (ID Int, date Timestamp, country String,
            name String, phonetype String, serialname String, salary Int)
+           CLUSTERED BY(country) INTO 4 BUCKETS
            STORED BY 'carbondata'
            """)
 
-    // Currently there are two data loading flows in CarbonData, one uses Kettle as ETL tool
-    // in each node to do data loading, another uses a multi-thread framework without Kettle (See
-    // AbstractDataLoadProcessorStep)
-    // Load data with Kettle
-    cc.sql(s"""
-           LOAD DATA LOCAL INPATH '$testData' into table t3
-           """)
-
-    // Perform a query
-    cc.sql("""
-           SELECT country, count(salary) AS amount
-           FROM t3
-           WHERE country IN ('china','france')
-           GROUP BY country
-           """).show()
+//    // Currently there are two data loading flows in CarbonData, one uses Kettle as ETL tool
+//    // in each node to do data loading, another uses a multi-thread framework without Kettle (See
+//    // AbstractDataLoadProcessorStep)
+//    // Load data with Kettle
+//    cc.sql(s"""
+//           LOAD DATA LOCAL INPATH '$testData' into table t3
+//           """)
+//
+//    // Perform a query
+//    cc.sql("""
+//           SELECT country, count(salary) AS amount
+//           FROM t3
+//           WHERE country IN ('china','france')
+//           GROUP BY country
+//           """).show()
 
     // Load data without kettle
     cc.sql(s"""
@@ -72,7 +73,7 @@ object CarbonExample {
            """).show()
 
     // Drop table
-    cc.sql("DROP TABLE IF EXISTS t3")
+//    cc.sql("DROP TABLE IF EXISTS t3")
   }
 
 }
