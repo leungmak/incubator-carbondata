@@ -21,12 +21,13 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.util.TableLoader
 
 import org.apache.carbondata.core.constants.CarbonCommonConstants
+import org.apache.carbondata.core.util.CarbonProperties
 
 object CarbonExample {
 
   def main(args: Array[String]): Unit = {
     // to run the example, plz change this path to your local machine path
-    val rootPath = "/home/david/Documents/incubator-carbondata"
+    val rootPath = "/users/jackylk/code/incubator-carbondata"
     val spark = SparkSession
         .builder()
         .master("local")
@@ -38,8 +39,8 @@ object CarbonExample {
     spark.sparkContext.setLogLevel("WARN")
 
     // Drop table
-//    spark.sql("DROP TABLE IF EXISTS carbon_table")
-//    spark.sql("DROP TABLE IF EXISTS csv_table")
+    spark.sql("DROP TABLE IF EXISTS carbon_table")
+    spark.sql("DROP TABLE IF EXISTS csv_table")
 //
 //    // Create table
     spark.sql(
@@ -49,70 +50,44 @@ object CarbonExample {
          |    intField int,
          |    bigintField long,
          |    doubleField double,
-         |    stringField string
+         |    charField char(10),
+         |    stringField string,
+         |    timestampField timestamp,
+         |    dateField date
          | )
          | USING org.apache.spark.sql.CarbonSource
        """.stripMargin)
+
+    CarbonProperties.getInstance()
+        .addProperty(CarbonCommonConstants.CARBON_TIMESTAMP_FORMAT, "yyyy/MM/dd")
 
     val prop = s"$rootPath/conf/dataload.properties.template"
     val tableName = "carbon_table"
     val path = s"$rootPath/examples/spark2/src/main/resources/data.csv"
     TableLoader.main(Array[String](prop, tableName, path))
 
-//    spark.sql(
-//      s"""
-//         | CREATE TABLE csv_table
-//         | (ID int,
-//         | date timestamp,
-//         | country string,
-//         | name string,
-//         | phonetype string,
-//         | serialname string,
-//         | salary int)
-//       """.stripMargin)
-//
-//    spark.sql(
-//      s"""
-//         | LOAD DATA LOCAL INPATH '$csvPath'
-//         | INTO TABLE csv_table
-//       """.stripMargin)
-
-//    spark.sql(
-//      s"""
-//         | INSERT INTO TABLE carbon_table
-//         | SELECT * FROM csv_table
-//       """.stripMargin)
-
-    // Perform a query
-//    spark.sql("""
-//           SELECT country, count(salary) AS amount
-//           FROM carbon_table
-//           WHERE country IN ('china','france')
-//           GROUP BY country
-//           """).show()
-
     spark.sql("""
              SELECT *
              FROM carbon_table
               """).show
 
-    spark.sql("""
-             SELECT *
-             FROM carbon_table where length(stringField) = 5
-              """).show
-
-    spark.sql("""
-           SELECT sum(intField), stringField
-           FROM carbon_table
-           GROUP BY stringField
-           """).show
-
-    spark.sql(
-      """
-        |select t1.*, t2.*
-        |from carbon_table t1, carbon_table t2
-        |where t1.stringField = t2.stringField
-      """.stripMargin).show
+//    spark.sql("""
+//             SELECT *
+//             FROM carbon_table where length(stringField) = 5
+//              """).show
+//
+//    spark.sql("""
+//           SELECT sum(intField), stringField
+//           FROM carbon_table
+//           GROUP BY stringField
+//           """).show
+//
+//    spark.sql(
+//      """
+//        |select t1.*, t2.*
+//        |from carbon_table t1, carbon_table t2
+//        |where t1.stringField = t2.stringField
+//      """.stripMargin).show
 
     // Drop table
 //    spark.sql("DROP TABLE IF EXISTS carbon_table")
