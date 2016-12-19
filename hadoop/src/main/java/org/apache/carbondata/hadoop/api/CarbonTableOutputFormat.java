@@ -19,23 +19,31 @@
 
 package org.apache.carbondata.hadoop.api;
 
+
 import java.io.IOException;
 
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.mapred.FileOutputFormat;
-import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.RecordWriter;
-import org.apache.hadoop.util.Progressable;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.mapreduce.RecordWriter;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 /**
  * Base class for all output format for CarbonData file.
  * @param <T>
  */
-public abstract class CarbonTableOutputFormat<T> extends FileOutputFormat<Void, T> {
+public class CarbonTableOutputFormat<T> extends FileOutputFormat<Void, T> {
+
+  private static String WRITE_SUPPORT_CLASS = "write.support.class";
+
+  public static void setWriteSupportClass(Configuration conf,
+      Class<? extends CarbonTableWriteSupport> supportClass) {
+    // set to config
+    conf.set(WRITE_SUPPORT_CLASS, supportClass.getCanonicalName());
+  }
 
   @Override
-  public RecordWriter<Void, T> getRecordWriter(FileSystem ignored, JobConf job, String name,
-      Progressable progress) throws IOException {
+  public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext job)
+      throws IOException, InterruptedException {
     return null;
   }
 }

@@ -40,9 +40,8 @@ import org.apache.carbondata.core.carbon.path.CarbonTablePath
 import org.apache.carbondata.hadoop.{CarbonInputFormat, CarbonInputSplit, CarbonProjection}
 import org.apache.carbondata.hadoop.util.{CarbonInputFormatUtil, SchemaReader}
 import org.apache.carbondata.scan.expression.logical.AndExpression
-import org.apache.carbondata.spark.{CarbonFilters, CarbonOption}
+import org.apache.carbondata.spark.{CarbonFilters, CarbonOption, SparkRowReadSupport}
 import org.apache.carbondata.spark.merger.TableMeta
-import org.apache.carbondata.spark.readsupport.SparkRowReadSupportImpl
 
 private[sql] case class CarbonDatasourceHadoopRelation(
   sqlContext: SQLContext,
@@ -93,7 +92,7 @@ private[sql] case class CarbonDatasourceHadoopRelation(
     val projection = new CarbonProjection
     requiredColumns.foreach(projection.addColumn)
     CarbonInputFormat.setColumnProjection(conf, projection)
-    CarbonInputFormat.setCarbonReadSupport(conf, classOf[SparkRowReadSupportImpl])
+    CarbonInputFormat.setCarbonReadSupport(conf, classOf[SparkRowReadSupport])
 
     new CarbonHadoopFSRDD[Row](sqlContext.sparkContext,
       new SerializableConfiguration(conf),

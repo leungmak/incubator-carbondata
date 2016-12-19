@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.carbondata.spark.readsupport;
+package org.apache.carbondata.spark;
 
 import java.sql.Date;
 import java.sql.Timestamp;
@@ -32,7 +32,7 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.catalyst.expressions.GenericRow;
 import org.apache.spark.unsafe.types.UTF8String;
 
-public class SparkRowReadSupportImpl extends AbstractDictionaryDecodedReadSupport<Row> {
+public class SparkRowReadSupport extends AbstractDictionaryDecodedReadSupport<Row> {
 
   @Override public void initialize(CarbonColumn[] carbonColumns,
       AbsoluteTableIdentifier absoluteTableIdentifier) {
