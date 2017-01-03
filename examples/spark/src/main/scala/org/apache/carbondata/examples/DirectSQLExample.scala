@@ -40,5 +40,7 @@ object DirectSQLExample {
         | WHERE c3 > 100
         | GROUP BY c1, c2
       """.stripMargin).show
+
+    ExampleUtils.cleanSampleCarbonFile(cc, "table1")
   }
 }

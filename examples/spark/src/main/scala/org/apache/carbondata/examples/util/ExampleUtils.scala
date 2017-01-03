@@ -56,17 +56,19 @@ object ExampleUtils {
   /**
    * This func will write a sample CarbonData file containing following schema:
    * c1: String, c2: String, c3: Double
+   * Returns the path string of writen table
    */
-  def writeSampleCarbonFile(cc: CarbonContext, tableName: String, numRows: Int = 1000): Unit = {
-    cc.sql(s"DROP TABLE IF EXISTS $tableName")
+  def writeSampleCarbonFile(cc: CarbonContext, tableName: String, numRows: Int = 1000): String = {
     writeDataframe(cc, tableName, numRows, SaveMode.Overwrite)
+    cc.storePath + "/default/" + tableName
   }
 
   /**
    * This func will append data to the CarbonData file
    */
-  def appendSampleCarbonFile(cc: CarbonContext, tableName: String, numRows: Int = 1000): Unit = {
+  def appendSampleCarbonFile(cc: CarbonContext, tableName: String, numRows: Int = 1000): String = {
     writeDataframe(cc, tableName, numRows, SaveMode.Append)
+    cc.storePath + "/default/" + tableName
   }
 
   /**
@@ -89,17 +91,10 @@ object ExampleUtils {
         .option("useKettle", "false")
         .mode(mode)
         .save()
+  }
 
-    // save dataframe directl to carbon file without tempCSV
-    df.write
-      .format("carbondata")
-      .option("tableName", tableName)
-      .option("compress", "true")
-      .option("useKettle", "false")
-      .option("tempCSV", "false")
-      .mode(mode)
-      .save()
-
+  def cleanSampleCarbonFile(cc: CarbonContext, tableName: String): Unit = {
+    cc.sql(s"DROP TABLE IF EXISTS $tableName")
   }
 }
 // scalastyle:on println
