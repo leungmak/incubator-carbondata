@@ -30,15 +30,16 @@ import org.apache.carbondata.core.metadata.schema.table.column.CarbonDimension;
  * This is the dictionary generator for all tables. It generates dictionary
  * based on @{@link DictionaryKey}.
  */
-public class ServerDictionaryGenerator implements DictionaryGenerator<Integer, DictionaryKey> {
+public class ServerDictionaryGenerator implements DictionaryGenerator {
 
   /**
    * the map of tableName to TableDictionaryGenerator
    */
   private Map<String, TableDictionaryGenerator> tableMap = new ConcurrentHashMap<>();
 
-  @Override public Integer generateKey(DictionaryKey value) throws DictionaryGenerationException {
-    TableDictionaryGenerator generator = tableMap.get(value.getTableUniqueName());
+  @Override
+  public int generateKey(Object value) throws DictionaryGenerationException {
+    TableDictionaryGenerator generator = tableMap.get(((DictionaryKey)value).getTableUniqueName());
     assert generator != null : "Table initialization for generator is not done";
     return generator.generateKey(value);
   }

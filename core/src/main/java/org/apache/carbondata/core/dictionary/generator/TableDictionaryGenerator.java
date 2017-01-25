@@ -41,8 +41,7 @@ import org.apache.carbondata.core.util.CarbonProperties;
 /**
  * Dictionary generation for table.
  */
-public class TableDictionaryGenerator
-    implements DictionaryGenerator<Integer, DictionaryKey>, DictionaryWriter {
+public class TableDictionaryGenerator implements DictionaryGenerator, DictionaryWriter {
 
   private static final LogService LOGGER =
           LogServiceFactory.getLogService(TableDictionaryGenerator.class.getName());
@@ -50,22 +49,23 @@ public class TableDictionaryGenerator
   /**
    * the map of columnName to dictionaryGenerator
    */
-  private Map<String, DictionaryGenerator<Integer, String>> columnMap = new ConcurrentHashMap<>();
+  private Map<String, DictionaryGenerator> columnMap = new ConcurrentHashMap<>();
 
-  public TableDictionaryGenerator(CarbonDimension dimension) {
+  TableDictionaryGenerator(CarbonDimension dimension) {
     columnMap.put(dimension.getColumnId(),
             new IncrementalColumnDictionaryGenerator(dimension, 1));
   }
 
-  @Override public Integer generateKey(DictionaryKey value) throws DictionaryGenerationException {
+  @Override
+  public int generateKey(Object value) throws DictionaryGenerationException {
+    DictionaryKey dictionaryKey = (DictionaryKey) value;
     CarbonMetadata metadata = CarbonMetadata.getInstance();
-    CarbonTable carbonTable = metadata.getCarbonTable(value.getTableUniqueName());
+    CarbonTable carbonTable = metadata.getCarbonTable(dictionaryKey.getTableUniqueName());
     CarbonDimension dimension = carbonTable.getPrimitiveDimensionByName(
-            value.getTableUniqueName(), value.getColumnName());
+        dictionaryKey.getTableUniqueName(), dictionaryKey.getColumnName());
 
-    DictionaryGenerator<Integer, String> generator =
-            columnMap.get(dimension.getColumnId());
-    return generator.generateKey(value.getData().toString());
+    DictionaryGenerator generator = columnMap.get(dimension.getColumnId());
+    return generator.generateKey(dictionaryKey.getData().toString());
   }
 
   public Integer size(DictionaryKey key) {
@@ -74,12 +74,12 @@ public class TableDictionaryGenerator
     CarbonDimension dimension = carbonTable.getPrimitiveDimensionByName(
             key.getTableUniqueName(), key.getColumnName());
 
-    DictionaryGenerator<Integer, String> generator =
-            columnMap.get(dimension.getColumnId());
+    DictionaryGenerator generator = columnMap.get(dimension.getColumnId());
     return ((BiDictionary) generator).size();
   }
 
-  @Override public void writeDictionaryData(String tableUniqueName) {
+  @Override
+  public void writeDictionaryData(String tableUniqueName) {
     int numOfCores = 1;
     final String tableName = tableUniqueName;
     try {
@@ -112,7 +112,7 @@ public class TableDictionaryGenerator
             (System.currentTimeMillis() - start));
   }
 
-  public void updateGenerator(CarbonDimension dimension) {
+  void updateGenerator(CarbonDimension dimension) {
     columnMap.put(dimension.getColumnId(),
             new IncrementalColumnDictionaryGenerator(dimension, 1));
   }

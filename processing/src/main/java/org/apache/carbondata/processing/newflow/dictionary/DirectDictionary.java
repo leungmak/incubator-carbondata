@@ -16,6 +16,7 @@
  */
 package org.apache.carbondata.processing.newflow.dictionary;
 
+import org.apache.carbondata.core.constants.CarbonCommonConstants;
 import org.apache.carbondata.core.devapi.BiDictionary;
 import org.apache.carbondata.core.devapi.DictionaryGenerationException;
 import org.apache.carbondata.core.keygenerator.directdictionary.DirectDictionaryGenerator;
@@ -24,7 +25,7 @@ import org.apache.carbondata.core.keygenerator.directdictionary.DirectDictionary
  * It is used for generating dictionary from value itself, like timestamp can be used directly as
  * dictionary.
  */
-public class DirectDictionary implements BiDictionary<Integer, Object> {
+public class DirectDictionary implements BiDictionary {
 
   private DirectDictionaryGenerator dictionaryGenerator;
 
@@ -33,25 +34,26 @@ public class DirectDictionary implements BiDictionary<Integer, Object> {
   }
 
   @Override
-  public Integer getOrGenerateKey(Object value) throws DictionaryGenerationException {
-    Integer key = getKey(value);
-    if (key == null) {
+  public int getOrGenerateKey(Object value) throws DictionaryGenerationException {
+    int key = getKey(value);
+    if (key == CarbonCommonConstants.INVALID_SURROGATE_KEY) {
       throw new UnsupportedOperationException("trying to add new entry in DirectDictionary");
     }
     return key;
   }
 
   @Override
-  public Integer getKey(Object value) {
+  public int getKey(Object value) {
     return dictionaryGenerator.generateDirectSurrogateKey(value.toString());
   }
 
   @Override
-  public Object getValue(Integer key) {
+  public Object getValue(int key) {
     return dictionaryGenerator.getValueFromSurrogate(key);
   }
 
-  @Override public int size() {
+  @Override
+  public int size() {
     return Integer.MAX_VALUE;
   }
 }

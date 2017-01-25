@@ -93,7 +93,7 @@ public class PrimitiveDataType implements GenericDataType<Object> {
    */
   private int dataCounter;
 
-  private BiDictionary<Integer, Object> dictionaryGenerator;
+  private BiDictionary dictionaryGenerator;
 
   private CarbonDimension carbonDimension;
 
@@ -223,7 +223,8 @@ public class PrimitiveDataType implements GenericDataType<Object> {
   /*
    * parse string and generate surrogate
    */
-  @Override public void parseStringAndWriteByteArray(String tableName, String inputString,
+  @Override
+  public void parseStringAndWriteByteArray(String tableName, String inputString,
       String[] delimiter, int delimiterIndex, DataOutputStream dataOutputStream,
       CarbonCSVBasedDimSurrogateKeyGen surrogateKeyGen) throws KettleException, IOException {
     String parsedValue = DataTypeUtil.parseValue(inputString,
@@ -242,7 +243,8 @@ public class PrimitiveDataType implements GenericDataType<Object> {
     dataOutputStream.writeInt(surrogateKey);
   }
 
-  @Override public void writeByteArray(Object input, DataOutputStream dataOutputStream)
+  @Override
+  public void writeByteArray(Object input, DataOutputStream dataOutputStream)
       throws IOException, DictionaryGenerationException {
     String parsedValue =
         input == null ? null : DataTypeUtil.parseValue(input.toString(), carbonDimension);

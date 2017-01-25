@@ -43,7 +43,7 @@ import org.apache.carbondata.processing.newflow.row.CarbonRow;
 
 public class DictionaryFieldConverterImpl extends AbstractDictionaryFieldConverterImpl {
 
-  private BiDictionary<Integer, Object> dictionaryGenerator;
+  private BiDictionary dictionaryGenerator;
 
   private int index;
 
@@ -89,7 +89,8 @@ public class DictionaryFieldConverterImpl extends AbstractDictionaryFieldConvert
     }
   }
 
-  @Override public void convert(CarbonRow row, BadRecordLogHolder logHolder)
+  @Override
+  public void convert(CarbonRow row, BadRecordLogHolder logHolder)
       throws CarbonDataLoadingException {
     try {
       String parsedValue = DataTypeUtil.parseValue(row.getString(index), carbonDimension);

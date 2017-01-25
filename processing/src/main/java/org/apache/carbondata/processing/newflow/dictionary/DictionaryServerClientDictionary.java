@@ -28,7 +28,7 @@ import org.apache.carbondata.core.dictionary.generator.key.DictionaryKey;
 /**
  * Dictionary implementation along with dictionary server client to get new dictionary values
  */
-public class DictionaryServerClientDictionary implements BiDictionary<Integer, Object> {
+public class DictionaryServerClientDictionary implements BiDictionary {
 
   private Dictionary dictionary;
 
@@ -51,9 +51,10 @@ public class DictionaryServerClientDictionary implements BiDictionary<Integer, O
     this.base = (dictionary == null ? 0 : dictionary.getDictionaryChunks().getSize() - 1);
   }
 
-  @Override public Integer getOrGenerateKey(Object value) throws DictionaryGenerationException {
-    Integer key = getKey(value);
-    if (key == null) {
+  @Override
+  public int getOrGenerateKey(Object value) throws DictionaryGenerationException {
+    int key = getKey(value);
+    if (key == CarbonCommonConstants.INVALID_SURROGATE_KEY) {
       synchronized (lock) {
         dictionaryKey.setData(value);
         dictionaryKey.setThreadNo(Thread.currentThread().getId() + "");
@@ -66,28 +67,28 @@ public class DictionaryServerClientDictionary implements BiDictionary<Integer, O
     return key;
   }
 
-  @Override public Integer getKey(Object value) {
-    Integer key = -1;
+  @Override
+  public int getKey(Object value) {
+    int key = CarbonCommonConstants.INVALID_SURROGATE_KEY;
     if (dictionary != null) {
       key = dictionary.getSurrogateKey(value.toString());
     }
     if (key == CarbonCommonConstants.INVALID_SURROGATE_KEY) {
-      key = localCache.get(value);
-      if (key != null) {
-        return key + base;
+      Integer localKey = localCache.get(value);
+      if (localKey != null) {
+        return localKey + base;
       }
     }
     return key;
   }
 
-  @Override public Object getValue(Integer key) {
+  @Override
+  public Object getValue(int key) {
     throw new UnsupportedOperationException("Not supported here");
   }
 
   @Override public int size() {
     dictionaryKey.setType("SIZE");
-    int size = (int) client.getDictionary(dictionaryKey).getData()
-            + base;
-    return size;
+    return (int) client.getDictionary(dictionaryKey).getData() + base;
   }
 }

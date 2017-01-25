@@ -53,8 +53,8 @@ import org.apache.carbondata.core.writer.sortindex.CarbonDictionarySortInfoPrepa
  * for the loading session, so what ever the dictionary values it generates in the loading session
  * it keeps in cache.
  */
-public class IncrementalColumnDictionaryGenerator implements BiDictionary<Integer, String>,
-        DictionaryGenerator<Integer, String>, DictionaryWriter {
+public class IncrementalColumnDictionaryGenerator implements BiDictionary,
+        DictionaryGenerator, DictionaryWriter {
 
   private static final LogService LOGGER =
           LogServiceFactory.getLogService(IncrementalColumnDictionaryGenerator.class.getName());
@@ -74,39 +74,45 @@ public class IncrementalColumnDictionaryGenerator implements BiDictionary<Intege
     this.dimension = dimension;
   }
 
-  @Override public Integer getOrGenerateKey(String value) throws DictionaryGenerationException {
-    Integer dict = getKey(value);
-    if (dict == null) {
+  @Override
+  public int getOrGenerateKey(Object value) throws DictionaryGenerationException {
+    int dict = getKey(value);
+    if (dict == CarbonCommonConstants.INVALID_SURROGATE_KEY) {
       dict = generateKey(value);
     }
     return dict;
   }
 
-  @Override public Integer getKey(String value) {
+  @Override
+  public int getKey(Object value) {
     return incrementalCache.get(value);
   }
 
-  @Override public String getValue(Integer key) {
+  @Override
+  public Object getValue(int key) {
     return reverseIncrementalCache.get(key);
   }
 
-  @Override public int size() {
+  @Override
+  public int size() {
     return currentDictionarySize;
   }
 
-  @Override public Integer generateKey(String value) throws DictionaryGenerationException {
+  @Override
+  public int generateKey(Object value) throws DictionaryGenerationException {
     synchronized (lock) {
       Integer dict = incrementalCache.get(value);
       if (dict == null) {
         dict = ++currentDictionarySize;
-        incrementalCache.put(value, dict);
-        reverseIncrementalCache.put(dict, value);
+        incrementalCache.put(value.toString(), dict);
+        reverseIncrementalCache.put(dict, value.toString());
       }
       return dict;
     }
   }
 
-  @Override public void writeDictionaryData(String tableUniqueName) throws IOException {
+  @Override
+  public void writeDictionaryData(String tableUniqueName) throws IOException {
     // initialize params
     CarbonMetadata metadata = CarbonMetadata.getInstance();
     CarbonTable carbonTable = metadata.getCarbonTable(tableUniqueName);

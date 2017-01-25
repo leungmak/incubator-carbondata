@@ -17,7 +17,7 @@
 
 package org.apache.carbondata.core.devapi;
 
-public interface BiDictionary<K, V> {
+public interface BiDictionary {
 
   /**
    * Get the dictionary key corresponding to the input value, generate a new key if value is
@@ -25,7 +25,7 @@ public interface BiDictionary<K, V> {
    * @param value dictionary value
    * @return dictionary key
    */
-  K getOrGenerateKey(V value) throws DictionaryGenerationException;
+  int getOrGenerateKey(Object value) throws DictionaryGenerationException;
 
   /**
    * Get the dictionary key corresponding to the input value, return null if value is not exist in
@@ -33,7 +33,7 @@ public interface BiDictionary<K, V> {
    * @param value dictionary value
    * @return dictionary key
    */
-  K getKey(V value);
+  int getKey(Object value);
 
   /**
    * Get dictionary value corresponding to the input key, return null if key is not exist in the
@@ -41,7 +41,7 @@ public interface BiDictionary<K, V> {
    * @param key dictionary key
    * @return dictionary value
    */
-  V getValue(K key);
+  Object getValue(int key);
 
   /**
    * Return the size of the dictionary

@@ -18,10 +18,11 @@
 package org.apache.carbondata.processing.newflow.dictionary;
 
 import org.apache.carbondata.core.cache.dictionary.Dictionary;
+import org.apache.carbondata.core.constants.CarbonCommonConstants;
 import org.apache.carbondata.core.devapi.BiDictionary;
 import org.apache.carbondata.core.devapi.DictionaryGenerationException;
 
-public class PreCreatedDictionary implements BiDictionary<Integer, Object> {
+public class PreCreatedDictionary implements BiDictionary {
 
   private Dictionary dictionary;
 
@@ -30,21 +31,21 @@ public class PreCreatedDictionary implements BiDictionary<Integer, Object> {
   }
 
   @Override
-  public Integer getOrGenerateKey(Object value) throws DictionaryGenerationException {
-    Integer key = getKey(value);
-    if (key == null) {
+  public int getOrGenerateKey(Object value) throws DictionaryGenerationException {
+    int key = getKey(value);
+    if (key == CarbonCommonConstants.INVALID_SURROGATE_KEY) {
       throw new UnsupportedOperationException("trying to add new entry in PreCreatedDictionary");
     }
     return key;
   }
 
   @Override
-  public Integer getKey(Object value) {
+  public int getKey(Object value) {
     return dictionary.getSurrogateKey(value.toString());
   }
 
   @Override
-  public String getValue(Integer key) {
+  public Object getValue(int key) {
     return dictionary.getDictionaryValueForKey(key);
   }
 

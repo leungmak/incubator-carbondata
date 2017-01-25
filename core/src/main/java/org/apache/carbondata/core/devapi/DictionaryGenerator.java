@@ -17,7 +17,7 @@
 
 package org.apache.carbondata.core.devapi;
 
-public interface DictionaryGenerator<K, V> {
+public interface DictionaryGenerator {
 
   /**
    * Generate the dictionary key based on input value
@@ -25,5 +25,5 @@ public interface DictionaryGenerator<K, V> {
    * @return dictionary key
    * @throws Exception any exception
    */
-  K generateKey(V value) throws DictionaryGenerationException;
+  int generateKey(Object value) throws DictionaryGenerationException;
 }
