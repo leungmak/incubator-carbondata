@@ -276,9 +276,9 @@ object CompareTest {
   private def prepareTable(spark: SparkSession): Unit = {
     val df = generateDataFrame(spark).cache
     println(s"loading ${df.count} records, schema: ${df.schema}")
-    val loadParquetTime = loadParquetTable(spark, df)
+    //val loadParquetTime = loadParquetTable(spark, df)
     val loadCarbonV3Time = loadCarbonTable(spark, df, version = "3")
-    println(s"load completed, time: $loadParquetTime, $loadCarbonV3Time")
+    println(s"load completed, time:  $loadCarbonV3Time")
     df.unpersist()
     spark.read.parquet(parquetTableName).registerTempTable(parquetTableName)
   }

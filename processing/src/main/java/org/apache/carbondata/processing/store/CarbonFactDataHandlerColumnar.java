@@ -1123,8 +1123,17 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
 
     private BlockletDataHolder blockletDataHolder;
 
+    private boolean beforeFirstPage;
+    private long waitTimeBeforeFirstPage;
+    private long totalWaitTime;
+    private long totalWriteTime;
+
     private Consumer(BlockletDataHolder blockletDataHolder) {
       this.blockletDataHolder = blockletDataHolder;
+      this.beforeFirstPage = true;
+      this.waitTimeBeforeFirstPage = 0L;
+      this.totalWaitTime = 0L;
+      this.totalWriteTime = 0L;
     }
 
     /**
@@ -1137,9 +1146,21 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
       while (!processingComplete || blockletProcessingCount.get() > 0) {
         NodeHolder nodeHolder = null;
         try {
+          long start = System.nanoTime();
           nodeHolder = blockletDataHolder.get();
+          if (!beforeFirstPage) {
+            totalWaitTime += System.nanoTime() - start;
+          } else {
+            waitTimeBeforeFirstPage += System.nanoTime() - start;
+          }
+
           if (null != nodeHolder) {
+            if (beforeFirstPage) {
+              beforeFirstPage = false;
+            }
+            start = System.nanoTime();
             dataWriter.writeBlockletData(nodeHolder);
+            totalWriteTime += System.nanoTime() - start;
           }
           blockletProcessingCount.decrementAndGet();
         } catch (Throwable throwable) {
@@ -1153,6 +1174,9 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
           semaphore.release();
         }
       }
+      System.out.println("************total wait time before first page: " + waitTimeBeforeFirstPage/1000/1000 + "ms");
+      System.out.println("************total wait time after first page: " + totalWaitTime/1000/1000 + "ms");
+      System.out.println("************total write time: " + totalWriteTime/1000/1000 + "ms");
       return null;
     }
   }
