@@ -17,21 +17,16 @@
 
 package org.apache.carbondata.core.datastore.page.encoding;
 
-import org.apache.carbondata.core.datastore.page.ColumnPage;
+import org.apache.carbondata.core.datastore.columnar.IndexStorage;
 
-public class DummyCodec implements ColumnCodec {
-  @Override
-  public String getName() {
-    return "DummyCodec";
-  }
+// result result of all columns
+public class EncodedData {
+  // dimension data that include rowid (index)
+  public IndexStorage[] indexStorages;
 
-  @Override
-  public byte[] encode(ColumnPage columnPage) {
-    return null;
-  }
+  // encoded and compressed dimension data
+  public byte[][] dimensions;
 
-  @Override
-  public ColumnPage decode(byte[] encoded) {
-    return null;
-  }
+  // encoded and compressed measure data
+  public byte[][] measures;
 }

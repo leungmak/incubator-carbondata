@@ -15,21 +15,15 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.core.datastore.page.encoding;
+package org.apache.carbondata.core.memory;
 
-import org.apache.carbondata.core.datastore.page.ColumnPage;
+public class MemoryException extends Exception {
 
-/**
- *  Codec for a column page data, implementation should not keep state across pages,
- *  caller will use the same object to encode multiple pages.
- */
-public interface ColumnCodec {
+  public MemoryException(String message) {
+    super(message);
+  }
 
-  /** Codec name will be stored in BlockletHeader (DataChunk3) */
-  String getName();
-
-  byte[] encode(ColumnPage columnPage);
-
-  ColumnPage decode(byte[] encoded);
-
+  public MemoryException(Exception e) {
+    super(e);
+  }
 }

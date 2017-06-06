@@ -19,30 +19,14 @@ package org.apache.carbondata.core.datastore.dataholder;
 
 import java.math.BigDecimal;
 
-import org.apache.carbondata.core.datastore.compression.ValueCompressionHolder;
-
 // This class is used with Uncompressor to hold the decompressed column chunk in memory
-public class CarbonReadDataHolder {
+public interface CarbonReadDataHolder {
 
-  private ValueCompressionHolder unCompressValue;
+  long getLong(int rowId);
 
-  public CarbonReadDataHolder(ValueCompressionHolder unCompressValue) {
-    this.unCompressValue = unCompressValue;
-  }
+  BigDecimal getDecimal(int rowId);
 
-  public long getReadableLongValueByIndex(int index) {
-    return this.unCompressValue.getLongValue(index);
-  }
+  double getDouble(int rowId);
 
-  public BigDecimal getReadableBigDecimalValueByIndex(int index) {
-    return this.unCompressValue.getBigDecimalValue(index);
-  }
-
-  public double getReadableDoubleValueByIndex(int index) {
-    return this.unCompressValue.getDoubleValue(index);
-  }
-
-  public void freeMemory() {
-    unCompressValue.freeMemory();
-  }
+  void freeMemory();
 }

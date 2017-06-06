@@ -19,13 +19,14 @@ package org.apache.carbondata.core.datastore.compression;
 
 import java.math.BigDecimal;
 
+import org.apache.carbondata.core.datastore.dataholder.CarbonReadDataHolder;
 import org.apache.carbondata.core.metadata.datatype.DataType;
 
 /**
  * ValueCompressionHolder is the base class for handling
  * compression / decompression of the measure data chunk
  */
-public abstract class ValueCompressionHolder<T> {
+public abstract class ValueCompressionHolder<T> implements CarbonReadDataHolder {
 
   /**
    * compressedValue
@@ -107,12 +108,17 @@ public abstract class ValueCompressionHolder<T> {
     return compressedValue;
   }
 
-  public abstract long getLongValue(int index);
+  @Override
+  public abstract long getLong(int rowId);
 
-  public abstract double getDoubleValue(int index);
+  @Override
+  public abstract double getDouble(int rowId);
 
-  public abstract BigDecimal getBigDecimalValue(int index);
+  @Override
+  public abstract BigDecimal getDecimal(int rowId);
 
   public abstract void freeMemory();
+
+
 
 }

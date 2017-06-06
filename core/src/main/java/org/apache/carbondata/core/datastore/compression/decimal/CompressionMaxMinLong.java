@@ -80,17 +80,17 @@ public class CompressionMaxMinLong extends ValueCompressionHolder<long[]> {
     this.value = ValueCompressionUtil.convertToLongArray(buffer, value.length);
   }
 
-  @Override public long getLongValue(int index) {
-    long longValue = measureChunkStore.getLong(index);
+  @Override public long getLong(int rowId) {
+    long longValue = measureChunkStore.getLong(rowId);
     return (long) maxValue - longValue;
   }
 
-  @Override public double getDoubleValue(int index) {
-    long longValue = measureChunkStore.getLong(index);
+  @Override public double getDouble(int rowId) {
+    long longValue = measureChunkStore.getLong(rowId);
     return maxValue - longValue;
   }
 
-  @Override public BigDecimal getBigDecimalValue(int index) {
+  @Override public BigDecimal getDecimal(int rowId) {
     throw new UnsupportedOperationException(
         "Big decimal value is not defined for CompressionMaxMinLong");
   }

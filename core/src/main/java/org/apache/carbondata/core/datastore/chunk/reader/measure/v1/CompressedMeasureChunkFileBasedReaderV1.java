@@ -26,7 +26,6 @@ import org.apache.carbondata.core.datastore.chunk.impl.MeasureRawColumnChunk;
 import org.apache.carbondata.core.datastore.chunk.reader.measure.AbstractMeasureChunkReader;
 import org.apache.carbondata.core.datastore.compression.ReaderCompressModel;
 import org.apache.carbondata.core.datastore.compression.ValueCompressionHolder;
-import org.apache.carbondata.core.datastore.dataholder.CarbonReadDataHolder;
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.blocklet.BlockletInfo;
 import org.apache.carbondata.core.metadata.blocklet.datachunk.DataChunk;
@@ -100,19 +99,17 @@ public class CompressedMeasureChunkFileBasedReaderV1 extends AbstractMeasureChun
     ValueEncoderMeta meta = dataChunk.getValueEncoderMeta().get(0);
     ReaderCompressModel compressModel = ValueCompressionUtil.getReaderCompressModel(meta);
 
-    ValueCompressionHolder values = compressModel.getValueCompressionHolder();
+    ValueCompressionHolder value = compressModel.getValueCompressionHolder();
     ByteBuffer rawData = measureRawColumnChunk.getRawData();
 
     // unCompress data
-    values.uncompress(compressModel.getConvertedDataType(), rawData.array(),
+    value.uncompress(compressModel.getConvertedDataType(), rawData.array(),
         measureRawColumnChunk.getOffSet(), dataChunk.getDataPageLength(),
         compressModel.getMantissa(), compressModel.getMaxValue(), numberOfRows);
 
-    CarbonReadDataHolder measureDataHolder = new CarbonReadDataHolder(values);
-
     // create and set the data chunk
     MeasureColumnDataChunk datChunk = new MeasureColumnDataChunk();
-    datChunk.setMeasureDataHolder(measureDataHolder);
+    datChunk.setMeasureDataHolder(value);
     // set the enun value indexes
     datChunk
         .setNullValueIndexHolder(dataChunk.getNullValueIndexForColumn());

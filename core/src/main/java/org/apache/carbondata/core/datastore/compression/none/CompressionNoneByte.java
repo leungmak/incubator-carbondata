@@ -79,15 +79,15 @@ public class CompressionNoneByte extends ValueCompressionHolder<byte[]> {
     this.value = value;
   }
 
-  @Override public long getLongValue(int index) {
-    return measureChunkStore.getByte(index);
+  @Override public long getLong(int rowId) {
+    return measureChunkStore.getByte(rowId);
   }
 
-  @Override public double getDoubleValue(int index) {
-    return measureChunkStore.getByte(index);
+  @Override public double getDouble(int rowId) {
+    return measureChunkStore.getByte(rowId);
   }
 
-  @Override public BigDecimal getBigDecimalValue(int index) {
+  @Override public BigDecimal getDecimal(int rowId) {
     throw new UnsupportedOperationException("Big decimal is not defined for CompressionNoneByte");
   }
 

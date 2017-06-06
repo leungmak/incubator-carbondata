@@ -62,14 +62,14 @@ public class TablePage {
 
   private CarbonFactDataHandlerModel model;
 
-  TablePage(CarbonFactDataHandlerModel model, int pageSize) {
+  public TablePage(CarbonFactDataHandlerModel model, int pageSize) {
     this.model = model;
     this.pageSize = pageSize;
     keyColumnPage = new KeyColumnPage(pageSize,
         model.getSegmentProperties().getDimensionPartitions().length);
     noDictDimensionPage = new ColumnPage[model.getNoDictionaryCount()];
     for (int i = 0; i < noDictDimensionPage.length; i++) {
-      noDictDimensionPage[i] = new ColumnPage(DataType.STRING, pageSize);
+      noDictDimensionPage[i] = ColumnPage.newPage(DataType.STRING, pageSize);
     }
     complexDimensionPage = new ComplexColumnPage[model.getComplexColumnCount()];
     for (int i = 0; i < complexDimensionPage.length; i++) {
@@ -80,7 +80,7 @@ public class TablePage {
     measurePage = new ColumnPage[model.getMeasureCount()];
     DataType[] dataTypes = model.getMeasureDataType();
     for (int i = 0; i < measurePage.length; i++) {
-      measurePage[i] = new ColumnPage(dataTypes[i], pageSize);
+      measurePage[i] = ColumnPage.newPage(dataTypes[i], pageSize);
     }
   }
 
@@ -90,7 +90,7 @@ public class TablePage {
    * @param rowId Id of the input row
    * @param row   row object
    */
-  void addRow(int rowId, CarbonRow row) throws KeyGenException {
+  public void addRow(int rowId, CarbonRow row) throws KeyGenException {
     // convert each column category
 
     // 1. convert dictionary columns

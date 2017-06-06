@@ -329,20 +329,20 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
       switch (msrType) {
         case SHORT:
           msrValue = (short) measureColumnDataChunk.getMeasureDataHolder()
-              .getReadableLongValueByIndex(index);
+              .getLong(index);
           break;
         case INT:
           msrValue =
-              (int)measureColumnDataChunk.getMeasureDataHolder().getReadableLongValueByIndex(index);
+              (int)measureColumnDataChunk.getMeasureDataHolder().getLong(index);
           break;
         case LONG:
           msrValue =
-              measureColumnDataChunk.getMeasureDataHolder().getReadableLongValueByIndex(index);
+              measureColumnDataChunk.getMeasureDataHolder().getLong(index);
           break;
         case DECIMAL:
           BigDecimal bigDecimalValue =
               measureColumnDataChunk.getMeasureDataHolder()
-                  .getReadableBigDecimalValueByIndex(index);
+                  .getDecimal(index);
           if (null != bigDecimalValue
               && msrColumnEvalutorInfo.getCarbonColumn().getColumnSchema().getScale()
               > bigDecimalValue.scale()) {
@@ -354,7 +354,7 @@ public class RowLevelFilterExecuterImpl implements FilterExecuter {
           break;
         default:
           msrValue =
-              measureColumnDataChunk.getMeasureDataHolder().getReadableDoubleValueByIndex(index);
+              measureColumnDataChunk.getMeasureDataHolder().getDouble(index);
       }
       record[msrColumnEvalutorInfo.getRowIndex()] =
           measureColumnDataChunk.getNullValueIndexHolder().getBitSet().get(index) ? null : msrValue;

@@ -81,17 +81,17 @@ public class CompressionMaxMinByte extends ValueCompressionHolder<byte[]> {
     this.value = value;
   }
 
-  @Override public long getLongValue(int index) {
-    byte byteValue = measureChunkStore.getByte(index);
+  @Override public long getLong(int rowId) {
+    byte byteValue = measureChunkStore.getByte(rowId);
     return (long) (maxValue - byteValue);
   }
 
-  @Override public double getDoubleValue(int index) {
-    byte byteValue = measureChunkStore.getByte(index);
+  @Override public double getDouble(int rowId) {
+    byte byteValue = measureChunkStore.getByte(rowId);
     return (maxValue - byteValue);
   }
 
-  @Override public BigDecimal getBigDecimalValue(int index) {
+  @Override public BigDecimal getDecimal(int rowId) {
     throw new UnsupportedOperationException(
         "Big decimal value is not defined for CompressionMaxMinByte");
   }

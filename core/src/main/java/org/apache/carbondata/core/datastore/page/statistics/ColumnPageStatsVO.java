@@ -20,11 +20,12 @@ package org.apache.carbondata.core.datastore.page.statistics;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 
+import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.datatype.DataType;
 import org.apache.carbondata.core.util.DataTypeUtil;
 
 /** statics for one column page */
-public class ColumnPageStatistics {
+public class ColumnPageStatsVO {
   private DataType dataType;
 
   /** min and max value of the measures */
@@ -39,7 +40,7 @@ public class ColumnPageStatistics {
   /** decimal count of the measures */
   private int decimal;
 
-  public ColumnPageStatistics(DataType dataType) {
+  public ColumnPageStatsVO(DataType dataType) {
     this.dataType = dataType;
     switch (dataType) {
       case SHORT:
@@ -61,6 +62,15 @@ public class ColumnPageStatistics {
         break;
     }
     decimal = 0;
+  }
+
+  public static ColumnPageStatsVO copyFrom(ValueEncoderMeta meta) {
+    ColumnPageStatsVO instance = new ColumnPageStatsVO(meta.getType());
+    instance.min = meta.getMinValue();
+    instance.max = meta.getMaxValue();
+    instance.decimal = meta.getDecimal();
+    instance.nonExistValue = meta.getUniqueValue();
+    return instance;
   }
 
   /**
@@ -92,6 +102,42 @@ public class ColumnPageStatistics {
         break;
       case DECIMAL:
         BigDecimal decimalValue = DataTypeUtil.byteToBigDecimal((byte[]) value);
+        decimal = decimalValue.scale();
+        BigDecimal val = (BigDecimal) min;
+        nonExistValue = (val.subtract(new BigDecimal(1.0)));
+        break;
+      case ARRAY:
+      case STRUCT:
+        // for complex type column, writer is not going to use stats, so, do nothing
+    }
+  }
+
+  public void updateNull() {
+    switch (dataType) {
+      case SHORT:
+        max = ((long) max > 0) ? max : 0L;
+        min = ((long) min < 0) ? min : 0L;
+        nonExistValue = (long) min - 1;
+        break;
+      case INT:
+        max = ((long) max > 0) ? max : 0L;
+        min = ((long) min  < 0) ? min : 0L;
+        nonExistValue = (long) min - 1;
+        break;
+      case LONG:
+        max = ((long) max > 0) ? max : 0L;
+        min = ((long) min < 0) ? min : 0L;
+        nonExistValue = (long) min - 1;
+        break;
+      case DOUBLE:
+        max = ((double) max > 0d) ? max : 0d;
+        min = ((double) min < 0d) ? min : 0d;
+        int num = getDecimalCount(0d);
+        decimal = decimal > num ? decimal : num;
+        nonExistValue = (double) min - 1;
+        break;
+      case DECIMAL:
+        BigDecimal decimalValue = BigDecimal.ZERO;
         decimal = decimalValue.scale();
         BigDecimal val = (BigDecimal) min;
         nonExistValue = (val.subtract(new BigDecimal(1.0)));
@@ -168,5 +214,14 @@ public class ColumnPageStatistics {
 
   public int getDecimal() {
     return decimal;
+  }
+
+  public DataType getDataType() {
+    return dataType;
+  }
+
+  @Override
+  public String toString() {
+    return String.format("type: %s, min: %s, max: %s, decimal: %s ", dataType, min, max, decimal);
   }
 }

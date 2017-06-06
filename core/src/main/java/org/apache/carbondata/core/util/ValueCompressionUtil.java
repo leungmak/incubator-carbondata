@@ -21,9 +21,6 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import org.apache.carbondata.core.compression.BigIntCompressor;
-import org.apache.carbondata.core.compression.DoubleCompressor;
-import org.apache.carbondata.core.compression.ValueCompressor;
 import org.apache.carbondata.core.datastore.compression.ReaderCompressModel;
 import org.apache.carbondata.core.datastore.compression.ValueCompressionHolder;
 import org.apache.carbondata.core.datastore.compression.decimal.CompressByteArray;
@@ -63,7 +60,7 @@ public final class ValueCompressionUtil {
    * @return: actual type of value
    * @see
    */
-  private static DataType getDataType(double value, int mantissa, byte dataTypeSelected) {
+  private static DataType getDataType(double value, int mantissa) {
     DataType dataType = DataType.DOUBLE;
     if (mantissa == 0) {
       if (value <= Byte.MAX_VALUE && value >= Byte.MIN_VALUE) {
@@ -74,19 +71,6 @@ public final class ValueCompressionUtil {
         dataType = DataType.INT;
       } else if (value <= Long.MAX_VALUE && value >= Long.MIN_VALUE) {
         dataType = DataType.LONG;
-      }
-    } else {
-      if (dataTypeSelected == 1) {
-        if (value <= Float.MAX_VALUE && value >= Float.MIN_VALUE) {
-          float floatValue = (float) value;
-          if (floatValue - value != 0) {
-            dataType = DataType.DOUBLE;
-          } else {
-            dataType = DataType.FLOAT;
-          }
-        } else if (value <= Double.MAX_VALUE && value >= Double.MIN_VALUE) {
-          dataType = DataType.DOUBLE;
-        }
       }
     }
     return dataType;
@@ -126,7 +110,7 @@ public final class ValueCompressionUtil {
    * @see
    */
   public static CompressionFinder getCompressionFinder(Object maxValue, Object minValue,
-      int mantissa, DataType measureStoreType, byte dataTypeSelected) {
+      int mantissa, DataType measureStoreType) {
     switch (measureStoreType) {
       case DECIMAL:
         return new CompressionFinder(COMPRESSION_TYPE.BIGDECIMAL, DataType.BYTE,
@@ -134,25 +118,22 @@ public final class ValueCompressionUtil {
       case SHORT:
       case INT:
       case LONG:
-        return getLongCompressorFinder(maxValue, minValue, mantissa, dataTypeSelected,
-            measureStoreType);
+        return getLongCompressorFinder(maxValue, minValue, mantissa, measureStoreType);
       case DOUBLE:
-        return getDoubleCompressorFinder(maxValue, minValue, mantissa, dataTypeSelected,
-            measureStoreType);
+        return getDoubleCompressorFinder(maxValue, minValue, mantissa, measureStoreType);
       default:
         throw new IllegalArgumentException("unsupported measure type");
     }
   }
 
   private static CompressionFinder getDoubleCompressorFinder(Object maxValue, Object minValue,
-      int mantissa, byte dataTypeSelected, DataType measureStoreType) {
+      int mantissa, DataType measureStoreType) {
     //Here we should use the Max abs as max to getDatatype, let's say -1 and -10000000, -1 is max,
     //but we can't use -1 to getDatatype, we should use -10000000.
     double absMaxValue = Math.abs((double) maxValue) >= Math.abs((double) minValue) ?
         (double) maxValue : (double) minValue;
-    DataType adaptiveDataType = getDataType(absMaxValue, mantissa, dataTypeSelected);
-    DataType deltaDataType = getDataType((double) maxValue - (double) minValue, mantissa,
-        dataTypeSelected);
+    DataType adaptiveDataType = getDataType(absMaxValue, mantissa);
+    DataType deltaDataType = getDataType((double) maxValue - (double) minValue, mantissa);
 
     if (mantissa == 0) {
       // short, int, long
@@ -171,10 +152,9 @@ public final class ValueCompressionUtil {
     } else {
       // double
       DataType maxNonDecDataType =
-          getDataType(Math.pow(10, mantissa) * absMaxValue, 0, dataTypeSelected);
+          getDataType(Math.pow(10, mantissa) * absMaxValue, 0);
       DataType diffNonDecDataType =
-          getDataType(Math.pow(10, mantissa) * ((double) maxValue - (double) minValue), 0,
-              dataTypeSelected);
+          getDataType(Math.pow(10, mantissa) * ((double) maxValue - (double) minValue), 0);
 
       CompressionFinder[] finders = {
           new CompressionFinder(COMPRESSION_TYPE.ADAPTIVE, adaptiveDataType, adaptiveDataType,
@@ -192,10 +172,9 @@ public final class ValueCompressionUtil {
   }
 
   private static CompressionFinder getLongCompressorFinder(Object maxValue, Object minValue,
-      int mantissa, byte dataTypeSelected, DataType measureStoreType) {
-    long value = Math.max(Math.abs((long)maxValue), Math.abs((long)minValue));
-    DataType adaptiveDataType = getDataType(value, mantissa, dataTypeSelected);
-    int adaptiveSize = getSize(adaptiveDataType);
+      int mantissa, DataType measureStoreType) {
+    DataType adaptiveDataType = getDataType((long) maxValue, mantissa);
+    int adaptiveSize = adaptiveDataType.getSizeInBytes();
     DataType deltaDataType = null;
     // we cannot apply compression in case actual data type of the column is long
     // consider the scenario when max and min value are equal to is long max and min value OR
@@ -204,14 +183,11 @@ public final class ValueCompressionUtil {
     if (adaptiveDataType == DataType.LONG) {
       deltaDataType = DataType.LONG;
     } else {
-      deltaDataType = getDataType((long) maxValue - (long) minValue, mantissa, dataTypeSelected);
+      deltaDataType = getDataType((long) maxValue - (long) minValue, mantissa);
     }
     int deltaSize = getSize(deltaDataType);
     if (adaptiveSize > deltaSize) {
       return new CompressionFinder(COMPRESSION_TYPE.DELTA_DOUBLE, DataType.LONG,
-          deltaDataType, measureStoreType);
-    } else if (adaptiveSize < deltaSize) {
-      return new CompressionFinder(COMPRESSION_TYPE.ADAPTIVE, DataType.LONG,
           deltaDataType, measureStoreType);
     } else {
       return new CompressionFinder(COMPRESSION_TYPE.ADAPTIVE, DataType.LONG,
@@ -243,22 +219,6 @@ public final class ValueCompressionUtil {
   }
 
   /**
-   * It returns Compressor for given datatype
-   * @param compressorFinder
-   * @return compressor based on actualdatatype
-   */
-  public static ValueCompressor getValueCompressor(CompressionFinder compressorFinder) {
-    switch (compressorFinder.getMeasureStoreType()) {
-      case SHORT:
-      case INT:
-      case LONG:
-        return new BigIntCompressor();
-      default:
-        return new DoubleCompressor();
-    }
-  }
-
-  /**
    * get uncompressed object
    * @param compressionFinders : Compression types for measures
    * @return
@@ -268,24 +228,11 @@ public final class ValueCompressionUtil {
     ValueCompressionHolder[] valueCompressionHolders =
         new ValueCompressionHolder[compressionFinders.length];
     for (int i = 0; i < compressionFinders.length; i++) {
-      valueCompressionHolders[i] = getValueCompressionHolder(compressionFinders[i]);
+      CompressionFinder finder = compressionFinders[i];
+      valueCompressionHolders[i] = getValueCompressionHolder(finder.getCompType(),
+          finder.getActualDataType(), finder.getConvertedDataType());
     }
     return valueCompressionHolders;
-  }
-
-
-  /**
-   *
-   * @param compressionFinder for measure other then bigdecimal
-   * @return
-   */
-  private static ValueCompressionHolder getValueCompressionHolder(
-      CompressionFinder compressionFinder) {
-    switch (compressionFinder.getMeasureStoreType()) {
-      default:
-        return getValueCompressionHolder(compressionFinder.getCompType(),
-            compressionFinder.getActualDataType(), compressionFinder.getConvertedDataType());
-    }
   }
 
   private static ValueCompressionHolder getValueCompressionHolder(COMPRESSION_TYPE compType,
@@ -663,9 +610,10 @@ public final class ValueCompressionUtil {
     ReaderCompressModel compressModel = new ReaderCompressModel();
     CompressionFinder compressFinder =
         getCompressionFinder(meta.getMaxValue(), meta.getMinValue(), meta.getDecimal(),
-            meta.getType(), meta.getDataTypeSelected());
+            meta.getType());
     compressModel.setValueCompressionHolder(
-          ValueCompressionUtil.getValueCompressionHolder(compressFinder));
+          ValueCompressionUtil.getValueCompressionHolder(compressFinder.getCompType(),
+              compressFinder.getActualDataType(), compressFinder.getConvertedDataType()));
     compressModel.setConvertedDataType(compressFinder.getConvertedDataType());
     compressModel.setValueEncoderMeta(meta);
     return compressModel;

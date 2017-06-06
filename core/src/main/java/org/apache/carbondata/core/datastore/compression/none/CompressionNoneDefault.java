@@ -77,15 +77,15 @@ public class CompressionNoneDefault extends ValueCompressionHolder<double[]> {
     this.value = ValueCompressionUtil.convertToDoubleArray(buffer, value.length);
   }
 
-  @Override public long getLongValue(int index) {
+  @Override public long getLong(int rowId) {
     throw new UnsupportedOperationException("Long value is not defined for CompressionNonDefault");
   }
 
-  @Override public double getDoubleValue(int index) {
-    return measureChunkStore.getDouble(index);
+  @Override public double getDouble(int rowId) {
+    return measureChunkStore.getDouble(rowId);
   }
 
-  @Override public BigDecimal getBigDecimalValue(int index) {
+  @Override public BigDecimal getDecimal(int rowId) {
     throw new UnsupportedOperationException(
         "Big decimal is not defined for CompressionNoneDefault");
   }

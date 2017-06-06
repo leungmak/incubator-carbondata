@@ -26,7 +26,6 @@ import org.apache.carbondata.core.datastore.chunk.MeasureColumnDataChunk;
 import org.apache.carbondata.core.datastore.chunk.impl.MeasureRawColumnChunk;
 import org.apache.carbondata.core.datastore.chunk.reader.measure.AbstractMeasureChunkReaderV2V3Format;
 import org.apache.carbondata.core.datastore.compression.ValueCompressionHolder;
-import org.apache.carbondata.core.datastore.dataholder.CarbonReadDataHolder;
 import org.apache.carbondata.core.datastore.page.statistics.MeasurePageStatsVO;
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.blocklet.BlockletInfo;
@@ -145,7 +144,7 @@ public class CompressedMeasureChunkFileBasedReaderV2 extends AbstractMeasureChun
     for (int i = 0; i < measureCount; i++) {
       CompressionFinder compresssionFinder =
           ValueCompressionUtil.getCompressionFinder(stats.getMax(i), stats.getMin(i),
-              stats.getDecimal(i), stats.getDataType(i), stats.getDataTypeSelected(i));
+              stats.getDecimal(i), stats.getDataType(i));
       finders[i] = compresssionFinder;
       convertedType[i] = compresssionFinder.getConvertedDataType();
     }
@@ -157,10 +156,8 @@ public class CompressedMeasureChunkFileBasedReaderV2 extends AbstractMeasureChun
         measureColumnChunk.data_page_length, stats.getDecimal(0),
         stats.getMax(0), numberOfRows);
 
-    CarbonReadDataHolder measureDataHolder = new CarbonReadDataHolder(values);
-
     // set the data chunk
-    datChunk.setMeasureDataHolder(measureDataHolder);
+    datChunk.setMeasureDataHolder(values);
 
     // set the enun value indexes
     datChunk.setNullValueIndexHolder(getPresenceMeta(measureColumnChunk.presence));

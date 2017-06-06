@@ -15,24 +15,19 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.processing.store.writer;
+package org.apache.carbondata.core.datastore.page;
 
-import org.apache.carbondata.core.datastore.columnar.IndexStorage;
-import org.apache.carbondata.processing.store.TablePage;
+// Transformation type that can be applied to ColumnPage
+public enum ColumnPageTransform {
+  // no operation, new value = page value
+  NO_OP,
 
-public interface Encoder {
+  // new value = (max value of page) - (page value)
+  MAX_DELTA,
 
-  EncodedData encode(TablePage tablePage);
+  // new value = (10 power of decimal) * (page value)
+  UPSCALE,
 
-  // result result of all columns
-  class EncodedData {
-    // dimension data that include rowid (index)
-    public IndexStorage[] indexStorages;
-
-    // encoded and compressed dimension data
-    public byte[][] dimensions;
-
-    // encoded and compressed measure data
-    public byte[][] measures;
-  }
+  // new value = (10 power of decimal) * ((max value of page) - (page value))
+  UPSCALE_MAX_DELTA
 }

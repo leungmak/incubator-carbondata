@@ -74,18 +74,18 @@ public class CompressionNonDecimalMaxMinShort extends ValueCompressionHolder<sho
     this.value = ValueCompressionUtil.convertToShortArray(buffer, value.length);
   }
 
-  @Override public long getLongValue(int index) {
+  @Override public long getLong(int rowId) {
     throw new UnsupportedOperationException(
         "Long value is not defined for CompressionNonDecimalMaxMinShort");
   }
 
-  @Override public double getDoubleValue(int index) {
-    short shortValue = measureChunkStore.getShort(index);
+  @Override public double getDouble(int rowId) {
+    short shortValue = measureChunkStore.getShort(rowId);
     BigDecimal diff = BigDecimal.valueOf(shortValue / this.divisionFactor);
     return maxValue.subtract(diff).doubleValue();
   }
 
-  @Override public BigDecimal getBigDecimalValue(int index) {
+  @Override public BigDecimal getDecimal(int rowId) {
     throw new UnsupportedOperationException("Get big decimal value is not supported");
   }
 

@@ -69,19 +69,19 @@ public class CompressionNonDecimalMaxMinByte extends ValueCompressionHolder<byte
     this.value = value;
   }
 
-  @Override public long getLongValue(int index) {
+  @Override public long getLong(int rowId) {
     throw new UnsupportedOperationException(
         "Long value is not defined for CompressionNonDecimalMaxMinByte");
   }
 
-  @Override public double getDoubleValue(int index) {
-    byte byteValue = measureChunkStore.getByte(index);
+  @Override public double getDouble(int rowId) {
+    byte byteValue = measureChunkStore.getByte(rowId);
     BigDecimal diff = BigDecimal.valueOf(byteValue / this.divisionFactor);
     return maxValue.subtract(diff).doubleValue();
 
   }
 
-  @Override public BigDecimal getBigDecimalValue(int index) {
+  @Override public BigDecimal getDecimal(int rowId) {
     throw new UnsupportedOperationException(
         "Big decimal value is not defined for CompressionNonDecimalMaxMinByte");
   }

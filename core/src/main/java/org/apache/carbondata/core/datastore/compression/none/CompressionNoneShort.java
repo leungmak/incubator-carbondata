@@ -79,15 +79,15 @@ public class CompressionNoneShort extends ValueCompressionHolder<short[]> {
     shortValue = ValueCompressionUtil.convertToShortArray(buffer, value.length);
   }
 
-  @Override public long getLongValue(int index) {
-    return measureChunkStore.getShort(index);
+  @Override public long getLong(int rowId) {
+    return measureChunkStore.getShort(rowId);
   }
 
-  @Override public double getDoubleValue(int index) {
-    return measureChunkStore.getShort(index);
+  @Override public double getDouble(int rowId) {
+    return measureChunkStore.getShort(rowId);
   }
 
-  @Override public BigDecimal getBigDecimalValue(int index) {
+  @Override public BigDecimal getDecimal(int rowId) {
     throw new UnsupportedOperationException("Big decimal is not defined for CompressionNonShort");
   }
 

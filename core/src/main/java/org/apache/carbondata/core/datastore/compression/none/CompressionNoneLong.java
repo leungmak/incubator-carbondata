@@ -77,15 +77,15 @@ public class CompressionNoneLong extends ValueCompressionHolder<long[]> {
     this.value = ValueCompressionUtil.convertToLongArray(buffer, byteValue.length);
   }
 
-  @Override public long getLongValue(int index) {
-    return measureChunkStore.getLong(index);
+  @Override public long getLong(int rowId) {
+    return measureChunkStore.getLong(rowId);
   }
 
-  @Override public double getDoubleValue(int index) {
-    return measureChunkStore.getLong(index);
+  @Override public double getDouble(int rowId) {
+    return measureChunkStore.getLong(rowId);
   }
 
-  @Override public BigDecimal getBigDecimalValue(int index) {
+  @Override public BigDecimal getDecimal(int rowId) {
     throw new UnsupportedOperationException("Get big decimal is not supported");
   }
 

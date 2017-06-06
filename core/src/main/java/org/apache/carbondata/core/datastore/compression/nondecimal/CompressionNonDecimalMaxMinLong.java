@@ -76,18 +76,18 @@ public class CompressionNonDecimalMaxMinLong extends ValueCompressionHolder<long
     this.value = ValueCompressionUtil.convertToLongArray(buff, value.length);
   }
 
-  @Override public long getLongValue(int index) {
+  @Override public long getLong(int rowId) {
     throw new UnsupportedOperationException(
         "Long value is not defined for CompressionNonDecimalMaxMinLong");
   }
 
-  @Override public double getDoubleValue(int index) {
-    long longValue = measureChunkStore.getLong(index);
+  @Override public double getDouble(int rowId) {
+    long longValue = measureChunkStore.getLong(rowId);
     BigDecimal diff = BigDecimal.valueOf(longValue / this.divisionFactor);
     return maxValue.subtract(diff).doubleValue();
   }
 
-  @Override public BigDecimal getBigDecimalValue(int index) {
+  @Override public BigDecimal getDecimal(int rowId) {
     throw new UnsupportedOperationException("Big decimal value is not supported");
   }
 

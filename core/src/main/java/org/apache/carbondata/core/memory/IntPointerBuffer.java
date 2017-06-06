@@ -15,11 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.processing.newflow.sort.unsafe;
-
-import org.apache.carbondata.core.memory.CarbonUnsafe;
-import org.apache.carbondata.core.memory.MemoryBlock;
-import org.apache.carbondata.processing.sortandgroupby.exception.CarbonSortKeyAndGroupByException;
+package org.apache.carbondata.core.memory;
 
 /**
  * Holds the pointers for rows.
@@ -71,8 +67,8 @@ public class IntPointerBuffer {
     return pointerBlock[index];
   }
 
-  public void loadToUnsafe() throws CarbonSortKeyAndGroupByException {
-    pointerMemoryBlock = UnsafeSortDataRows.getMemoryBlock(pointerBlock.length * 4);
+  public void loadToUnsafe() throws MemoryException {
+    pointerMemoryBlock = UnsafeMemoryManager.allocateMemoryBlocking(pointerBlock.length * 4);
     for (int i = 0; i < pointerBlock.length; i++) {
       CarbonUnsafe.unsafe
           .putInt(pointerMemoryBlock.getBaseObject(), pointerMemoryBlock.getBaseOffset() + i * 4,

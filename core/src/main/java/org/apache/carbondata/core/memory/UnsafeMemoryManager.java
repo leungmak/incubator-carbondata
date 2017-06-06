@@ -15,13 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.processing.newflow.sort.unsafe;
+package org.apache.carbondata.core.memory;
 
 import org.apache.carbondata.common.logging.LogService;
 import org.apache.carbondata.common.logging.LogServiceFactory;
 import org.apache.carbondata.core.constants.CarbonCommonConstants;
-import org.apache.carbondata.core.memory.MemoryAllocator;
-import org.apache.carbondata.core.memory.MemoryBlock;
 import org.apache.carbondata.core.util.CarbonProperties;
 
 /**
@@ -48,7 +46,6 @@ public class UnsafeMemoryManager {
       LOGGER.info("It is not recommended to keep unsafe memory size less than 1024MB, "
           + "so setting default value to " + size);
     }
-
 
     boolean offHeap = Boolean.parseBoolean(CarbonProperties.getInstance()
         .getProperty(CarbonCommonConstants.ENABLE_OFFHEAP_SORT,
@@ -93,6 +90,7 @@ public class UnsafeMemoryManager {
     LOGGER.info("Memory manager is created with size " + totalMemory + " with " + allocator
         + " and minimum reserve memory " + minimumMemory);
   }
+
   public synchronized MemoryBlock allocateMemory(long memoryRequested) {
     if (memoryUsed + memoryRequested <= totalMemory) {
       MemoryBlock allocate = allocator.allocate(memoryRequested);
@@ -122,5 +120,30 @@ public class UnsafeMemoryManager {
 
   public long getUsableMemory() {
     return totalMemory - minimumMemory;
+  }
+
+  /**
+   * It tries to allocate memory of `size` bytes, keep retry until it allocates successfully.
+   */
+  public static MemoryBlock allocateMemoryBlocking(long size) throws MemoryException {
+    MemoryBlock baseBlock = null;
+    int tries = 0;
+    while (tries < 100) {
+      baseBlock = INSTANCE.allocateMemory(size);
+      if (baseBlock == null) {
+        try {
+          Thread.sleep(50);
+        } catch (InterruptedException e) {
+          throw new MemoryException(e);
+        }
+      } else {
+        break;
+      }
+      tries++;
+    }
+    if (baseBlock == null) {
+      throw new MemoryException("Not enough memory to create page");
+    }
+    return baseBlock;
   }
 }

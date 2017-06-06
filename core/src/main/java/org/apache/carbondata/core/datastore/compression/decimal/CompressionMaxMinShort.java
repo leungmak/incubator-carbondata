@@ -82,17 +82,17 @@ public class CompressionMaxMinShort extends ValueCompressionHolder<short[]> {
     this.value = ValueCompressionUtil.convertToShortArray(buffer, value.length);
   }
 
-  @Override public long getLongValue(int index) {
-    short shortValue = measureChunkStore.getShort(index);
+  @Override public long getLong(int rowId) {
+    short shortValue = measureChunkStore.getShort(rowId);
     return (long) maxValue - shortValue;
   }
 
-  @Override public double getDoubleValue(int index) {
-    short shortValue = measureChunkStore.getShort(index);
+  @Override public double getDouble(int rowId) {
+    short shortValue = measureChunkStore.getShort(rowId);
     return maxValue - shortValue;
   }
 
-  @Override public BigDecimal getBigDecimalValue(int index) {
+  @Override public BigDecimal getDecimal(int rowId) {
     throw new UnsupportedOperationException(
         "Big decimal value is not defined for CompressionMaxMinShort");
   }

@@ -81,17 +81,17 @@ public class CompressByteArray extends ValueCompressionHolder<byte[]> {
     return valsList.get(0);
   }
 
-  @Override public long getLongValue(int index) {
+  @Override public long getLong(int rowId) {
     throw new UnsupportedOperationException("Get long value is not defined for CompressByteArray");
   }
 
-  @Override public double getDoubleValue(int index) {
+  @Override public double getDouble(int rowId) {
     throw new UnsupportedOperationException(
         "Get double value is not defined for CompressByteArray");
   }
 
-  @Override public BigDecimal getBigDecimalValue(int index) {
-    return this.measureChunkStore.getBigDecimal(index);
+  @Override public BigDecimal getDecimal(int rowId) {
+    return this.measureChunkStore.getBigDecimal(rowId);
   }
 
   @Override public void freeMemory() {

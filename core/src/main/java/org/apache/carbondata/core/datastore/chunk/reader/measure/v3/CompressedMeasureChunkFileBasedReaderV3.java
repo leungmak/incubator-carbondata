@@ -25,15 +25,13 @@ import org.apache.carbondata.core.datastore.FileHolder;
 import org.apache.carbondata.core.datastore.chunk.MeasureColumnDataChunk;
 import org.apache.carbondata.core.datastore.chunk.impl.MeasureRawColumnChunk;
 import org.apache.carbondata.core.datastore.chunk.reader.measure.AbstractMeasureChunkReaderV2V3Format;
-import org.apache.carbondata.core.datastore.compression.ValueCompressionHolder;
-import org.apache.carbondata.core.datastore.dataholder.CarbonReadDataHolder;
-import org.apache.carbondata.core.datastore.page.statistics.MeasurePageStatsVO;
+import org.apache.carbondata.core.datastore.page.ColumnPage;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageCodec;
+import org.apache.carbondata.core.datastore.page.encoding.DefaultEncodingStrategy;
+import org.apache.carbondata.core.datastore.page.encoding.EncodingStrategy;
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.blocklet.BlockletInfo;
-import org.apache.carbondata.core.metadata.datatype.DataType;
 import org.apache.carbondata.core.util.CarbonUtil;
-import org.apache.carbondata.core.util.CompressionFinder;
-import org.apache.carbondata.core.util.ValueCompressionUtil;
 import org.apache.carbondata.format.DataChunk2;
 import org.apache.carbondata.format.DataChunk3;
 
@@ -199,6 +197,8 @@ public class CompressedMeasureChunkFileBasedReaderV3 extends AbstractMeasureChun
     return measureDataChunk;
   }
 
+  EncodingStrategy strategy = new DefaultEncodingStrategy();
+
   /**
    * Below method will be used to convert the compressed measure chunk raw data to actual data
    *
@@ -218,33 +218,23 @@ public class CompressedMeasureChunkFileBasedReaderV3 extends AbstractMeasureChun
     // data chunk length + page offset
     int copyPoint = measureRawColumnChunk.getOffSet() + measureColumnChunkLength
         .get(measureRawColumnChunk.getBlockletId()) + dataChunk3.getPage_offset().get(pageNumber);
-    List<ValueEncoderMeta> valueEncodeMeta = new ArrayList<>();
+
+    List<ColumnPageCodec> codecs = new ArrayList<>();
     for (int i = 0; i < measureColumnChunk.getEncoder_meta().size(); i++) {
-      valueEncodeMeta.add(
-          CarbonUtil.deserializeEncoderMetaV3(measureColumnChunk.getEncoder_meta().get(i).array()));
+      byte[] encodedMeta = measureColumnChunk.getEncoder_meta().get(i).array();
+      ValueEncoderMeta meta = CarbonUtil.deserializeEncoderMetaV3(encodedMeta);
+      codecs.add(strategy.createCodec(meta));
     }
 
-    MeasurePageStatsVO stats = CarbonUtil.getMeasurePageStats(valueEncodeMeta);
-    int measureCount = valueEncodeMeta.size();
-    CompressionFinder[] finders = new CompressionFinder[measureCount];
-    DataType[] convertedType = new DataType[measureCount];
-    for (int i = 0; i < measureCount; i++) {
-      CompressionFinder compresssionFinder =
-          ValueCompressionUtil.getCompressionFinder(stats.getMax(i), stats.getMin(i),
-              stats.getDecimal(i), stats.getDataType(i), stats.getDataTypeSelected(i));
-      finders[i] = compresssionFinder;
-      convertedType[i] = compresssionFinder.getConvertedDataType();
-    }
+    // for measure, it should have only one ValueEncoderMeta
+    assert (codecs.size() == 1);
 
-    ValueCompressionHolder values = ValueCompressionUtil.getValueCompressionHolder(finders)[0];
-    // uncompress
-    ByteBuffer rawData = measureRawColumnChunk.getRawData();
-    values.uncompress(convertedType[0], rawData.array(), copyPoint,
-        measureColumnChunk.data_page_length, stats.getDecimal(0),
-        stats.getMax(0), measureRawColumnChunk.getRowCount()[pageNumber]);
-    CarbonReadDataHolder measureDataHolder = new CarbonReadDataHolder(values);
+    byte[] rawData = measureRawColumnChunk.getRawData().array();
+    ColumnPage decodedPage = codecs.get(0).decode(rawData, copyPoint,
+        measureColumnChunk.data_page_length);
+
     // set the data chunk
-    datChunk.setMeasureDataHolder(measureDataHolder);
+    datChunk.setMeasureDataHolder(decodedPage);
     // set the null value indexes
     datChunk.setNullValueIndexHolder(getPresenceMeta(measureColumnChunk.presence));
     return datChunk;

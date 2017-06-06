@@ -17,10 +17,8 @@
 
 package org.apache.carbondata.processing.store;
 
-import java.nio.ByteBuffer;
 import java.util.Iterator;
 
-import org.apache.carbondata.core.compression.ValueCompressor;
 import org.apache.carbondata.core.datastore.TableSpec;
 import org.apache.carbondata.core.datastore.block.SegmentProperties;
 import org.apache.carbondata.core.datastore.columnar.BlockIndexerStorageForInt;
@@ -31,20 +29,16 @@ import org.apache.carbondata.core.datastore.columnar.ColGroupBlockStorage;
 import org.apache.carbondata.core.datastore.columnar.IndexStorage;
 import org.apache.carbondata.core.datastore.compression.Compressor;
 import org.apache.carbondata.core.datastore.compression.CompressorFactory;
-import org.apache.carbondata.core.datastore.compression.ValueCompressionHolder;
 import org.apache.carbondata.core.datastore.page.ColumnPage;
-import org.apache.carbondata.core.datastore.page.statistics.ColumnPageStatistics;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageCodec;
+import org.apache.carbondata.core.datastore.page.encoding.DefaultEncodingStrategy;
+import org.apache.carbondata.core.datastore.page.encoding.EncodedData;
+import org.apache.carbondata.core.datastore.page.encoding.EncodingStrategy;
 import org.apache.carbondata.core.metadata.ColumnarFormatVersion;
-import org.apache.carbondata.core.metadata.datatype.DataType;
 import org.apache.carbondata.core.util.ByteUtil;
 import org.apache.carbondata.core.util.CarbonProperties;
-import org.apache.carbondata.core.util.CompressionFinder;
-import org.apache.carbondata.core.util.ValueCompressionUtil;
-import org.apache.carbondata.processing.store.writer.Encoder;
 
-// Default encoder for encoding dimension and measures. For dimensions, it applies RLE and
-// inverted index encoding. For measures, it applies delta encoding or adaptive encoding
-public class DefaultEncoder implements Encoder {
+public class TablePageEncoder {
 
   private ColumnarFormatVersion version;
 
@@ -52,79 +46,34 @@ public class DefaultEncoder implements Encoder {
 
   private CarbonFactDataHandlerModel model;
 
-  public DefaultEncoder(CarbonFactDataHandlerModel model) {
+  public TablePageEncoder(CarbonFactDataHandlerModel model) {
     this.version = CarbonProperties.getInstance().getFormatVersion();
     this.model = model;
     this.isUseInvertedIndex = model.getIsUseInvertedIndex();
   }
 
   // function to encode all columns in one table page
-  public Encoder.EncodedData encode(TablePage tablePage) {
-    Encoder.EncodedData encodedData = new Encoder.EncodedData();
+  public EncodedData encode(TablePage tablePage) {
+    EncodedData encodedData = new EncodedData();
     encodeAndCompressDimensions(tablePage, encodedData);
     encodeAndCompressMeasures(tablePage, encodedData);
     return encodedData;
   }
 
   // encode measure and set encodedData in `encodedData`
-  private void encodeAndCompressMeasures(TablePage tablePage, Encoder.EncodedData encodedData) {
-    // TODO: following conversion is required only because compress model requires them,
-    // remove then after the compress framework is refactoried
+  private void encodeAndCompressMeasures(TablePage tablePage, EncodedData encodedData) {
     ColumnPage[] measurePage = tablePage.getMeasurePage();
-    int measureCount = measurePage.length;
-    byte[] dataTypeSelected = new byte[measureCount];
-    CompressionFinder[] finders = new CompressionFinder[measureCount];
-    for (int i = 0; i < measureCount; i++) {
-      ColumnPageStatistics stats = measurePage[i].getStatistics();
-      finders[i] = ValueCompressionUtil.getCompressionFinder(
-          stats.getMax(),
-          stats.getMin(),
-          stats.getDecimal(),
-          measurePage[i].getDataType(), dataTypeSelected[i]);
+    byte[][] encodedMeasures = new byte[measurePage.length][];
+    for (int i = 0; i < measurePage.length; i++) {
+      ColumnPageCodec encoder = encodingStrategy.createCodec(measurePage[i].getStatistics());
+      encodedMeasures[i] = encoder.encode(measurePage[i]);
     }
-
-    //CompressionFinder[] finders = compressionModel.getCompressionFinders();
-    ValueCompressionHolder[] holders = ValueCompressionUtil.getValueCompressionHolder(finders);
-    encodedData.measures = encodeMeasure(holders, finders, measurePage);
+    encodedData.measures = encodedMeasures;
   }
 
-  // this method first invokes encoding routine to encode the data chunk,
-  // followed by invoking compression routine for preparing the data chunk for writing.
-  private byte[][] encodeMeasure(ValueCompressionHolder[] holders,
-      CompressionFinder[] finders,
-      ColumnPage[] columnPages) {
-    ValueCompressionHolder[] values = new ValueCompressionHolder[columnPages.length];
-    byte[][] encodedMeasures = new byte[values.length][];
-    for (int i = 0; i < columnPages.length; i++) {
-      values[i] = holders[i];
-      if (columnPages[i].getDataType() != DataType.DECIMAL) {
-        ValueCompressor compressor =
-            ValueCompressionUtil.getValueCompressor(finders[i]);
-        Object compressed = compressor.getCompressedValues(
-            finders[i],
-            columnPages[i],
-            columnPages[i].getStatistics().getMax(),
-            columnPages[i].getStatistics().getDecimal());
-        values[i].setValue(compressed);
-      } else {
-        // in case of decimal, 'flatten' the byte[][] to byte[]
-        byte[][] decimalPage = columnPages[i].getDecimalPage();
-        int totalSize = 0;
-        for (byte[] decimal : decimalPage) {
-          totalSize += decimal.length;
-        }
-        ByteBuffer temp = ByteBuffer.allocate(totalSize);
-        for (byte[] decimal : decimalPage) {
-          temp.put(decimal);
-        }
-        values[i].setValue(temp.array());
-      }
-      values[i].compress();
-      encodedMeasures[i] = values[i].getCompressedData();
-    }
+  // TODO: put strategy object in handler model
+  private EncodingStrategy encodingStrategy = new DefaultEncodingStrategy();
 
-    return encodedMeasures;
-  }
 
   private IndexStorage encodeAndCompressDictDimension(byte[][] data, boolean isSort,
       boolean isUseInvertedIndex) {
@@ -169,7 +118,7 @@ public class DefaultEncoder implements Encoder {
   }
 
   // encode and compress each dimension, set encoded data in `encodedData`
-  private void encodeAndCompressDimensions(TablePage tablePage, Encoder.EncodedData encodedData) {
+  private void encodeAndCompressDimensions(TablePage tablePage, EncodedData encodedData) {
     TableSpec.DimensionSpec dimensionSpec = model.getTableSpec().getDimensionSpec();
     int[] blockKeySize = model.getSegmentProperties().getFixedLengthKeySplitter().getBlockKeySize();
     int dictionaryColumnCount = -1;
