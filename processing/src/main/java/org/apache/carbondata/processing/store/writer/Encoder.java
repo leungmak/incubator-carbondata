@@ -15,43 +15,24 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.core.metadata.datatype;
+package org.apache.carbondata.processing.store.writer;
 
-public enum DataType {
+import org.apache.carbondata.core.datastore.columnar.IndexStorage;
+import org.apache.carbondata.processing.store.TablePage;
 
-  STRING(0, "STRING"),
-  DATE(1, "DATE"),
-  TIMESTAMP(2, "TIMESTAMP"),
-  BOOLEAN(1, "BOOLEAN"),
-  SHORT(2, "SMALLINT"),
-  INT(3, "INT"),
-  FLOAT(4, "FLOAT"),
-  LONG(5, "BIGINT"),
-  DOUBLE(6, "DOUBLE"),
-  NULL(7, "NULL"),
-  DECIMAL(8, "DECIMAL"),
-  ARRAY(9, "ARRAY"),
-  STRUCT(10, "STRUCT"),
-  MAP(11, "MAP"),
-  BYTE(12, "BYTE");
+public interface Encoder {
 
-  private int precedenceOrder;
-  private String name ;
+  EncodedData encode(TablePage tablePage);
 
-  DataType(int value ,String  name) {
-    this.precedenceOrder = value;
-    this.name = name;
-  }
+  // result result of all columns
+  class EncodedData {
+    // dimension data that include rowid (index)
+    public IndexStorage[] indexStorages;
 
-  public int getPrecedenceOrder() {
-    return precedenceOrder;
-  }
+    // encoded and compressed dimension data
+    public byte[][] dimensions;
 
-  public String getName() {
-    return name;
-  }
-
-  public boolean isComplexType() {
-    return precedenceOrder >= 9 && precedenceOrder <= 11;
+    // encoded and compressed measure data
+    public byte[][] measures;
   }
 }

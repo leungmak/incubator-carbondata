@@ -36,8 +36,6 @@ public class CarbonDataWriterVo {
 
   private IFileManagerComposite fileManager;
 
-  private int[] keyBlockSize;
-
   private boolean[] aggBlocks;
 
   private boolean[] isComplexType;
@@ -120,20 +118,6 @@ public class CarbonDataWriterVo {
    */
   public void setFileManager(IFileManagerComposite fileManager) {
     this.fileManager = fileManager;
-  }
-
-  /**
-   * @return the keyBlockSize
-   */
-  public int[] getKeyBlockSize() {
-    return keyBlockSize;
-  }
-
-  /**
-   * @param keyBlockSize the keyBlockSize to set
-   */
-  public void setKeyBlockSize(int[] keyBlockSize) {
-    this.keyBlockSize = keyBlockSize;
   }
 
   /**

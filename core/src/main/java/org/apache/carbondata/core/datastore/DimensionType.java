@@ -15,28 +15,21 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.core.datastore.page;
+package org.apache.carbondata.core.datastore;
 
-import org.apache.carbondata.core.metadata.datatype.DataType;
+public enum DimensionType {
+  // global dictionary for low cardinality dimension
+  GLOBAL_DICTIONARY,
 
-// Represent a variable length columnar data in one page, e.g. for dictionary columns.
-public class VarLengthColumnPage extends ColumnPage {
+  // for timestamp and date column
+  DIRECT_DICTIONARY,
 
-  // TODO: further optimizite it, to store length and data separately
-  private byte[][] byteArrayData;
+  // no dictionary, for high cardinality dimension
+  PLAIN_STRING,
 
-  public VarLengthColumnPage(int pageSize) {
-    super(DataType.BYTE_ARRAY, pageSize);
-    byteArrayData = new byte[pageSize][];
-  }
+  // expanded column from a complex data type column
+  COMPLEX,
 
-  public void putByteArray(int rowId, byte[] value) {
-    byteArrayData[rowId] = value;
-    updateStatistics(value);
-  }
-
-  public byte[][] getByteArrayPage() {
-    return byteArrayData;
-  }
-
+  // column group, multiple columns encoded as one column
+  COLUMN_GROUP
 }
