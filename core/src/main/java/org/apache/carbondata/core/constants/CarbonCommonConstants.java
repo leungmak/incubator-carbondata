@@ -1066,6 +1066,17 @@ public final class CarbonCommonConstants {
    */
   public static final int CARBON_EXECUTOR_STARTUP_THREAD_SLEEP_TIME = 250;
 
+
+  /**
+   * to enable offheap sort
+   */
+  public static final String ENABLE_LOADING_UNSAFE_COLUMN_PAGE = "enable.unsafe.columnpage";
+
+  /**
+   * to enable offheap sort
+   */
+  public static final String ENABLE_LOADING_UNSAFE_COLUMN_PAGE_DEFAULT = "false";
+
   /**
    * to enable offheap sort
    */

@@ -26,6 +26,7 @@ import org.apache.carbondata.core.constants.CarbonV3DataFormatConstants;
 import org.apache.carbondata.core.datastore.compression.Compressor;
 import org.apache.carbondata.core.datastore.dataholder.CarbonReadDataHolder;
 import org.apache.carbondata.core.datastore.page.statistics.ColumnPageStatsVO;
+import org.apache.carbondata.core.memory.MemoryException;
 import org.apache.carbondata.core.metadata.datatype.DataType;
 import org.apache.carbondata.core.util.ByteUtil;
 import org.apache.carbondata.core.util.CarbonProperties;
@@ -63,9 +64,27 @@ public class ColumnPage implements CarbonReadDataHolder {
   // The index of the rowId whose value is null, will be set to 1
   private BitSet nullBitSet;
 
+  private final static boolean unsafe = Boolean.parseBoolean(CarbonProperties.getInstance()
+      .getProperty(CarbonCommonConstants.ENABLE_LOADING_UNSAFE_COLUMN_PAGE,
+          CarbonCommonConstants.ENABLE_LOADING_UNSAFE_COLUMN_PAGE_DEFAULT));
+
   protected ColumnPage(DataType dataType, int pageSize) {
     this.pageSize = pageSize;
     this.dataType = dataType;
+    this.stats = new ColumnPageStatsVO(dataType);
+    this.nullBitSet = new BitSet(pageSize);
+  }
+
+  private static ColumnPage createPage(DataType dataType, int pageSize) {
+    if (unsafe) {
+      try {
+        return new UnsafeColumnPage(dataType, pageSize);
+      } catch (MemoryException e) {
+        throw new RuntimeException(e);
+      }
+    } else {
+      return new ColumnPage(dataType, pageSize);
+    }
   }
 
   // create a new page
@@ -99,90 +118,54 @@ public class ColumnPage implements CarbonReadDataHolder {
       default:
         throw new RuntimeException("Unsupported data dataType: " + dataType);
     }
-    instance.stats = new ColumnPageStatsVO(dataType);
-    instance.nullBitSet = new BitSet(pageSize);
     return instance;
   }
 
-  // create a new page and set data with input `pageData`
-  public static ColumnPage newPage(DataType dataType, Object pageData) {
-    // This is used in read path, since statistics and nullBitSet is not required, not creating
-    // them to make object minimum
-    switch (dataType) {
-      case BYTE:
-        byte[] byteData = (byte[]) pageData;
-        return newBytePage(byteData);
-      case SHORT:
-        short[] shortData = (short[]) pageData;
-        return newShortPage(shortData);
-      case INT:
-        int[] intData = (int[]) pageData;
-        return newIntPage(intData);
-      case LONG:
-        long[] longData = (long[]) pageData;
-        return newLongPage(longData);
-      case FLOAT:
-        float[] floatData = (float[]) pageData;
-        return newFloatPage(floatData);
-      case DOUBLE:
-        double[] doubleData = (double[]) pageData;
-        return newDoublePage(doubleData);
-      case DECIMAL:
-        byte[][] decimalData = (byte[][]) pageData;
-        return newDecimalPage(decimalData);
-      case STRING:
-        byte[][] stringData = (byte[][]) pageData;
-        return newStringPage(stringData);
-      default:
-        throw new RuntimeException("Unsupported data dataType: " + dataType);
-    }
-  }
-
-  protected static ColumnPage newBytePage(byte[] byteData) {
-    ColumnPage columnPage = new ColumnPage(BYTE, byteData.length);
-    columnPage.byteData = byteData;
+  private static ColumnPage newBytePage(byte[] byteData) {
+    ColumnPage columnPage = createPage(BYTE, byteData.length);
+    columnPage.setBytePage(byteData);
     return columnPage;
   }
 
-  protected static ColumnPage newShortPage(short[] shortData) {
-    ColumnPage columnPage = new ColumnPage(SHORT, shortData.length);
-    columnPage.shortData = shortData;
+  private static ColumnPage newShortPage(short[] shortData) {
+    ColumnPage columnPage = createPage(SHORT, shortData.length);
+    columnPage.setShortPage(shortData);
     return columnPage;
   }
 
-  protected static ColumnPage newIntPage(int[] intData) {
-    ColumnPage columnPage = new ColumnPage(INT, intData.length);
-    columnPage.intData = intData;
+  private static ColumnPage newIntPage(int[] intData) {
+    ColumnPage columnPage = createPage(INT, intData.length);
+    columnPage.setIntPage(intData);
     return columnPage;
   }
 
-  protected static ColumnPage newLongPage(long[] longData) {
-    ColumnPage columnPage = new ColumnPage(LONG, longData.length);
-    columnPage.longData = longData;
+  private static ColumnPage newLongPage(long[] longData) {
+    ColumnPage columnPage = createPage(LONG, longData.length);
+    columnPage.setLongPage(longData);
     return columnPage;
   }
 
-  protected static ColumnPage newFloatPage(float[] floatData) {
-    ColumnPage columnPage = new ColumnPage(FLOAT, floatData.length);
-    columnPage.floatData = floatData;
+  private static ColumnPage newFloatPage(float[] floatData) {
+    ColumnPage columnPage = createPage(FLOAT, floatData.length);
+    columnPage.setFloatPage(floatData);
     return columnPage;
   }
 
-  protected static ColumnPage newDoublePage(double[] doubleData) {
-    ColumnPage columnPage = new ColumnPage(DOUBLE, doubleData.length);
-    columnPage.doubleData = doubleData;
+  private static ColumnPage newDoublePage(double[] doubleData) {
+    ColumnPage columnPage = createPage(DOUBLE, doubleData.length);
+    columnPage.setDoublePage(doubleData);
     return columnPage;
   }
 
-  protected static ColumnPage newDecimalPage(byte[][] decimalData) {
-    ColumnPage columnPage = new ColumnPage(DECIMAL, decimalData.length);
-    columnPage.byteArrayData = decimalData;
+  private static ColumnPage newDecimalPage(byte[][] decimalData) {
+    ColumnPage columnPage = createPage(DECIMAL, decimalData.length);
+    columnPage.setDecimalPage(decimalData);
     return columnPage;
   }
 
-  protected static ColumnPage newStringPage(byte[][] stringData) {
+  private static ColumnPage newStringPage(byte[][] stringData) {
     ColumnPage columnPage = new ColumnPage(STRING, stringData.length);
-    columnPage.byteArrayData = stringData;
+    columnPage.setStringPage(stringData);
     return columnPage;
   }
 
@@ -358,23 +341,9 @@ public class ColumnPage implements CarbonReadDataHolder {
     return doubleData[rowId];
   }
 
-  /**
-   * Get decimal value at rowId
-   */
-  public byte[] getDecimalBytes(int rowId) {
-    return byteArrayData[rowId];
-  }
-
   public BigDecimal getDecimal(int rowId) {
-    byte[] bytes = getDecimalBytes(rowId);
+    byte[] bytes = byteArrayData[rowId];
     return DataTypeUtil.byteToBigDecimal(bytes);
-  }
-
-  /**
-   * Get string value at rowId
-   */
-  public byte[] getStringBytes(int rowId) {
-    return byteArrayData[rowId];
   }
 
   /**
@@ -440,6 +409,62 @@ public class ColumnPage implements CarbonReadDataHolder {
     return nullBitSet;
   }
 
+  /**
+   * Set byte values to page
+   */
+  public void setBytePage(byte[] byteData) {
+    this.byteData = byteData;
+  }
+
+  /**
+   * Set short values to page
+   */
+  public void setShortPage(short[] shortData) {
+    this.shortData = shortData;
+  }
+
+  /**
+   * Set int values to page
+   */
+  public void setIntPage(int[] intData) {
+    this.intData = intData;
+  }
+
+  /**
+   * Set long values to page
+   */
+  public void setLongPage(long[] longData) {
+    this.longData = longData;
+  }
+
+  /**
+   * Set float values to page
+   */
+  public void setFloatPage(float[] floatData) {
+    this.floatData = floatData;
+  }
+
+  /**
+   * Set double value to page
+   */
+  public void setDoublePage(double[] doubleData) {
+    this.doubleData = doubleData;
+  }
+
+  /**
+   * Set decimal values to page
+   */
+  public void setDecimalPage(byte[][] decimalBytes) {
+    this.byteArrayData = decimalBytes;
+  }
+
+  /**
+   * Set string values to page
+   */
+  public void setStringPage(byte[][] stringBytes) {
+    this.byteArrayData = stringBytes;
+  }
+
   public void freeMemory() {
   }
 
@@ -474,8 +499,7 @@ public class ColumnPage implements CarbonReadDataHolder {
     dataType = targetDataType;
   }
 
-
-  private void transformAndCastToByte(ColumnPageTransform transform, int param) {
+  protected void transformAndCastToByte(ColumnPageTransform transform, int param) {
     assert (dataType.getSizeInBytes() >= BYTE.getSizeInBytes());
     if (dataType != BYTE) {
       byteData = new byte[pageSize];
@@ -577,7 +601,7 @@ public class ColumnPage implements CarbonReadDataHolder {
     }
   }
 
-  private void transformAndCastToShort(ColumnPageTransform transform, int param) {
+  protected void transformAndCastToShort(ColumnPageTransform transform, int param) {
     assert (dataType.getSizeInBytes() >= SHORT.getSizeInBytes());
     if (dataType != SHORT) {
       shortData = new short[pageSize];
@@ -670,7 +694,7 @@ public class ColumnPage implements CarbonReadDataHolder {
 
   }
 
-  private void transformAndCastToInt(ColumnPageTransform transform, int param) {
+  protected void transformAndCastToInt(ColumnPageTransform transform, int param) {
     assert (dataType.getSizeInBytes() >= INT.getSizeInBytes());
     if (dataType != INT) {
       intData = new int[pageSize];
@@ -750,7 +774,7 @@ public class ColumnPage implements CarbonReadDataHolder {
     }
   }
 
-  private void transformAndCastToLong(ColumnPageTransform transform, int param) {
+  protected void transformAndCastToLong(ColumnPageTransform transform, int param) {
     assert (dataType.getSizeInBytes() >= LONG.getSizeInBytes());
     if (dataType != LONG) {
       longData = new long[pageSize];
