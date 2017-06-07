@@ -25,7 +25,7 @@ public enum DimensionType {
   DIRECT_DICTIONARY,
 
   // no dictionary, for high cardinality dimension
-  PLAIN_STRING,
+  PLAIN_STRING, //TODO: we need no dictionary for integer also, change name to PLAIN_VALUE
 
   // expanded column from a complex data type column
   COMPLEX,

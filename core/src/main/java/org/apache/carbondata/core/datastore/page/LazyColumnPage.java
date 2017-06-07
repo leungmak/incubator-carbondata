@@ -61,6 +61,11 @@ public class LazyColumnPage extends ColumnPage {
 
   @Override
   public long getLong(int rowId) {
+    switch (getDataType()) {
+      case DataType.BYTE
+        func(rowId, data);
+    }
+  }
     switch (transform) {
       case NO_OP:
         switch (columnPage.getDataType()) {

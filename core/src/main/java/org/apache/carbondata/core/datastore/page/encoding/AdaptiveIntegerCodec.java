@@ -47,7 +47,8 @@ public class AdaptiveIntegerCodec extends ColumnPageCodec {
 
   @Override
   public byte[] encode(ColumnPage input) {
-    input.transformAndCastTo(ColumnPageTransform.NO_OP, 0, targetDataType);
+    ColumnPageTransform func = new impl();
+    input.transformAndCastTo(func, 0, targetDataType);
     return input.compress(compressor);
   }
 
@@ -56,4 +57,6 @@ public class AdaptiveIntegerCodec extends ColumnPageCodec {
     ColumnPage page = ColumnPage.decompress(compressor, targetDataType, input, offset, length);
     return LazyColumnPage.newPage(page, ColumnPageTransform.NO_OP, stats);
   }
+
 }
+

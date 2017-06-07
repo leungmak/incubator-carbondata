@@ -27,7 +27,7 @@ import org.apache.carbondata.core.metadata.datatype.DataType;
  *  Codec for a column page data, implementation should not keep state across pages,
  *  caller may use the same object to encode multiple pages.
  */
-public abstract class ColumnPageCodec {
+public abstract class ColumnPageCodec { // TODO: add interface
 
   // compressor that can be used by subclass
   protected final Compressor compressor;
@@ -42,7 +42,7 @@ public abstract class ColumnPageCodec {
   protected final DataType srcDataType;
 
   protected ColumnPageCodec(DataType srcDataType, DataType targetDataType,
-      ColumnPageStatsVO stats) {
+      ColumnPageStatsVO stats) { // TODO: add compressor
     this.stats = stats;
     this.srcDataType = srcDataType;
     this.targetDataType = targetDataType;

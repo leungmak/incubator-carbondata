@@ -44,7 +44,7 @@ import static org.apache.carbondata.core.metadata.datatype.DataType.STRING;
 /**
  * Represent a columnar data in one page for one column.
  */
-public class ColumnPage implements CarbonReadDataHolder {
+public class SafeColumnPage implements ColumnPage { // TODO: change name
 
   private final int pageSize;
   private DataType dataType;
@@ -668,7 +668,7 @@ public class ColumnPage implements CarbonReadDataHolder {
         switch (dataType) {
           case DOUBLE:
             for (int i = 0; i < pageSize; i++) {
-              shortData[i] = (short) (Math.round(Math.pow(10, param) * doubleData[i]));
+              shortData[i] = (short)(Math.round(Math.pow(10, param) * doubleData[i]));
             }
             break;
           default:
