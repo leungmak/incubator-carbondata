@@ -42,11 +42,6 @@ public abstract class AbstractScannedResultCollector implements ScannedResultCol
       LogServiceFactory.getLogService(AbstractScannedResultCollector.class.getName());
 
   /**
-   * restructuring info
-   */
-  private KeyStructureInfo restructureInfos;
-
-  /**
    * table block execution infos
    */
   protected BlockExecutionInfo tableBlockExecutionInfos;
