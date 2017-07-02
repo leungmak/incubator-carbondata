@@ -18,19 +18,9 @@
 package org.apache.carbondata.processing.store.writer;
 
 import org.apache.carbondata.core.datastore.exception.CarbonDataWriterException;
-import org.apache.carbondata.core.datastore.page.encoding.EncodedData;
-import org.apache.carbondata.core.util.NodeHolder;
-import org.apache.carbondata.processing.store.TablePageKey;
-import org.apache.carbondata.processing.store.TablePageStatistics;
+import org.apache.carbondata.core.datastore.page.EncodedTablePage;
 
 public interface CarbonFactDataWriter<T> {
-
-  /**
-   * This method will be used to create NodeHolder for a table page
-   */
-
-  NodeHolder buildDataNodeHolder(EncodedData encoded, TablePageStatistics stats,
-      TablePageKey key) throws CarbonDataWriterException;
 
   /**
    * If node holder flag is enabled the object will be added to list
@@ -39,7 +29,7 @@ public interface CarbonFactDataWriter<T> {
    *
    * @param holder
    */
-  void writeBlockletData(NodeHolder holder) throws CarbonDataWriterException;
+  void writeTablePage(EncodedTablePage holder) throws CarbonDataWriterException;
 
   /**
    * Below method will be used to write the leaf meta data to file

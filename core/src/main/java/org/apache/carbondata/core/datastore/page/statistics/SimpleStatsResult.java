@@ -15,9 +15,25 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.core.datastore.page.compression;
+package org.apache.carbondata.core.datastore.page.statistics;
 
-public interface Compression {
-  byte[] compress(byte[] input);
-  byte[] decompress(byte[] input);
+import java.util.BitSet;
+
+import org.apache.carbondata.core.metadata.datatype.DataType;
+
+public interface SimpleStatsResult {
+
+  byte[] getMinAsBytes();
+
+  byte[] getMaxAsBytes();
+
+  Object getMin();
+
+  Object getMax();
+
+  BitSet getNullBits();
+
+  int getDecimal();
+
+  DataType getDataType();
 }

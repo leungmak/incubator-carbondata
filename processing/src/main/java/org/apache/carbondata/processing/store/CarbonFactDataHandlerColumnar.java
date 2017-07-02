@@ -38,7 +38,6 @@ import org.apache.carbondata.core.constants.CarbonV3DataFormatConstants;
 import org.apache.carbondata.core.datastore.GenericDataType;
 import org.apache.carbondata.core.datastore.columnar.ColumnGroupModel;
 import org.apache.carbondata.core.datastore.exception.CarbonDataWriterException;
-import org.apache.carbondata.core.datastore.page.encoding.EncodedData;
 import org.apache.carbondata.core.datastore.row.CarbonRow;
 import org.apache.carbondata.core.keygenerator.KeyGenException;
 import org.apache.carbondata.core.keygenerator.columnar.ColumnarSplitter;
@@ -50,7 +49,7 @@ import org.apache.carbondata.core.metadata.datatype.DataType;
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
 import org.apache.carbondata.core.util.CarbonProperties;
 import org.apache.carbondata.core.util.CarbonUtil;
-import org.apache.carbondata.core.util.NodeHolder;
+import org.apache.carbondata.core.datastore.page.EncodedTablePage;
 import org.apache.carbondata.processing.newflow.sort.SortScopeOptions;
 import org.apache.carbondata.processing.store.file.FileManager;
 import org.apache.carbondata.processing.store.file.IFileManagerComposite;
@@ -147,8 +146,6 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
    */
   private ColumnarFormatVersion version;
 
-  private TablePageEncoder encoder;
-
   private SortScopeOptions.SortScope sortScope;
 
   /**
@@ -200,7 +197,6 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
       }
     }
     this.version = CarbonProperties.getInstance().getFormatVersion();
-    this.encoder = new TablePageEncoder(model);
   }
 
   private void initParameters(CarbonFactDataHandlerModel model) {
@@ -334,35 +330,26 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
   }
 
   /**
-   * generate the NodeHolder from the input rows (one page in case of V3 format)
+   * generate the EncodedTablePage from the input rows (one page in case of V3 format)
    */
-  private NodeHolder processDataRows(List<CarbonRow> dataRows)
+  private EncodedTablePage processDataRows(List<CarbonRow> dataRows)
       throws CarbonDataWriterException, KeyGenException, MemoryException, IOException {
     if (dataRows.size() == 0) {
-      return new NodeHolder();
+      return EncodedTablePage.newEmptyInstance();
     }
     TablePage tablePage = new TablePage(model, dataRows.size());
-    TablePageKey keys = new TablePageKey(model, dataRows.size());
     int rowId = 0;
 
     // convert row to columnar data
     for (CarbonRow row : dataRows) {
-      tablePage.addRow(rowId, row);
-      keys.update(rowId, row);
-      rowId++;
+      tablePage.addRow(rowId++, row);
     }
 
-    // apply and compress dimensions and measure
-    EncodedData encodedData = encoder.encode(tablePage);
-
-    TablePageStatistics tablePageStatistics = new TablePageStatistics(
-        model.getTableSpec(), tablePage, encodedData, tablePage.getMeasureStats());
-
-    NodeHolder nodeHolder = dataWriter.buildDataNodeHolder(encodedData, tablePageStatistics, keys);
+    EncodedTablePage encoded = tablePage.encode();
     tablePage.freeMemory();
 
     LOGGER.info("Number Of records processed: " + dataRows.size());
-    return nodeHolder;
+    return encoded;
   }
 
   /**
@@ -657,7 +644,7 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
     /**
      * array of blocklet data holder objects
      */
-    private NodeHolder[] nodeHolders;
+    private EncodedTablePage[] encodedTablePages;
     /**
      * flag to check whether the producer has completed processing for holder
      * object which is required to be picked form an index
@@ -669,7 +656,7 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
     private int currentIndex;
 
     private BlockletDataHolder() {
-      nodeHolders = new NodeHolder[numberOfCores];
+      encodedTablePages = new EncodedTablePage[numberOfCores];
       available = new AtomicBoolean(false);
     }
 
@@ -677,32 +664,32 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
      * @return a node holder object
      * @throws InterruptedException if consumer thread is interrupted
      */
-    public synchronized NodeHolder get() throws InterruptedException {
-      NodeHolder nodeHolder = nodeHolders[currentIndex];
+    public synchronized EncodedTablePage get() throws InterruptedException {
+      EncodedTablePage encodedTablePage = encodedTablePages[currentIndex];
       // if node holder is null means producer thread processing the data which has to
       // be inserted at this current index has not completed yet
-      if (null == nodeHolder && !processingComplete) {
+      if (null == encodedTablePage && !processingComplete) {
         available.set(false);
       }
       while (!available.get()) {
         wait();
       }
-      nodeHolder = nodeHolders[currentIndex];
-      nodeHolders[currentIndex] = null;
+      encodedTablePage = encodedTablePages[currentIndex];
+      encodedTablePages[currentIndex] = null;
       currentIndex++;
       // reset current index when it reaches length of node holder array
-      if (currentIndex >= nodeHolders.length) {
+      if (currentIndex >= encodedTablePages.length) {
         currentIndex = 0;
       }
-      return nodeHolder;
+      return encodedTablePage;
     }
 
     /**
-     * @param nodeHolder
+     * @param encodedTablePage
      * @param index
      */
-    public synchronized void put(NodeHolder nodeHolder, int index) {
-      nodeHolders[index] = nodeHolder;
+    public synchronized void put(EncodedTablePage encodedTablePage, int index) {
+      encodedTablePages[index] = encodedTablePage;
       // notify the consumer thread when index at which object is to be inserted
       // becomes equal to current index from where data has to be picked for writing
       if (index == currentIndex) {
@@ -720,14 +707,14 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
     private BlockletDataHolder blockletDataHolder;
     private List<CarbonRow> dataRows;
     private int sequenceNumber;
-    private boolean isWriteAll;
+    private boolean isLastPage;
 
     private Producer(BlockletDataHolder blockletDataHolder, List<CarbonRow> dataRows,
-        int sequenceNumber, boolean isWriteAll) {
+        int sequenceNumber, boolean isLastPage) {
       this.blockletDataHolder = blockletDataHolder;
       this.dataRows = dataRows;
       this.sequenceNumber = sequenceNumber;
-      this.isWriteAll = isWriteAll;
+      this.isLastPage = isLastPage;
     }
 
     /**
@@ -738,11 +725,11 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
      */
     @Override public Void call() throws Exception {
       try {
-        NodeHolder nodeHolder = processDataRows(dataRows);
-        nodeHolder.setWriteAll(isWriteAll);
+        EncodedTablePage encodedTablePage = processDataRows(dataRows);
+        encodedTablePage.setIsLastPage(isLastPage);
         // insert the object in array according to sequence number
         int indexInNodeHolderArray = (sequenceNumber - 1) % numberOfCores;
-        blockletDataHolder.put(nodeHolder, indexInNodeHolderArray);
+        blockletDataHolder.put(encodedTablePage, indexInNodeHolderArray);
         return null;
       } catch (Throwable throwable) {
         LOGGER.error(throwable, "Error in producer");
@@ -772,11 +759,11 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
      */
     @Override public Void call() throws Exception {
       while (!processingComplete || blockletProcessingCount.get() > 0) {
-        NodeHolder nodeHolder = null;
+        EncodedTablePage encodedTablePage = null;
         try {
-          nodeHolder = blockletDataHolder.get();
-          if (null != nodeHolder) {
-            dataWriter.writeBlockletData(nodeHolder);
+          encodedTablePage = blockletDataHolder.get();
+          if (null != encodedTablePage) {
+            dataWriter.writeTablePage(encodedTablePage);
           }
           blockletProcessingCount.decrementAndGet();
         } catch (Throwable throwable) {
