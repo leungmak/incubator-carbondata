@@ -17,6 +17,7 @@
 
 package org.apache.carbondata.core.datastore.page;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 
 import org.apache.carbondata.core.metadata.datatype.DataType;
@@ -302,7 +303,7 @@ public class SafeFixLengthColumnPage extends ColumnPage {
    * @param codec type of transformation
    */
   @Override
-  public void encode(PrimitiveCodec codec) {
+  public void encode(PrimitiveCodec codec) throws IOException {
     switch (dataType) {
       case BYTE:
         for (int i = 0; i < pageSize; i++) {

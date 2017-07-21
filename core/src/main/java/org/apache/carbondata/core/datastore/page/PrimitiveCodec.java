@@ -17,14 +17,16 @@
 
 package org.apache.carbondata.core.datastore.page;
 
+import java.io.IOException;
+
 // Transformation type that can be applied to ColumnPage
 public interface PrimitiveCodec {
-  void encode(int rowId, byte value);
-  void encode(int rowId, short value);
-  void encode(int rowId, int value);
-  void encode(int rowId, long value);
-  void encode(int rowId, float value);
-  void encode(int rowId, double value);
+  void encode(int rowId, byte value) throws IOException;
+  void encode(int rowId, short value) throws IOException;
+  void encode(int rowId, int value) throws IOException;
+  void encode(int rowId, long value) throws IOException;
+  void encode(int rowId, float value) throws IOException;
+  void encode(int rowId, double value) throws IOException;
 
   long decodeLong(byte value);
   long decodeLong(short value);

@@ -310,7 +310,7 @@ public class UnsafeFixLengthColumnPage extends ColumnPage {
   }
 
   @Override
-  public void encode(PrimitiveCodec codec) {
+  public void encode(PrimitiveCodec codec) throws IOException {
     int pageSize = getPageSize();
     switch (dataType) {
       case BYTE:

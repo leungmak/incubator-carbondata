@@ -455,7 +455,7 @@ public abstract class ColumnPage {
   /**
    * Encode the page data by codec (Visitor)
    */
-  public abstract void encode(PrimitiveCodec codec);
+  public abstract void encode(PrimitiveCodec codec) throws IOException;
 
   /**
    * Compress page data using specified compressor
