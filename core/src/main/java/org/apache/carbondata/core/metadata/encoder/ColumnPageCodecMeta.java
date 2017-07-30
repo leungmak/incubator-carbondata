@@ -32,6 +32,17 @@ import org.apache.carbondata.core.metadata.datatype.DataType;
  */
 public class ColumnPageCodecMeta extends ValueEncoderMeta implements Serializable {
 
+  private Encoding encoding;
+
+  public void setEncoding(Encoding encoding) {
+    this.encoding = encoding;
+  }
+
+  public Encoding getEncoding() {
+    return encoding;
+  }
+
+  
   private BitSet nullBitSet;
 
   private DataType srcDataType;
