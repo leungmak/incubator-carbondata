@@ -39,12 +39,12 @@ import org.apache.carbondata.format.PresenceMeta;
  */
 public class EncodedMeasurePage extends EncodedColumnPage {
 
-  private ValueEncoderMeta metaData;
+  private List<ValueEncoderMeta> metaList;
 
-  public EncodedMeasurePage(int pageSize, byte[] encodedData, ValueEncoderMeta metaData,
+  public EncodedMeasurePage(int pageSize, byte[] encodedData, List<ValueEncoderMeta> metaList,
       BitSet nullBitSet) throws IOException {
     super(pageSize, encodedData);
-    this.metaData = metaData;
+    this.metaList = metaList;
     this.nullBitSet = nullBitSet;
     this.dataChunk2 = buildDataChunk2();
   }
@@ -81,7 +81,7 @@ public class EncodedMeasurePage extends EncodedColumnPage {
     return dataChunk;
   }
 
-  public ValueEncoderMeta getMetaData() {
-    return metaData;
+  public List<ValueEncoderMeta> getMetaData() {
+    return metaList;
   }
 }

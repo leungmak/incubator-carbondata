@@ -20,13 +20,9 @@ package org.apache.carbondata.core.datastore.page.encoding.stream;
 import java.io.IOException;
 
 import org.apache.carbondata.core.datastore.page.ColumnPage;
-import org.apache.carbondata.core.datastore.page.ComplexColumnPage;
 import org.apache.carbondata.core.datastore.page.encoding.EncodedColumnPage;
 import org.apache.carbondata.core.datastore.page.encoding.EncodedMeasurePage;
-import org.apache.carbondata.core.datastore.page.encoding.stream.EncoderStream;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
-import org.apache.carbondata.core.metadata.CodecMetaFactory;
-import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 
 /**
  *  Codec for a column page data, implementation should not keep state across pages,
@@ -45,7 +41,7 @@ public class ColumnPageStreamEncoder {
    */
   public EncodedColumnPage encode(ColumnPage input) throws IOException {
     SimpleStatsResult stats = (SimpleStatsResult)input.getStatistics();
-    ValueEncoderMeta metadata = CodecMetaFactory.createMeta(stats);
+//    ValueEncoderMeta metadata = CodecMetaFactory.createMeta(stats);
     encoderStream.start();
     switch (input.getDataType()) {
       case BYTE:
@@ -81,14 +77,6 @@ public class ColumnPageStreamEncoder {
         bytes,
         encoderStream.getMeta(),
         stats.getNullBits());
-  }
-
-  /**
-   * encode complex column page and return the coded data
-   * TODO: remove this interface after complex column page is unified with column page
-   */
-  public EncodedColumnPage[] encodeComplexColumn(ComplexColumnPage input) {
-    throw new UnsupportedOperationException();
   }
 
 }
