@@ -20,7 +20,7 @@ package org.apache.carbondata.core.datastore.page.statistics;
 import java.math.BigDecimal;
 import java.util.BitSet;
 
-import org.apache.carbondata.core.metadata.ColumnPageCodecMeta;
+import org.apache.carbondata.core.metadata.encoder.ColumnPageCodecMeta;
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.datatype.DataType;
 

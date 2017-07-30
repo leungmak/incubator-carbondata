@@ -23,7 +23,7 @@ import java.util.BitSet;
 import org.apache.carbondata.core.datastore.columnar.IndexStorage;
 import org.apache.carbondata.core.datastore.page.encoding.EncodedDimensionPage;
 import org.apache.carbondata.core.datastore.page.encoding.EncodedMeasurePage;
-import org.apache.carbondata.core.metadata.ColumnPageCodecMeta;
+import org.apache.carbondata.core.metadata.encoder.ColumnPageCodecMeta;
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.util.CarbonUtil;
 

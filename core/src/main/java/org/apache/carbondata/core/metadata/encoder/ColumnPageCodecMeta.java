@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.core.metadata;
+package org.apache.carbondata.core.metadata.encoder;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -23,6 +23,8 @@ import java.util.BitSet;
 
 import org.apache.carbondata.core.constants.CarbonCommonConstants;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
+import org.apache.carbondata.core.metadata.CodecMetaFactory;
+import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.datatype.DataType;
 
 /**

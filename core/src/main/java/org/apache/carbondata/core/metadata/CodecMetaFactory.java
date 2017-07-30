@@ -20,10 +20,8 @@ package org.apache.carbondata.core.metadata;
 import org.apache.carbondata.core.constants.CarbonCommonConstants;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
 import org.apache.carbondata.core.metadata.datatype.DataType;
+import org.apache.carbondata.core.metadata.encoder.ColumnPageCodecMeta;
 import org.apache.carbondata.core.util.CarbonProperties;
-
-import static org.apache.carbondata.core.metadata.datatype.DataType.*;
-import static org.apache.carbondata.core.metadata.datatype.DataType.LONG;
 
 public class CodecMetaFactory {
 
