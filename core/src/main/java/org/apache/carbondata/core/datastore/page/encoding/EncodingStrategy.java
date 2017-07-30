@@ -20,8 +20,8 @@ package org.apache.carbondata.core.datastore.page.encoding;
 import org.apache.carbondata.core.datastore.TableSpec;
 import org.apache.carbondata.core.datastore.page.encoding.stream.ColumnPageStreamDecoder;
 import org.apache.carbondata.core.datastore.page.encoding.stream.ColumnPageStreamEncoder;
-import org.apache.carbondata.core.datastore.page.encoding.stream.EncoderStream;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
+import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 
 /**
  * Base class for encoding strategy implementation.
@@ -34,5 +34,15 @@ public abstract class EncodingStrategy {
 
   // for dimension column
   public abstract ColumnPageStreamEncoder newEncoder(TableSpec.DimensionSpec dimensionSpec);
+
+
+  /**
+   * decode byte array from offset to a column page
+   * @param input encoded byte array
+   * @param offset startoffset of the input to decode
+   * @param length length of data to decode
+   * @return decoded data
+   */
+  public abstract ColumnPageStreamDecoder newDecoder(ValueEncoderMeta meta, int pageSize);
 
 }

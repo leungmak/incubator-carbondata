@@ -59,7 +59,8 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
    * create codec based on the page data type and statistics
    */
   @Override
-  public ColumnPageStreamEncoder newEncoder(TableSpec.MeasureSpec measureSpec, SimpleStatsResult stats) {
+  public ColumnPageStreamEncoder newEncoder(TableSpec.MeasureSpec measureSpec,
+      SimpleStatsResult stats) {
     switch (stats.getDataType()) {
       case BYTE:
       case SHORT:
@@ -107,7 +108,7 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
         case SHORT:
         case INT:
         case LONG:
-          return newCodecForIntegralType(stats);
+          return newCodecForIntegralType(, stats);
         case FLOAT:
         case DOUBLE:
         case DECIMAL:
@@ -120,6 +121,7 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
     }
   }
 
+  @Override
   public ColumnPageStreamDecoder newDecoder(ValueEncoderMeta meta, int pageSize) {
     if (meta instanceof ColumnPageCodecMeta) {
       return getColumnPageDecoderV3((ColumnPageCodecMeta) meta, pageSize);
@@ -130,7 +132,7 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
 
   private ColumnPageStreamDecoder getColumnPageDecoderV3(ColumnPageCodecMeta meta,
       int pageSize) {
-    Encoding encoding = meta.get();
+    Encoding encoding = meta.g();
     switch (encoding) {
       case :
       DirectCompressEncoderMeta dcem = (DirectCompressEncoderMeta) meta;
@@ -342,5 +344,20 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
         new DirectCompressDecoderStream(compressor, dataType),
         dataType,
         pageSize);
+  }
+
+  private ColumnPageStreamDecoder newDecoderForIntegralType(ColumnPageCodecMeta meta,
+      int pageSize) {
+    DirectCompressDecoderStream compressed = new DirectCompressDecoderStream(compressor,
+        meta.getSrcDataType());
+    if (meta.getSrcDataType())
+      return null;
+  }
+
+  private ColumnPageStreamDecoder newDecoderForIntegralType(SimpleStatsResult stats) {
+    DirectCompressDecoderStream compressed = new DirectCompressDecoderStream(compressor,
+        fitDataType);
+
+    return null;
   }
 }
