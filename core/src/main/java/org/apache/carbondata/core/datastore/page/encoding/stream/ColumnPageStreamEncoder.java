@@ -20,6 +20,7 @@ package org.apache.carbondata.core.datastore.page.encoding.stream;
 import java.io.IOException;
 
 import org.apache.carbondata.core.datastore.page.ColumnPage;
+import org.apache.carbondata.core.datastore.page.ComplexColumnPage;
 import org.apache.carbondata.core.datastore.page.encoding.EncodedColumnPage;
 import org.apache.carbondata.core.datastore.page.encoding.EncodedMeasurePage;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
@@ -77,6 +78,10 @@ public class ColumnPageStreamEncoder {
         bytes,
         encoderStream.getMeta(),
         stats.getNullBits());
+  }
+
+  public EncodedColumnPage[] encodeComplexColumn(ComplexColumnPage input) {
+    throw new UnsupportedOperationException("internal error");
   }
 
 }

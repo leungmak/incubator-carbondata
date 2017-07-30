@@ -28,7 +28,7 @@ public class ByteArrayEncoderStream implements EncoderStream {
 
   private ByteArrayOutputStream bao;
   private DataOutputStream outputStream;
-  ByteArrayEncoderStream() {
+  public ByteArrayEncoderStream() {
     bao = new ByteArrayOutputStream();
     outputStream = new DataOutputStream(bao);
   }

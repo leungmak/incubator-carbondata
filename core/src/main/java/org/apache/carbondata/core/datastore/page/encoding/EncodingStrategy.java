@@ -18,98 +18,21 @@
 package org.apache.carbondata.core.datastore.page.encoding;
 
 import org.apache.carbondata.core.datastore.TableSpec;
-import org.apache.carbondata.core.datastore.page.statistics.PrimitivePageStatsCollector;
+import org.apache.carbondata.core.datastore.page.encoding.stream.ColumnPageStreamDecoder;
+import org.apache.carbondata.core.datastore.page.encoding.stream.ColumnPageStreamEncoder;
+import org.apache.carbondata.core.datastore.page.encoding.stream.EncoderStream;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
-import org.apache.carbondata.core.metadata.ColumnPageCodecMeta;
-import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 
 /**
  * Base class for encoding strategy implementation.
  */
 public abstract class EncodingStrategy {
 
-  /**
-   * create codec based on the page data type and statistics
-   */
-  public ColumnPageCodec newCodec(SimpleStatsResult stats) {
-    switch (stats.getDataType()) {
-      case BYTE:
-      case SHORT:
-      case INT:
-      case LONG:
-        return newCodecForIntegralType(stats);
-      case FLOAT:
-      case DOUBLE:
-        return newCodecForFloatingType(stats);
-      case DECIMAL:
-        return newCodecForDecimalType(stats);
-      case BYTE_ARRAY:
-        // no dictionary dimension
-        return newCodecForByteArrayType(stats);
-      default:
-        throw new RuntimeException("unsupported data type: " + stats.getDataType());
-    }
-  }
-
-  /**
-   * create codec based on the page data type and statistics contained by ValueEncoderMeta
-   */
-  public ColumnPageCodec newCodec(ValueEncoderMeta meta, int scale, int precision) {
-    if (meta instanceof ColumnPageCodecMeta) {
-      ColumnPageCodecMeta codecMeta = (ColumnPageCodecMeta) meta;
-      SimpleStatsResult stats = PrimitivePageStatsCollector.newInstance(codecMeta);
-      switch (codecMeta.getSrcDataType()) {
-        case BYTE:
-        case SHORT:
-        case INT:
-        case LONG:
-          return newCodecForIntegralType(stats);
-        case FLOAT:
-        case DOUBLE:
-          return newCodecForFloatingType(stats);
-        case DECIMAL:
-          return newCodecForDecimalType(stats);
-        case BYTE_ARRAY:
-          // no dictionary dimension
-          return newCodecForByteArrayType(stats);
-        default:
-          throw new RuntimeException("unsupported data type: " + stats.getDataType());
-      }
-    } else {
-      SimpleStatsResult stats = PrimitivePageStatsCollector.newInstance(meta);
-      switch (meta.getType()) {
-        case BYTE:
-        case SHORT:
-        case INT:
-        case LONG:
-          return newCodecForIntegralType(stats);
-        case FLOAT:
-        case DOUBLE:
-          return newCodecForFloatingType(stats);
-        case DECIMAL:
-          return newCodecForDecimalType(stats);
-        case BYTE_ARRAY:
-          // no dictionary dimension
-          return newCodecForByteArrayType(stats);
-        default:
-          throw new RuntimeException("unsupported data type: " + stats.getDataType());
-      }
-    }
-  }
-
-  // for byte, short, int, long
-  abstract ColumnPageCodec newCodecForIntegralType(SimpleStatsResult stats);
-
-  // for float, double
-  abstract ColumnPageCodec newCodecForFloatingType(SimpleStatsResult stats);
-
-  // for decimal
-  abstract ColumnPageCodec newCodecForDecimalType(SimpleStatsResult stats);
-
   // for byte array
-  abstract ColumnPageCodec newCodecForByteArrayType(SimpleStatsResult stats);
+  public abstract ColumnPageStreamEncoder newEncoder(TableSpec.MeasureSpec measureSpec,
+      SimpleStatsResult stats);
 
   // for dimension column
-  public abstract ColumnPageCodec newCodec(TableSpec.DimensionSpec dimensionSpec);
+  public abstract ColumnPageStreamEncoder newEncoder(TableSpec.DimensionSpec dimensionSpec);
 
 }

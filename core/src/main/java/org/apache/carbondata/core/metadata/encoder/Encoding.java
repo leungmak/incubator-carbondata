@@ -26,7 +26,9 @@ public enum Encoding {
   INVERTED_INDEX,
   BIT_PACKED,
   DIRECT_DICTIONARY,
-  IMPLICIT;
+  IMPLICIT,
+
+  ADAPTIVE;
 
   public static Encoding valueOf(int ordinal) {
     if (ordinal == DICTIONARY.ordinal()) {

@@ -20,6 +20,7 @@ package org.apache.carbondata.core.datastore;
 import java.util.List;
 
 import org.apache.carbondata.core.metadata.datatype.DataType;
+import org.apache.carbondata.core.metadata.encoder.Encoding;
 import org.apache.carbondata.core.metadata.schema.table.column.CarbonDimension;
 import org.apache.carbondata.core.metadata.schema.table.column.CarbonMeasure;
 
@@ -110,9 +111,12 @@ public class TableSpec {
     // data type of this column
     private DataType dataType;
 
-    ColumnSpec(String fieldName, DataType dataType) {
+    private List<Encoding> encodingList
+
+    ColumnSpec(String fieldName, DataType dataType, List<Encoding> encodingList) {
       this.fieldName = fieldName;
       this.dataType = dataType;
+      this.encodingList = encodingList;
     }
 
     public DataType getDataType() {
@@ -121,6 +125,10 @@ public class TableSpec {
 
     public String getFieldName() {
       return fieldName;
+    }
+
+    public List<Encoding> getEncodingList() {
+      return encodingList;
     }
   }
 
@@ -136,7 +144,7 @@ public class TableSpec {
     private boolean doInvertedIndex;
 
     DimensionSpec(DimensionType dimensionType, CarbonDimension dimension) {
-      super(dimension.getColName(), dimension.getDataType());
+      super(dimension.getColName(), dimension.getDataType(), dimension.getEncoder());
       this.type = dimensionType;
       this.inSortColumns = dimension.isSortColumn();
       this.doInvertedIndex = dimension.isUseInvertedIndex();
@@ -160,8 +168,8 @@ public class TableSpec {
     private int scale;
     private int precision;
 
-    MeasureSpec(String fieldName, DataType dataType, int scale, int precision) {
-      super(fieldName, dataType);
+    MeasureSpec(CarbonMeasure measure, int scale, int precision) {
+      super(measure.getColName(), measure.getDataType(), measure.getEncoder());
       this.scale = scale;
       this.precision = precision;
     }

@@ -36,6 +36,7 @@ import org.apache.carbondata.core.datastore.page.encoding.EncodedColumnPage;
 import org.apache.carbondata.core.datastore.page.encoding.EncodedDimensionPage;
 import org.apache.carbondata.core.datastore.page.encoding.EncodedMeasurePage;
 import org.apache.carbondata.core.datastore.page.encoding.EncodingStrategy;
+import org.apache.carbondata.core.datastore.page.encoding.stream.ColumnPageStreamEncoder;
 import org.apache.carbondata.core.datastore.page.key.TablePageKey;
 import org.apache.carbondata.core.datastore.page.statistics.PrimitivePageStatsCollector;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
@@ -254,8 +255,9 @@ public class TablePage {
       throws MemoryException, IOException {
     EncodedMeasurePage[] encodedMeasures = new EncodedMeasurePage[measurePage.length];
     for (int i = 0; i < measurePage.length; i++) {
-      ColumnPageCodec encoder =
-          encodingStrategy.newCodec((SimpleStatsResult)(measurePage[i].getStatistics()));
+      TableSpec.MeasureSpec spec = model.getTableSpec().getMeasureSpec(i);
+      ColumnPageStreamEncoder encoder =
+          encodingStrategy.newEncoder(spec, (SimpleStatsResult)(measurePage[i].getStatistics()));
       encodedMeasures[i] = (EncodedMeasurePage) encoder.encode(measurePage[i]);
     }
     return encodedMeasures;
@@ -272,24 +274,24 @@ public class TablePage {
     int complexDimIndex = 0;
     int numDimensions = tableSpec.getNumDimensions();
     for (int i = 0; i < numDimensions; i++) {
-      ColumnPageCodec codec;
+      ColumnPageStreamEncoder encoder;
       EncodedDimensionPage encodedPage;
       TableSpec.DimensionSpec spec = tableSpec.getDimensionSpec(i);
       switch (spec.getDimensionType()) {
         case GLOBAL_DICTIONARY:
         case DIRECT_DICTIONARY:
-          codec = encodingStrategy.newCodec(spec);
-          encodedPage = (EncodedDimensionPage) codec.encode(dictDimensionPages[dictIndex++]);
+          encoder = encodingStrategy.newEncoder(spec);
+          encodedPage = (EncodedDimensionPage) encoder.encode(dictDimensionPages[dictIndex++]);
           encodedDimensions.add(encodedPage);
           break;
         case PLAIN_VALUE:
-          codec = encodingStrategy.newCodec(spec);
-          encodedPage = (EncodedDimensionPage) codec.encode(noDictDimensionPages[noDictIndex++]);
+          encoder = encodingStrategy.newEncoder(spec);
+          encodedPage = (EncodedDimensionPage) encoder.encode(noDictDimensionPages[noDictIndex++]);
           encodedDimensions.add(encodedPage);
           break;
         case COMPLEX:
-          codec = encodingStrategy.newCodec(spec);
-          EncodedColumnPage[] encodedPages = codec.encodeComplexColumn(
+          encoder = encodingStrategy.newEncoder(spec);
+          EncodedColumnPage[] encodedPages = encoder.encodeComplexColumn(
               complexDimensionPages[complexDimIndex++]);
           for (EncodedColumnPage page : encodedPages) {
             encodedComplexDimenions.add((EncodedDimensionPage) page);
