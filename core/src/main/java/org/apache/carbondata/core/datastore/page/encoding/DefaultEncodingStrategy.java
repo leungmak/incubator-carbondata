@@ -38,6 +38,7 @@ import org.apache.carbondata.core.datastore.page.encoding.stream.HighCardDictDim
 import org.apache.carbondata.core.datastore.page.encoding.stream.RLEEncoderStream;
 import org.apache.carbondata.core.datastore.page.statistics.PrimitivePageStatsCollector;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
+import org.apache.carbondata.core.metadata.encoder.AdaptiveEncoderMeta;
 import org.apache.carbondata.core.metadata.encoder.ColumnPageCodecMeta;
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.datatype.DataType;
