@@ -81,17 +81,17 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
   /**
    * create codec based on the page data type and statistics contained by ValueEncoderMeta
    */
-  public ColumnPageStreamEncoder newEncoder(
+  public ColumnPageStreamEncoder newEncoder(TableSpec.MeasureSpec measureSpec,
       ValueEncoderMeta meta, int scale, int precision) {
-    if (meta instanceof AdaptiveCodecMeta) {
-      AdaptiveCodecMeta codecMeta = (AdaptiveCodecMeta) meta;
+    if (meta instanceof ColumnPageCodecMeta) {
+      ColumnPageCodecMeta codecMeta = (ColumnPageCodecMeta) meta;
       SimpleStatsResult stats = PrimitivePageStatsCollector.newInstance(codecMeta);
-      switch (codecMeta.getSrcDataType()) {
+      switch (codecMeta.getType()) {
         case BYTE:
         case SHORT:
         case INT:
         case LONG:
-          return newEncoderForIntegralType(stats);
+          return newEncoderForIntegralType(measureSpec, stats);
         case FLOAT:
         case DOUBLE:
         case DECIMAL:
