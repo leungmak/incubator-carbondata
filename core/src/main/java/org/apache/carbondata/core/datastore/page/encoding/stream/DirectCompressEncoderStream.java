@@ -18,14 +18,11 @@
 package org.apache.carbondata.core.datastore.page.encoding.stream;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Stack;
 
 import org.apache.carbondata.core.datastore.compression.Compressor;
-import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.datatype.DataType;
 import org.apache.carbondata.core.metadata.encoder.CodecStreamMeta;
-import org.apache.carbondata.core.metadata.encoder.DirectCompressEncoderMeta;
+import org.apache.carbondata.core.metadata.encoder.DirectCompressCodecMeta;
 
 public class DirectCompressEncoderStream implements EncoderStream {
 
@@ -74,6 +71,6 @@ public class DirectCompressEncoderStream implements EncoderStream {
 
   @Override
   public CodecStreamMeta getMeta() {
-    return new DirectCompressEncoderMeta(compressor.getName(), dataType);
+    return new DirectCompressCodecMeta(compressor.getName(), dataType);
   }
 }

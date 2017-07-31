@@ -22,11 +22,13 @@ import java.util.List;
 import org.apache.carbondata.core.datastore.TableSpec;
 import org.apache.carbondata.core.datastore.compression.Compressor;
 import org.apache.carbondata.core.datastore.compression.CompressorFactory;
+import org.apache.carbondata.core.datastore.page.encoding.stream.AdaptiveDecoderStream;
 import org.apache.carbondata.core.datastore.page.encoding.stream.AdaptiveEncoderStream;
 import org.apache.carbondata.core.datastore.page.encoding.stream.ByteArrayEncoderStream;
 import org.apache.carbondata.core.datastore.page.encoding.stream.ColumnPageStreamDecoder;
 import org.apache.carbondata.core.datastore.page.encoding.stream.ColumnPageStreamEncoder;
 import org.apache.carbondata.core.datastore.page.encoding.stream.ComplexDimensionIndexCodec;
+import org.apache.carbondata.core.datastore.page.encoding.stream.DecoderStream;
 import org.apache.carbondata.core.datastore.page.encoding.stream.DictDimensionIndexCodec;
 import org.apache.carbondata.core.datastore.page.encoding.stream.DiffEncoderStream;
 import org.apache.carbondata.core.datastore.page.encoding.stream.DirectCompressDecoderStream;
@@ -39,10 +41,11 @@ import org.apache.carbondata.core.datastore.page.encoding.stream.RLEEncoderStrea
 import org.apache.carbondata.core.datastore.page.statistics.PrimitivePageStatsCollector;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
 import org.apache.carbondata.core.metadata.encoder.AdaptiveCodecMeta;
+import org.apache.carbondata.core.metadata.encoder.CodecStreamMeta;
 import org.apache.carbondata.core.metadata.encoder.ColumnPageCodecMeta;
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.datatype.DataType;
-import org.apache.carbondata.core.metadata.encoder.DirectCompressEncoderMeta;
+import org.apache.carbondata.core.metadata.encoder.DirectCompressCodecMeta;
 import org.apache.carbondata.core.metadata.encoder.Encoding;
 
 /**
@@ -77,49 +80,49 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
         throw new RuntimeException("unsupported data type: " + stats.getDataType());
     }
   }
-
-  /**
-   * create codec based on the page data type and statistics contained by ValueEncoderMeta
-   */
-  public ColumnPageStreamEncoder newEncoder(TableSpec.MeasureSpec measureSpec,
-      ValueEncoderMeta meta, int scale, int precision) {
-    if (meta instanceof ColumnPageCodecMeta) {
-      ColumnPageCodecMeta codecMeta = (ColumnPageCodecMeta) meta;
-      SimpleStatsResult stats = PrimitivePageStatsCollector.newInstance(codecMeta);
-      switch (codecMeta.getType()) {
-        case BYTE:
-        case SHORT:
-        case INT:
-        case LONG:
-          return newEncoderForIntegralType(measureSpec, stats);
-        case FLOAT:
-        case DOUBLE:
-        case DECIMAL:
-        case BYTE_ARRAY:
-          // no dictionary dimension
-          return newDirectCompressEncoderStream(stats.getDataType());
-        default:
-          throw new RuntimeException("unsupported data type: " + stats.getDataType());
-      }
-    } else {
-      SimpleStatsResult stats = PrimitivePageStatsCollector.newInstance(meta);
-      switch (meta.getType()) {
-        case BYTE:
-        case SHORT:
-        case INT:
-        case LONG:
-          return newEncoderForIntegralType(, stats);
-        case FLOAT:
-        case DOUBLE:
-        case DECIMAL:
-        case BYTE_ARRAY:
-          // no dictionary dimension
-          return newDirectCompressEncoderStream(stats.getDataType());
-        default:
-          throw new RuntimeException("unsupported data type: " + stats.getDataType());
-      }
-    }
-  }
+//
+//  /**
+//   * create codec based on the page data type and statistics contained by ValueEncoderMeta
+//   */
+//  public ColumnPageStreamEncoder newEncoder(TableSpec.MeasureSpec measureSpec,
+//      ValueEncoderMeta meta, int scale, int precision) {
+//    if (meta instanceof ColumnPageCodecMeta) {
+//      ColumnPageCodecMeta codecMeta = (ColumnPageCodecMeta) meta;
+//      SimpleStatsResult stats = PrimitivePageStatsCollector.newInstance(codecMeta);
+//      switch (codecMeta.getType()) {
+//        case BYTE:
+//        case SHORT:
+//        case INT:
+//        case LONG:
+//          return newEncoderForIntegralType(measureSpec, stats);
+//        case FLOAT:
+//        case DOUBLE:
+//        case DECIMAL:
+//        case BYTE_ARRAY:
+//          // no dictionary dimension
+//          return newDirectCompressEncoderStream(stats.getDataType());
+//        default:
+//          throw new RuntimeException("unsupported data type: " + stats.getDataType());
+//      }
+//    } else {
+//      SimpleStatsResult stats = PrimitivePageStatsCollector.newInstance(meta);
+//      switch (meta.getType()) {
+//        case BYTE:
+//        case SHORT:
+//        case INT:
+//        case LONG:
+//          return newEncoderForIntegralType(, stats);
+//        case FLOAT:
+//        case DOUBLE:
+//        case DECIMAL:
+//        case BYTE_ARRAY:
+//          // no dictionary dimension
+//          return newDirectCompressEncoderStream(stats.getDataType());
+//        default:
+//          throw new RuntimeException("unsupported data type: " + stats.getDataType());
+//      }
+//    }
+//  }
 
   @Override
   public ColumnPageStreamDecoder newDecoder(ValueEncoderMeta meta, int pageSize) {
@@ -132,34 +135,25 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
 
   private ColumnPageStreamDecoder getColumnPageDecoderV3(ColumnPageCodecMeta meta,
       int pageSize) {
-    Encoding encoding = meta.getEncoding();
-    switch (encoding) {
-      case :
-      DirectCompressEncoderMeta dcem = (DirectCompressEncoderMeta) meta;
-      DirectCompressDecoderStream stream = new DirectCompressDecoderStream(
-          compressor, dcem.getDataType());
-      return new ColumnPageStreamDecoder(stream, dcem.getDataType(), pageSize);
-      break;
-      case ADAPTIVE:
-        AdaptiveCodecMeta aem = (AdaptiveCodecMeta) meta;
-        SimpleStatsResult stats = PrimitivePageStatsCollector.newInstance(aem);
-        switch (aem.getSrcDataType()) {
-          case BYTE:
-          case SHORT:
-          case INT:
-          case LONG:
-            return newDecoderForIntegralType(meta, pageSize);
-          case FLOAT:
-          case DOUBLE:
-          case DECIMAL:
-          case BYTE_ARRAY:
-            // no dictionary dimension
-            return newDirectCompressDecoderStream(meta.getType(), pageSize);
-          default:
-            throw new RuntimeException("unsupported data type: " + stats.getDataType());
-        }
-      default:
+    List<CodecStreamMeta> metas = meta.getEncodingList();
+    DecoderStream stream;
+    DataType srcDataType;
+    for (CodecStreamMeta streamMeta : metas) {
+      switch (streamMeta.getEncoding()) {
+        case DIRECT_COMPRESS:
+          DirectCompressCodecMeta dm = (DirectCompressCodecMeta) streamMeta;
+          stream = new DirectCompressDecoderStream(compressor, dm.getDataType());
+          break;
+        case ADAPTIVE:
+          AdaptiveCodecMeta am = (AdaptiveCodecMeta) streamMeta;
+          srcDataType = am.getSrcDataType();
+          stream = new AdaptiveDecoderStream(am.getTargetDataType(), stream);
+          break;
+        default:
+          throw new RuntimeException("internal error");
+      }
     }
+    return new ColumnPageStreamDecoder(stream, srcDataType, pageSize);
   }
 
   private ColumnPageStreamDecoder getColumnPageDecoderV1V2(ValueEncoderMeta meta, int pageSize) {

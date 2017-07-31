@@ -37,6 +37,14 @@ public class AdaptiveCodecMeta extends CodecStreamMeta {
     this.targetDataType = targetDataType;
   }
 
+  public DataType getSrcDataType() {
+    return srcDataType;
+  }
+
+  public DataType getTargetDataType() {
+    return targetDataType;
+  }
+
   @Override
   public void write(DataOutput out) throws IOException {
     super.write(out);

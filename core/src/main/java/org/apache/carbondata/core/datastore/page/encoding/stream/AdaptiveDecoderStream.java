@@ -27,7 +27,7 @@ public class AdaptiveDecoderStream implements DecoderStream {
   private DecoderStream child;
 
   public AdaptiveDecoderStream(DataType targetDataType, DecoderStream child) {
-    this.targetDataType = srcDataType;
+    this.targetDataType = targetDataType;
     this.child = child;
   }
 
@@ -63,7 +63,7 @@ public class AdaptiveDecoderStream implements DecoderStream {
     return 0;
   }
 
-  @Override public byte[] end() throws IOException {
-    return new byte[0];
+  @Override
+  public void end() throws IOException {
   }
 }

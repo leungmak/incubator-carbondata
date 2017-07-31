@@ -35,6 +35,10 @@ public class ColumnPageCodecMeta extends ValueEncoderMeta implements Writable {
 
   private Stack<CodecStreamMeta> metas;
 
+  public ColumnPageCodecMeta() {
+    this.metas = new Stack<>();
+  }
+
   public void addEncoding(CodecStreamMeta meta) {
     this.metas.push(meta);
   }
@@ -43,25 +47,25 @@ public class ColumnPageCodecMeta extends ValueEncoderMeta implements Writable {
     return metas;
   }
 
-  public byte[] serialize() {
-    List<byte[]> bytes = new ArrayList<>(metas.size());
-    for (CodecStreamMeta meta : metas) {
-      bytes.add(meta.serialize());
-    }
-
-    return bytes;
-  }
-
   DecoderStream createDecoder(byte[])
 
   @Override
   public void write(DataOutput out) throws IOException {
-    for (CodecStreamMeta meta : metas) {
+    int size = metas.size();
+    out.writeInt(size);
+    for (int i = size - 1; i >= 0; i--) {
+      CodecStreamMeta meta = metas.get(i);
       meta.write(out);
     }
   }
 
-  @Override public void readFields(DataInput in) throws IOException {
-
+  @Override
+  public void readFields(DataInput in) throws IOException {
+    int size = in.readInt();
+    for (int i = 0; i < size; i++) {
+      CodecStreamMeta meta = new CodecStreamMeta();
+      meta.readFields(in);
+      metas.push(meta);
+    }
   }
 }

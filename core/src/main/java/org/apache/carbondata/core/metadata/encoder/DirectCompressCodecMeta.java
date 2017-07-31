@@ -23,11 +23,11 @@ import java.io.IOException;
 
 import org.apache.carbondata.core.metadata.datatype.DataType;
 
-public class DirectCompressEncoderMeta extends CodecStreamMeta {
+public class DirectCompressCodecMeta extends CodecStreamMeta {
   private String compressorName;
   private DataType dataType;
 
-  public DirectCompressEncoderMeta(String compressorName, DataType dataType) {
+  public DirectCompressCodecMeta(String compressorName, DataType dataType) {
     this.compressorName = compressorName;
     this.dataType = dataType;
   }
