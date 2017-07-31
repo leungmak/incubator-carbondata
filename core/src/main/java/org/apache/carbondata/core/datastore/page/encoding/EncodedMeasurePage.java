@@ -39,12 +39,12 @@ import org.apache.carbondata.format.PresenceMeta;
  */
 public class EncodedMeasurePage extends EncodedColumnPage {
 
-  private List<ValueEncoderMeta> metaList;
+  private ValueEncoderMeta meta;
 
-  public EncodedMeasurePage(int pageSize, byte[] encodedData, List<ValueEncoderMeta> metaList,
+  public EncodedMeasurePage(int pageSize, byte[] encodedData, ValueEncoderMeta meta,
       BitSet nullBitSet) throws IOException {
     super(pageSize, encodedData);
-    this.metaList = metaList;
+    this.meta = meta;
     this.nullBitSet = nullBitSet;
     this.dataChunk2 = buildDataChunk2();
   }
@@ -67,15 +67,15 @@ public class EncodedMeasurePage extends EncodedColumnPage {
     presenceMeta.setPresent_bit_stream(compressor.compressByte(nullBitSet.toByteArray()));
     dataChunk.setPresence(presenceMeta);
     List<ByteBuffer> encoderMetaList = new ArrayList<ByteBuffer>();
-    if (metaData instanceof ColumnPageCodecMeta) {
-      ColumnPageCodecMeta meta = (ColumnPageCodecMeta) metaData;
-      encoderMetaList.add(ByteBuffer.wrap(meta.serialize()));
-      dataChunk.min_max.addToMax_values(ByteBuffer.wrap(meta.getMaxAsBytes()));
-      dataChunk.min_max.addToMin_values(ByteBuffer.wrap(meta.getMinAsBytes()));
+    if (meta instanceof ColumnPageCodecMeta) {
+      ColumnPageCodecMeta codecMeta = (ColumnPageCodecMeta) meta;
+      encoderMetaList.add(ByteBuffer.wrap(codecMeta.serialize()));
+      dataChunk.min_max.addToMax_values(ByteBuffer.wrap(codecMeta.getMaxAsBytes()));
+      dataChunk.min_max.addToMin_values(ByteBuffer.wrap(codecMeta.getMinAsBytes()));
     } else {
-      encoderMetaList.add(ByteBuffer.wrap(CarbonUtil.serializeEncodeMetaUsingByteBuffer(metaData)));
-      dataChunk.min_max.addToMax_values(ByteBuffer.wrap(CarbonUtil.getMaxValueAsBytes(metaData)));
-      dataChunk.min_max.addToMin_values(ByteBuffer.wrap(CarbonUtil.getMinValueAsBytes(metaData)));
+      encoderMetaList.add(ByteBuffer.wrap(CarbonUtil.serializeEncodeMetaUsingByteBuffer(meta)));
+      dataChunk.min_max.addToMax_values(ByteBuffer.wrap(CarbonUtil.getMaxValueAsBytes(meta)));
+      dataChunk.min_max.addToMin_values(ByteBuffer.wrap(CarbonUtil.getMinValueAsBytes(meta)));
     }
     dataChunk.setEncoder_meta(encoderMetaList);
     return dataChunk;

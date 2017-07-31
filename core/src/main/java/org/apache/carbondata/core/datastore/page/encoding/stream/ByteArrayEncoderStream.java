@@ -18,11 +18,14 @@
 package org.apache.carbondata.core.datastore.page.encoding.stream;
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.List;
 
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
+import org.apache.carbondata.core.metadata.encoder.CodecStreamMeta;
 
 public class ByteArrayEncoderStream implements EncoderStream {
 
@@ -64,7 +67,7 @@ public class ByteArrayEncoderStream implements EncoderStream {
   }
 
   @Override
-  public List<ValueEncoderMeta> getMeta() {
-    return null;
+  public CodecStreamMeta getMeta() {
+    return new CodecStreamMeta();
   }
 }

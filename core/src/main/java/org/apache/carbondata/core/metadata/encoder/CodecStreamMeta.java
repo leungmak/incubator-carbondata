@@ -14,40 +14,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.carbondata.core.metadata.encoder;
 
-/**
- * Encoding type supported in carbon
- */
-public enum Encoding {
-  DICTIONARY,
-  DELTA,
-  RLE,
-  INVERTED_INDEX,
-  BIT_PACKED,
-  DIRECT_DICTIONARY,
-  IMPLICIT,
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
 
-  DIRECT_COMPRESS,
-  ADAPTIVE;
+import org.apache.carbondata.core.metadata.schema.table.Writable;
 
-  public static Encoding valueOf(int ordinal) {
-    if (ordinal == DICTIONARY.ordinal()) {
-      return DICTIONARY;
-    } else if (ordinal == DELTA.ordinal()) {
-      return DELTA;
-    } else if (ordinal == RLE.ordinal()) {
-      return RLE;
-    } else if (ordinal == INVERTED_INDEX.ordinal()) {
-      return INVERTED_INDEX;
-    } else if (ordinal == BIT_PACKED.ordinal()) {
-      return BIT_PACKED;
-    } else if (ordinal == DIRECT_DICTIONARY.ordinal()) {
-      return DIRECT_DICTIONARY;
-    } else if (ordinal == IMPLICIT.ordinal()) {
-      return IMPLICIT;
-    } else {
-      throw new RuntimeException("create Encoding with invalid ordinal: " + ordinal);
-    }
+public class CodecStreamMeta implements Writable {
+  private Encoding encoding;
+
+  public void setEncoding(Encoding encoding) {
+    this.encoding = encoding;
+  }
+
+  public Encoding getEncoding() {
+    return encoding;
+  }
+
+  @Override
+  public void write(DataOutput out) throws IOException {
+    out.writeInt(encoding.ordinal());
+  }
+
+  @Override
+  public void readFields(DataInput in) throws IOException {
+    this.encoding = Encoding.valueOf(in.readInt());
   }
 }

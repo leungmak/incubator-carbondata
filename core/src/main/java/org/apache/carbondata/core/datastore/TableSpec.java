@@ -76,8 +76,7 @@ public class TableSpec {
   private void addMeasures(List<CarbonMeasure> measures) {
     for (int i = 0; i < measures.size(); i++) {
       CarbonMeasure measure = measures.get(i);
-      measureSpec[i] = new MeasureSpec(measure.getColName(), measure.getDataType(), measure
-          .getScale(), measure.getPrecision());
+      measureSpec[i] = new MeasureSpec(measure);
     }
   }
 
@@ -104,6 +103,7 @@ public class TableSpec {
     return measureSpec.length;
   }
 
+
   public class ColumnSpec {
     // field name of this column
     private String fieldName;
@@ -111,12 +111,12 @@ public class TableSpec {
     // data type of this column
     private DataType dataType;
 
-    private List<Encoding> encodingList
+    private List<Encoding> encodings;
 
-    ColumnSpec(String fieldName, DataType dataType, List<Encoding> encodingList) {
+    ColumnSpec(String fieldName, DataType dataType, List<Encoding> encodings) {
       this.fieldName = fieldName;
       this.dataType = dataType;
-      this.encodingList = encodingList;
+      this.encodings = encodings;
     }
 
     public DataType getDataType() {
@@ -127,8 +127,8 @@ public class TableSpec {
       return fieldName;
     }
 
-    public List<Encoding> getEncodingList() {
-      return encodingList;
+    public List<Encoding> getEncodings() {
+      return encodings;
     }
   }
 
@@ -165,21 +165,9 @@ public class TableSpec {
 
   public class MeasureSpec extends ColumnSpec {
 
-    private int scale;
-    private int precision;
-
-    MeasureSpec(CarbonMeasure measure, int scale, int precision) {
+    MeasureSpec(CarbonMeasure measure) {
       super(measure.getColName(), measure.getDataType(), measure.getEncoder());
-      this.scale = scale;
-      this.precision = precision;
     }
 
-    public int getScale() {
-      return scale;
-    }
-
-    public int getPrecision() {
-      return precision;
-    }
   }
 }

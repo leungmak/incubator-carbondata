@@ -20,35 +20,34 @@ package org.apache.carbondata.core.metadata.encoder;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
+import org.apache.carbondata.core.constants.CarbonCommonConstants;
+import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
+import org.apache.carbondata.core.metadata.CodecMetaFactory;
 import org.apache.carbondata.core.metadata.datatype.DataType;
 
-public class DirectCompressEncoderMeta extends CodecStreamMeta {
-  private String compressorName;
-  private DataType dataType;
+public class AdaptiveCodecMeta extends CodecStreamMeta {
 
-  public DirectCompressEncoderMeta(String compressorName, DataType dataType) {
-    this.compressorName = compressorName;
-    this.dataType = dataType;
-  }
+  private DataType srcDataType;
+  private DataType targetDataType;
 
-  public String getCompressorName() {
-    return compressorName;
-  }
-
-  public DataType getDataType() {
-    return dataType;
+  public AdaptiveCodecMeta(DataType srcDataType, DataType targetDataType) {
+    this.srcDataType = srcDataType;
+    this.targetDataType = targetDataType;
   }
 
   @Override
   public void write(DataOutput out) throws IOException {
-    out.writeUTF(compressorName);
-    out.writeInt(dataType.ordinal());
+    super.write(out);
+    out.writeInt(srcDataType.ordinal());
+    out.writeInt(targetDataType.ordinal());
   }
 
   @Override
   public void readFields(DataInput in) throws IOException {
-    this.compressorName = in.readUTF();
-    this.dataType = DataType.valueOf(in.readInt());
+    super.readFields(in);
+    this.srcDataType = DataType.valueOf(in.readInt());
+    this.targetDataType = DataType.valueOf(in.readInt());
   }
 }

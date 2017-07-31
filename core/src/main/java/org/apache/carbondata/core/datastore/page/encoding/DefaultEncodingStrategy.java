@@ -38,7 +38,7 @@ import org.apache.carbondata.core.datastore.page.encoding.stream.HighCardDictDim
 import org.apache.carbondata.core.datastore.page.encoding.stream.RLEEncoderStream;
 import org.apache.carbondata.core.datastore.page.statistics.PrimitivePageStatsCollector;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
-import org.apache.carbondata.core.metadata.encoder.AdaptiveEncoderMeta;
+import org.apache.carbondata.core.metadata.encoder.AdaptiveCodecMeta;
 import org.apache.carbondata.core.metadata.encoder.ColumnPageCodecMeta;
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.datatype.DataType;
@@ -66,7 +66,7 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
       case SHORT:
       case INT:
       case LONG:
-        return newCodecForIntegralType(measureSpec, stats);
+        return newEncoderForIntegralType(measureSpec, stats);
       case FLOAT:
       case DOUBLE:
       case DECIMAL:
@@ -83,15 +83,15 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
    */
   public ColumnPageStreamEncoder newEncoder(
       ValueEncoderMeta meta, int scale, int precision) {
-    if (meta instanceof ColumnPageCodecMeta) {
-      ColumnPageCodecMeta codecMeta = (ColumnPageCodecMeta) meta;
+    if (meta instanceof AdaptiveCodecMeta) {
+      AdaptiveCodecMeta codecMeta = (AdaptiveCodecMeta) meta;
       SimpleStatsResult stats = PrimitivePageStatsCollector.newInstance(codecMeta);
       switch (codecMeta.getSrcDataType()) {
         case BYTE:
         case SHORT:
         case INT:
         case LONG:
-          return newCodecForIntegralType(stats);
+          return newEncoderForIntegralType(stats);
         case FLOAT:
         case DOUBLE:
         case DECIMAL:
@@ -108,7 +108,7 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
         case SHORT:
         case INT:
         case LONG:
-          return newCodecForIntegralType(, stats);
+          return newEncoderForIntegralType(, stats);
         case FLOAT:
         case DOUBLE:
         case DECIMAL:
@@ -132,7 +132,7 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
 
   private ColumnPageStreamDecoder getColumnPageDecoderV3(ColumnPageCodecMeta meta,
       int pageSize) {
-    Encoding encoding = meta.g();
+    Encoding encoding = meta.getEncoding();
     switch (encoding) {
       case :
       DirectCompressEncoderMeta dcem = (DirectCompressEncoderMeta) meta;
@@ -141,7 +141,7 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
       return new ColumnPageStreamDecoder(stream, dcem.getDataType(), pageSize);
       break;
       case ADAPTIVE:
-        AdaptiveEncoderMeta aem = (AdaptiveEncoderMeta) meta;
+        AdaptiveCodecMeta aem = (AdaptiveCodecMeta) meta;
         SimpleStatsResult stats = PrimitivePageStatsCollector.newInstance(aem);
         switch (aem.getSrcDataType()) {
           case BYTE:
@@ -268,20 +268,20 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
     EncoderStream adaptiveStream;
     if (adaptiveDataType.getSizeInBytes() <= deltaDataType.getSizeInBytes()) {
       // choose adaptive encoding
-      adaptiveStream = new AdaptiveEncoderStream(rleStream, adaptiveDataType);
+      adaptiveStream = new AdaptiveEncoderStream(rleStream, srcDataType, adaptiveDataType);
     } else {
       // choose delta adaptive encoding
-      adaptiveStream = new DiffEncoderStream(rleStream, deltaDataType, getMax(stats.getDataType(),
-          stats.getMax()));
+      adaptiveStream = new DiffEncoderStream(rleStream, srcDataType, deltaDataType,
+          getMax(stats.getDataType(), stats.getMax()));
     }
     return adaptiveStream;
   }
 
   // choose between adaptive encoder or delta adaptive encoder, based on whose target data type
   // size is smaller
-  private ColumnPageStreamEncoder newCodecForIntegralType(TableSpec.MeasureSpec measureSpec,
+  private ColumnPageStreamEncoder newEncoderForIntegralType(TableSpec.MeasureSpec measureSpec,
       SimpleStatsResult stats) {
-    List<Encoding> encodingList = measureSpec.getEncodingList();
+    List<Encoding> encodingList = measureSpec.getEncodings();
     if (encodingList == null) {
       EncoderStream stream = selectAdaptiveStream(stats);
       DirectCompressEncoderStream
@@ -348,15 +348,22 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
 
   private ColumnPageStreamDecoder newDecoderForIntegralType(ColumnPageCodecMeta meta,
       int pageSize) {
+    List<Encoding> encodingList = meta.getEncodingList();
+    ColumnPageStreamDecoder streamDecoder;
+    for (Encoding encoding : encodingList) {
+        switch (encoding) {
+          case DIRECT_COMPRESS:
+            streamDecoder = new DirectCompressDecoderStream(compressor, encoding)
+          case ADAPTIVE:
+        }
+    }
     DirectCompressDecoderStream compressed = new DirectCompressDecoderStream(compressor,
-        meta.getSrcDataType());
-    if (meta.getSrcDataType())
-      return null;
+        meta.getType());
   }
 
   private ColumnPageStreamDecoder newDecoderForIntegralType(SimpleStatsResult stats) {
     DirectCompressDecoderStream compressed = new DirectCompressDecoderStream(compressor,
-        fitDataType);
+        stats.getDataType());
 
     return null;
   }

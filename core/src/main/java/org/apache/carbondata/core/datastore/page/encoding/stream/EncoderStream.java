@@ -20,8 +20,10 @@ package org.apache.carbondata.core.datastore.page.encoding.stream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
+import org.apache.carbondata.core.metadata.encoder.CodecStreamMeta;
 
 public interface EncoderStream {
   void start();
@@ -31,6 +33,6 @@ public interface EncoderStream {
   void write(long value) throws IOException;
   byte[] end() throws IOException;
 
-  List<ValueEncoderMeta> getMeta();
+  CodecStreamMeta getMeta();
 
 }

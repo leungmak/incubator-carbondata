@@ -2,15 +2,21 @@ package org.apache.carbondata.core.datastore.page.encoding.stream;
 
 import java.io.IOException;
 
+import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.datatype.DataType;
+import org.apache.carbondata.core.metadata.encoder.AdaptiveCodecMeta;
+import org.apache.carbondata.core.metadata.encoder.CodecStreamMeta;
 
 public class AdaptiveEncoderStream implements EncoderStream {
 
   private EncoderStream childStream;
+  private DataType srcDataType;
   private DataType targetDataType;
 
-  public AdaptiveEncoderStream(EncoderStream childStream, DataType targetDatatype) {
+  public AdaptiveEncoderStream(EncoderStream childStream, DataType srcDataType,
+      DataType targetDatatype) {
     this.childStream = childStream;
+    this.srcDataType = srcDataType;
     this.targetDataType = targetDatatype;
   }
 
@@ -56,6 +62,11 @@ public class AdaptiveEncoderStream implements EncoderStream {
   @Override
   public byte[] end() throws IOException {
     return childStream.end();
+  }
+
+  @Override
+  public CodecStreamMeta getMeta() {
+    return new AdaptiveCodecMeta(srcDataType, targetDataType);
   }
 
 }

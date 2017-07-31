@@ -18,12 +18,14 @@
 package org.apache.carbondata.core.datastore.page.encoding.stream;
 
 import java.io.IOException;
+import java.util.Stack;
 
 import org.apache.carbondata.core.datastore.page.ColumnPage;
 import org.apache.carbondata.core.datastore.page.ComplexColumnPage;
 import org.apache.carbondata.core.datastore.page.encoding.EncodedColumnPage;
 import org.apache.carbondata.core.datastore.page.encoding.EncodedMeasurePage;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
+import org.apache.carbondata.core.metadata.encoder.CodecStreamMeta;
 
 /**
  *  Codec for a column page data, implementation should not keep state across pages,
@@ -32,9 +34,17 @@ import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
 public class ColumnPageStreamEncoder {
 
   private EncoderStream encoderStream;
+  private Stack<CodecStreamMeta> metaStack;
 
-  public ColumnPageStreamEncoder(EncoderStream stream) {
-    this.encoderStream = stream;
+  public ColumnPageStreamEncoder() {
+  }
+
+  public void addStream(EncoderStream stream) {
+    if (encoderStream == null) {
+      encoderStream = stream;
+    } else {
+      encoderStream
+    }
   }
 
   /**
