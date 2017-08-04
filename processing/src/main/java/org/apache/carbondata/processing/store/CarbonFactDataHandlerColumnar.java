@@ -42,11 +42,9 @@ import org.apache.carbondata.core.datastore.page.EncodedTablePage;
 import org.apache.carbondata.core.datastore.row.CarbonRow;
 import org.apache.carbondata.core.keygenerator.KeyGenException;
 import org.apache.carbondata.core.keygenerator.columnar.ColumnarSplitter;
-import org.apache.carbondata.core.keygenerator.columnar.impl.MultiDimKeyVarLengthEquiSplitGenerator;
 import org.apache.carbondata.core.memory.MemoryException;
 import org.apache.carbondata.core.metadata.CarbonMetadata;
 import org.apache.carbondata.core.metadata.ColumnarFormatVersion;
-import org.apache.carbondata.core.metadata.datatype.DataType;
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
 import org.apache.carbondata.core.metadata.schema.table.column.CarbonDimension;
 import org.apache.carbondata.core.util.CarbonProperties;
@@ -88,10 +86,6 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
    * once this size of input is reached
    */
   private int blockletSize;
-  /**
-   * keyGenerator
-   */
-  private ColumnarSplitter columnarSplitter;
   /**
    * keyBlockHolder
    */
@@ -145,8 +139,6 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
    * current data format version
    */
   private ColumnarFormatVersion version;
-
-  private SortScopeOptions.SortScope sortScope;
 
   /**
    * CarbonFactDataHandler constructor
@@ -206,7 +198,7 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
   }
 
   private void initParameters(CarbonFactDataHandlerModel model) {
-    this.sortScope = model.getSortScope();
+    SortScopeOptions.SortScope sortScope = model.getSortScope();
     this.colGrpModel = model.getSegmentProperties().getColumnGroupModel();
 
     //TODO need to pass carbon table identifier to metadata
@@ -259,19 +251,6 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
     // Start the consumer which will take each blocklet/page in order and write to a file
     Consumer consumer = new Consumer(blockletDataHolder);
     consumerExecutorServiceTaskList.add(consumerExecutorService.submit(consumer));
-  }
-
-  private boolean[] arrangeUniqueBlockType(boolean[] aggKeyBlock) {
-    int counter = 0;
-    boolean[] uniqueBlock = new boolean[aggKeyBlock.length];
-    for (int i = 0; i < isDictDimension.length; i++) {
-      if (isDictDimension[i]) {
-        uniqueBlock[i] = aggKeyBlock[counter++];
-      } else {
-        uniqueBlock[i] = false;
-      }
-    }
-    return uniqueBlock;
   }
 
   private void setComplexMapSurrogateIndex(int dimensionCount) {
@@ -481,12 +460,6 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
     }
     LOGGER.info("Number of rows per column blocklet " + blockletSize);
     dataRows = new ArrayList<>(this.blockletSize);
-    int dimSet =
-        Integer.parseInt(CarbonCommonConstants.DIMENSION_SPLIT_VALUE_IN_COLUMNAR_DEFAULTVALUE);
-    // if atleast one dimension is present then initialize column splitter otherwise null
-    int noOfColStore = colGrpModel.getNoOfColumnStore();
-    int[] keyBlockSize = new int[noOfColStore + getExpandedComplexColsCount()];
-
     if (model.getDimLens().length > 0) {
       //Using Variable length variable split generator
       //This will help in splitting mdkey to columns. variable split is required because all
@@ -494,10 +467,9 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
       //row store will be in single column store
       //e.g if {0,1,2,3,4,5} is dimension and {0,1,2) is row store dimension
       //than below splitter will return column as {0,1,2}{3}{4}{5}
-      this.columnarSplitter = model.getSegmentProperties().getFixedLengthKeySplitter();
-      System.arraycopy(columnarSplitter.getBlockKeySize(), 0, keyBlockSize, 0, noOfColStore);
+      ColumnarSplitter columnarSplitter = model.getSegmentProperties().getFixedLengthKeySplitter();
       this.keyBlockHolder =
-          new CarbonKeyBlockHolder[this.columnarSplitter.getBlockKeySize().length];
+          new CarbonKeyBlockHolder[columnarSplitter.getBlockKeySize().length];
     } else {
       this.keyBlockHolder = new CarbonKeyBlockHolder[0];
     }
@@ -507,88 +479,28 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
       this.keyBlockHolder[i].resetCounter();
     }
 
-    // agg type
-    List<Integer> otherMeasureIndexList =
-        new ArrayList<Integer>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
-    List<Integer> customMeasureIndexList =
-        new ArrayList<Integer>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
-    DataType[] type = model.getMeasureDataType();
-    for (int j = 0; j < type.length; j++) {
-      if (type[j] != DataType.BYTE && type[j] != DataType.DECIMAL) {
-        otherMeasureIndexList.add(j);
-      } else {
-        customMeasureIndexList.add(j);
-      }
-    }
-
-    int[] otherMeasureIndex = new int[otherMeasureIndexList.size()];
-    int[] customMeasureIndex = new int[customMeasureIndexList.size()];
-    for (int i = 0; i < otherMeasureIndex.length; i++) {
-      otherMeasureIndex[i] = otherMeasureIndexList.get(i);
-    }
-    for (int i = 0; i < customMeasureIndex.length; i++) {
-      customMeasureIndex[i] = customMeasureIndexList.get(i);
-    }
     setComplexMapSurrogateIndex(model.getDimensionCount());
-    int[] blockKeySize = getBlockKeySizeWithComplexTypes(new MultiDimKeyVarLengthEquiSplitGenerator(
-        CarbonUtil.getIncrementedCardinalityFullyFilled(model.getDimLens().clone()), (byte) dimSet)
-        .getBlockKeySize());
-    System.arraycopy(blockKeySize, noOfColStore, keyBlockSize, noOfColStore,
-        blockKeySize.length - noOfColStore);
-    this.dataWriter = getFactDataWriter(keyBlockSize);
+    this.dataWriter = getFactDataWriter();
     this.dataWriter.setIsNoDictionary(isNoDictionary);
     // initialize the channel;
     this.dataWriter.initializeWriter();
-    //initializeColGrpMinMax();
-  }
-
-  /**
-   * This method combines primitive dimensions with complex metadata columns
-   *
-   * @param primitiveBlockKeySize
-   * @return all dimensions cardinality including complex dimension metadata column
-   */
-  private int[] getBlockKeySizeWithComplexTypes(int[] primitiveBlockKeySize) {
-    int allColsCount = getExpandedComplexColsCount();
-    int[] blockKeySizeWithComplexTypes =
-        new int[this.colGrpModel.getNoOfColumnStore() + allColsCount];
-
-    List<Integer> blockKeySizeWithComplex =
-        new ArrayList<Integer>(blockKeySizeWithComplexTypes.length);
-    int dictDimensionCount = model.getDimensionCount();
-    for (int i = 0; i < dictDimensionCount; i++) {
-      GenericDataType complexDataType = model.getComplexIndexMap().get(i);
-      if (complexDataType != null) {
-        complexDataType.fillBlockKeySize(blockKeySizeWithComplex, primitiveBlockKeySize);
-      } else {
-        blockKeySizeWithComplex.add(primitiveBlockKeySize[i]);
-      }
-    }
-    for (int i = 0; i < blockKeySizeWithComplexTypes.length; i++) {
-      blockKeySizeWithComplexTypes[i] = blockKeySizeWithComplex.get(i);
-    }
-
-    return blockKeySizeWithComplexTypes;
   }
 
   /**
    * Below method will be used to get the fact data writer instance
    *
-   * @param keyBlockSize
    * @return data writer instance
    */
-  private CarbonFactDataWriter<?> getFactDataWriter(int[] keyBlockSize) {
-    return CarbonDataWriterFactory.getInstance()
-        .getFactDataWriter(version, getDataWriterVo(keyBlockSize));
+  private CarbonFactDataWriter<?> getFactDataWriter() {
+    return CarbonDataWriterFactory.getInstance().getFactDataWriter(version, getDataWriterVo());
   }
 
   /**
    * Below method will be used to get the writer vo
    *
-   * @param keyBlockSize size of each key block
    * @return data writer vo object
    */
-  private CarbonDataWriterVo getDataWriterVo(int[] keyBlockSize) {
+  private CarbonDataWriterVo getDataWriterVo() {
     CarbonDataWriterVo carbonDataWriterVo = new CarbonDataWriterVo();
     carbonDataWriterVo.setStoreLocation(model.getStoreLocation());
     carbonDataWriterVo.setMeasureCount(model.getMeasureCount());
