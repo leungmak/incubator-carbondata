@@ -36,6 +36,7 @@ import org.apache.carbondata.core.metadata.ColumnarFormatVersion;
 import org.apache.carbondata.core.util.ByteUtil;
 import org.apache.carbondata.format.DataChunk2;
 import org.apache.carbondata.format.Encoding;
+import org.apache.carbondata.format.SortState;
 
 public class DictDimensionIndexCodec extends IndexStorageCodec {
 
@@ -92,7 +93,13 @@ public class DictDimensionIndexCodec extends IndexStorageCodec {
       @Override
       protected void fillLegacyFields(ColumnPage inputPage, DataChunk2 dataChunk)
           throws IOException {
-        if (indexStorage)
+        SortState sort = (indexStorage.getRowIdPageLengthInBytes() > 0) ?
+            SortState.SORT_EXPLICIT : SortState.SORT_NATIVE;
+        dataChunk.setSort_state(sort);
+        if (indexStorage.getDataRlePageLengthInBytes() > 0) {
+          dataChunk.setRle_page_length(indexStorage.getDataRlePageLengthInBytes());
+          encodings.add(Encoding.RLE);
+        }
       }
 
       @Override
