@@ -116,9 +116,9 @@ public abstract class ColumnPageEncoder {
     // for measure page
     BlockletMinMaxIndex index = new BlockletMinMaxIndex();
     ByteBuffer max = ByteBuffer.wrap(
-        TablePageStatistics.updateMinMaxForNoDictionary(CarbonUtil.getValueAsBytes(inputPage.getDataType(), inputPage.getStatistics().getMax())));
+        CarbonUtil.getValueAsBytes(inputPage.getDataType(), inputPage.getStatistics().getMax()));
     ByteBuffer min = ByteBuffer.wrap(
-        TablePageStatistics.updateMinMaxForNoDictionary(CarbonUtil.getValueAsBytes(inputPage.getDataType(), inputPage.getStatistics().getMin())));
+        CarbonUtil.getValueAsBytes(inputPage.getDataType(), inputPage.getStatistics().getMin()));
     index.addToMax_values(max);
     index.addToMin_values(min);
     return index;

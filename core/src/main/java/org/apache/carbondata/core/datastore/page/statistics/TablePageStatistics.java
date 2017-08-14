@@ -74,8 +74,8 @@ public class TablePageStatistics {
 //    }
     for (int i = 0; i < dimensions.length; i++) {
       SimpleStatsResult stats = dimensions[i].getStats();
-      dimensionMaxValue[i] = updateMinMaxForNoDictionary(CarbonUtil.getValueAsBytes(stats.getDataType(), stats.getMax()));
-      dimensionMinValue[i] = updateMinMaxForNoDictionary(CarbonUtil.getValueAsBytes(stats.getDataType(), stats.getMin()));
+      dimensionMaxValue[i] = CarbonUtil.getValueAsBytes(stats.getDataType(), stats.getMax());
+      dimensionMinValue[i] = CarbonUtil.getValueAsBytes(stats.getDataType(), stats.getMin());
     }
   }
 
