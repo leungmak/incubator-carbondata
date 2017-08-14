@@ -22,17 +22,17 @@ import java.math.BigDecimal;
 import org.apache.carbondata.core.metadata.datatype.DataType;
 import org.apache.carbondata.core.util.ByteUtil;
 
-public class VarLengthPageStatsCollector implements ColumnPageStatsCollector {
+public class LVStringStatsCollector implements ColumnPageStatsCollector {
 
   private DataType dataType;
 
   private byte[] min, max;
 
-  public static VarLengthPageStatsCollector newInstance(DataType dataType) {
-    return new VarLengthPageStatsCollector(dataType);
+  public static LVStringStatsCollector newInstance(DataType dataType) {
+    return new LVStringStatsCollector(dataType);
   }
 
-  private VarLengthPageStatsCollector(DataType dataType) {
+  private LVStringStatsCollector(DataType dataType) {
     this.dataType = dataType;
   }
 
@@ -73,15 +73,21 @@ public class VarLengthPageStatsCollector implements ColumnPageStatsCollector {
 
   @Override
   public void update(byte[] value) {
+    // input value is LV encoded
+    assert (value.length > 2);
+    int length = (value[0] << 8) + value[1];
+    assert (length > 0);
+    byte[] v = new byte[value.length - 2];
+    System.arraycopy(value, 2, v, 0, v.length);
     if (min == null && max == null) {
-      min = value;
-      max = value;
+      min = v;
+      max = v;
     } else {
-      if (ByteUtil.UnsafeComparer.INSTANCE.compareTo(min, value) > 0) {
-        min = value;
+      if (ByteUtil.UnsafeComparer.INSTANCE.compareTo(min, v) > 0) {
+        min = v;
       }
-      if (ByteUtil.UnsafeComparer.INSTANCE.compareTo(max, value) < 0) {
-        max = value;
+      if (ByteUtil.UnsafeComparer.INSTANCE.compareTo(max, v) < 0) {
+        max = v;
       }
     }
   }

@@ -36,6 +36,7 @@ import org.apache.carbondata.core.datastore.page.encoding.EncodedColumnPage;
 import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoder;
 import org.apache.carbondata.core.datastore.page.encoding.EncodingStrategy;
 import org.apache.carbondata.core.datastore.page.key.TablePageKey;
+import org.apache.carbondata.core.datastore.page.statistics.LVStringStatsCollector;
 import org.apache.carbondata.core.datastore.page.statistics.PrimitivePageStatsCollector;
 import org.apache.carbondata.core.datastore.page.statistics.VarLengthPageStatsCollector;
 import org.apache.carbondata.core.datastore.row.CarbonRow;
@@ -92,7 +93,7 @@ public class TablePage {
     for (int i = 0; i < noDictDimensionPages.length; i++) {
       ColumnPage page = ColumnPage.newPage(DataType.BYTE_ARRAY, pageSize, -1, -1);
       DataType dataType = model.getTableSpec().getDimensionSpec(i).getDataType();
-      page.setStatsCollector(VarLengthPageStatsCollector.newInstance(dataType));
+      page.setStatsCollector(LVStringStatsCollector.newInstance(dataType));
       noDictDimensionPages[i] = page;
     }
     complexDimensionPages = new ComplexColumnPage[model.getComplexColumnCount()];
