@@ -96,10 +96,6 @@ public class DictDimensionIndexCodec extends IndexStorageCodec {
         SortState sort = (indexStorage.getRowIdPageLengthInBytes() > 0) ?
             SortState.SORT_EXPLICIT : SortState.SORT_NATIVE;
         dataChunk.setSort_state(sort);
-        if (indexStorage.getDataRlePageLengthInBytes() > 0) {
-          dataChunk.setRle_page_length(indexStorage.getDataRlePageLengthInBytes());
-          encodings.add(Encoding.RLE);
-        }
       }
 
       @Override

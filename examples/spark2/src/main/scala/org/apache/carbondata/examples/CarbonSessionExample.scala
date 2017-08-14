@@ -55,6 +55,7 @@ object CarbonSessionExample {
     spark.sql(
       s"""
          | CREATE TABLE carbon_table(
+         | intField INT,
          | stringField STRING,
          | charField CHAR(5)
          | )
@@ -78,7 +79,7 @@ object CarbonSessionExample {
       s"""
          | SELECT *
          | FROM carbon_table
-         | WHERE stringfield = 'spark' AND decimalField > 40
+         | WHERE stringfield = 'spark'
       """.stripMargin).show()
 
     spark.sql(
