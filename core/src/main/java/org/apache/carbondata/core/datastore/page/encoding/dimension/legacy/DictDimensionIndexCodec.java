@@ -92,7 +92,7 @@ public class DictDimensionIndexCodec extends IndexStorageCodec {
       @Override
       protected void fillLegacyFields(ColumnPage inputPage, DataChunk2 dataChunk)
           throws IOException {
-        // TODO
+        if (indexStorage)
       }
 
       @Override
