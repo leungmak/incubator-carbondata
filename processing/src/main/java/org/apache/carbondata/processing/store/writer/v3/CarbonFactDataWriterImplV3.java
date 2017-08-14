@@ -28,8 +28,7 @@ import org.apache.carbondata.core.constants.CarbonCommonConstants;
 import org.apache.carbondata.core.constants.CarbonV3DataFormatConstants;
 import org.apache.carbondata.core.datastore.exception.CarbonDataWriterException;
 import org.apache.carbondata.core.datastore.page.EncodedTablePage;
-import org.apache.carbondata.core.datastore.page.encoding.EncodedDimensionPage;
-import org.apache.carbondata.core.datastore.page.encoding.EncodedMeasurePage;
+import org.apache.carbondata.core.datastore.page.encoding.EncodedColumnPage;
 import org.apache.carbondata.core.metadata.blocklet.index.BlockletBTreeIndex;
 import org.apache.carbondata.core.metadata.blocklet.index.BlockletMinMaxIndex;
 import org.apache.carbondata.core.metadata.index.BlockIndexInfo;
@@ -108,7 +107,7 @@ public class CarbonFactDataWriterImplV3 extends AbstractFactDataWriter<short[]> 
    * @param tablePage
    */
   @Override public void writeTablePage(TablePage tablePage)
-      throws CarbonDataWriterException {
+      throws CarbonDataWriterException, IOException {
     // condition for writting all the pages
     if (!tablePage.isLastPage()) {
       boolean isAdded = false;
@@ -159,18 +158,35 @@ public class CarbonFactDataWriterImplV3 extends AbstractFactDataWriter<short[]> 
   /**
    * Write the collect blocklet data (blockletDataHolder) to file
    */
-  private void writeBlockletToFile() {
+  private void writeBlockletToFile() throws IOException {
     // get the list of all encoded table page
     List<EncodedTablePage> encodedTablePageList = blockletDataHolder.getEncodedTablePages();
     int numDimensions = encodedTablePageList.get(0).getNumDimensions();
     int numMeasures = encodedTablePageList.get(0).getNumMeasures();
+    long blockletDataSize = 0;
     // get data chunks for all the column
     byte[][] dataChunkBytes = new byte[numDimensions + numMeasures][];
-    long metadataSize = fillDataChunk(encodedTablePageList, dataChunkBytes);
+    int measureStartIndex = numDimensions;
+    // calculate the size of data chunks
+    try {
+      for (int i = 0; i < numDimensions; i++) {
+        dataChunkBytes[i] = CarbonUtil.getByteArray(
+            CarbonMetadataUtil.getDimensionDataChunk3(encodedTablePageList, i));
+        blockletDataSize += dataChunkBytes[i].length;
+      }
+      for (int i = 0; i < numMeasures; i++) {
+        dataChunkBytes[measureStartIndex] = CarbonUtil.getByteArray(
+            CarbonMetadataUtil.getMeasureDataChunk3(encodedTablePageList, i));
+        blockletDataSize += dataChunkBytes[measureStartIndex].length;
+        measureStartIndex++;
+      }
+    } catch (IOException e) {
+      throw new CarbonDataWriterException("Problem while getting the data chunks", e);
+    }
     // calculate the total size of data to be written
-    long blockletSize = blockletDataHolder.getSize() + metadataSize;
+    blockletDataSize += blockletDataHolder.getSize();
     // to check if data size will exceed the block size then create a new file
-    createNewFileIfReachThreshold(blockletSize);
+    updateBlockletFileChannel(blockletDataSize);
 
     // write data to file
     try {
@@ -179,43 +195,11 @@ public class CarbonFactDataWriterImplV3 extends AbstractFactDataWriter<short[]> 
         writeHeaderToFile(fileChannel);
       }
       writeBlockletToFile(fileChannel, dataChunkBytes);
-      if (listener != null) {
-        listener.onBlockletEnd(blockletId++);
-      }
-      pageId = 0;
     } catch (IOException e) {
       throw new CarbonDataWriterException("Problem when writing file", e);
     }
     // clear the data holder
     blockletDataHolder.clear();
-
-  }
-
-  /**
-   * Fill dataChunkBytes and return total size of page metadata
-   */
-  private long fillDataChunk(List<EncodedTablePage> encodedTablePageList, byte[][] dataChunkBytes) {
-    int size = 0;
-    int numDimensions = encodedTablePageList.get(0).getNumDimensions();
-    int numMeasures = encodedTablePageList.get(0).getNumMeasures();
-    int measureStartIndex = numDimensions;
-    // calculate the size of data chunks
-    try {
-      for (int i = 0; i < numDimensions; i++) {
-        dataChunkBytes[i] = CarbonUtil.getByteArray(
-            CarbonMetadataUtil.getDimensionDataChunk3(encodedTablePageList, i));
-        size += dataChunkBytes[i].length;
-      }
-      for (int i = 0; i < numMeasures; i++) {
-        dataChunkBytes[measureStartIndex] = CarbonUtil.getByteArray(
-            CarbonMetadataUtil.getMeasureDataChunk3(encodedTablePageList, i));
-        size += dataChunkBytes[measureStartIndex].length;
-        measureStartIndex++;
-      }
-    } catch (IOException e) {
-      throw new CarbonDataWriterException("Problem while getting the data chunks", e);
-    }
-    return size;
   }
 
   /**
@@ -262,9 +246,9 @@ public class CarbonFactDataWriterImplV3 extends AbstractFactDataWriter<short[]> 
       channel.write(buffer);
       offset += dataChunkBytes[i].length;
       for (EncodedTablePage encodedTablePage : encodedTablePages) {
-        EncodedDimensionPage dimension = encodedTablePage.getDimension(i);
-        int bufferSize = dimension.getSerializedSize();
-        buffer = dimension.serialize();
+        EncodedColumnPage dimension = encodedTablePage.getDimension(i);
+        buffer = dimension.getEncodedData();
+        int bufferSize = buffer.limit();
         channel.write(buffer);
         offset += bufferSize;
       }
@@ -279,9 +263,9 @@ public class CarbonFactDataWriterImplV3 extends AbstractFactDataWriter<short[]> 
       offset += dataChunkBytes[dataChunkStartIndex].length;
       dataChunkStartIndex++;
       for (EncodedTablePage encodedTablePage : encodedTablePages) {
-        EncodedMeasurePage measure = encodedTablePage.getMeasure(i);
-        int bufferSize = measure.getSerializedSize();
-        buffer = measure.serialize();
+        EncodedColumnPage measure = encodedTablePage.getMeasure(i);
+        buffer = measure.getEncodedData();
+        int bufferSize = buffer.limit();
         channel.write(buffer);
         offset += bufferSize;
       }

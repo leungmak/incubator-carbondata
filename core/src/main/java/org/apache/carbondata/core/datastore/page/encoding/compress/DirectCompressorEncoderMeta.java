@@ -15,56 +15,42 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.core.datastore.page.encoding.adaptive;
+package org.apache.carbondata.core.datastore.page.encoding.compress;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-import org.apache.carbondata.core.datastore.page.encoding.ColumnPageCodecMeta;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoderMeta;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
 import org.apache.carbondata.core.metadata.datatype.DataType;
-import org.apache.carbondata.core.metadata.encoder.Encoding;
 import org.apache.carbondata.core.metadata.schema.table.Writable;
 
-/**
- * Metadata for AdaptiveIntegralCodec and DeltaIntegralCodec
- */
-public class AdaptiveCodecMeta extends ColumnPageCodecMeta implements Writable {
-
-  private DataType targetDataType;
+public class DirectCompressorEncoderMeta extends ColumnPageEncoderMeta implements Writable {
   private String compressorName;
-
-  public AdaptiveCodecMeta() {
-
+  public DirectCompressorEncoderMeta() {
   }
 
-  public AdaptiveCodecMeta(DataType targetDataType, SimpleStatsResult stats,
-      String compressorName, Encoding encoding) {
-    super(stats.getDataType(), encoding, stats);
-    this.targetDataType = targetDataType;
+  public DirectCompressorEncoderMeta(String compressorName, DataType dataType,
+      SimpleStatsResult stats) {
+    super(dataType, stats);
     this.compressorName = compressorName;
+  }
+
+  public String getCompressorName() {
+    return compressorName;
   }
 
   @Override
   public void write(DataOutput out) throws IOException {
     super.write(out);
-    out.writeByte(targetDataType.ordinal());
     out.writeUTF(compressorName);
   }
 
   @Override
   public void readFields(DataInput in) throws IOException {
     super.readFields(in);
-    this.targetDataType = DataType.valueOf(in.readByte());
-    this.compressorName = in.readUTF();
+    compressorName = in.readUTF();
   }
 
-  public DataType getTargetDataType() {
-    return targetDataType;
-  }
-
-  public String getCompressorName() {
-    return compressorName;
-  }
 }

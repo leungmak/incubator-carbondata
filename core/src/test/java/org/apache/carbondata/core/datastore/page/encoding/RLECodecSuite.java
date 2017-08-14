@@ -42,7 +42,7 @@ public class RLECodecSuite {
     TestData(byte[] inputByteData, byte[] expectedEncodedByteData) throws IOException, MemoryException {
       this.inputByteData = inputByteData;
       inputBytePage = ColumnPage.newPage(DataType.BYTE, inputByteData.length);
-      inputBytePage.setStatsCollector(PrimitivePageStatsCollector.newInstance(DataType.BYTE, inputByteData.length, 0, 0));
+      inputBytePage.setStatsCollector(PrimitivePageStatsCollector.newInstance(DataType.BYTE, 0, 0));
       for (int i = 0; i < inputByteData.length; i++) {
         inputBytePage.putData(i, inputByteData[i]);
       }
@@ -113,9 +113,9 @@ public class RLECodecSuite {
   private void testBytePageEncode(ColumnPage inputPage, byte[] expectedEncodedBytes)
       throws IOException, MemoryException {
     RLECodec codec = new RLECodec();
-    Encoder encoder = codec.createEncoder(null);
+    ColumnPageEncoder encoder = codec.createEncoder(null);
     EncodedColumnPage result = encoder.encode(inputPage);
-    byte[] encoded = result.getEncodedData();
+    byte[] encoded = result.getEncodedData().array();
     assertEquals(expectedEncodedBytes.length, encoded.length);
     for (int i = 0; i < encoded.length; i++) {
       assertEquals(expectedEncodedBytes[i], encoded[i]);
@@ -124,7 +124,7 @@ public class RLECodecSuite {
 
   private void testBytePageDecode(byte[] inputBytes, byte[] expectedDecodedBytes) throws IOException, MemoryException {
     RLECodec codec = new RLECodec();
-    Decoder decoder = codec.createDecoder(null);
+    ColumnPageDecoder decoder = codec.createDecoder(null);
     ColumnPage page = decoder.decode(inputBytes, 0, inputBytes.length);
     byte[] decoded = page.getBytePage();
     assertEquals(expectedDecodedBytes.length, decoded.length);

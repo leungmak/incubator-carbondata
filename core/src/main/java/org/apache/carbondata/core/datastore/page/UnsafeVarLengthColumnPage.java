@@ -136,6 +136,15 @@ public class UnsafeVarLengthColumnPage extends VarLengthColumnPageBase {
   }
 
   @Override
+  public byte[] getBytes(int rowId) {
+    int length = rowOffset[rowId + 1] - rowOffset[rowId];
+    byte[] bytes = new byte[length];
+    CarbonUnsafe.unsafe.copyMemory(baseAddress, baseOffset + rowOffset[rowId],
+        bytes, CarbonUnsafe.BYTE_ARRAY_OFFSET, length);
+    return bytes;
+  }
+
+  @Override
   public byte[][] getByteArrayPage() {
     byte[][] bytes = new byte[pageSize][];
     for (int rowId = 0; rowId < pageSize; rowId++) {

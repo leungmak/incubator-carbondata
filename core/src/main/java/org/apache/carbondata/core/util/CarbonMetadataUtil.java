@@ -405,10 +405,8 @@ public class CarbonMetadataUtil {
       // dataChunk.setPresence(new PresenceMeta());
       // TODO : Need to write ValueCompression meta here.
       List<ByteBuffer> encoderMetaList = new ArrayList<ByteBuffer>();
-      encoderMetaList.add(
-          ByteBuffer.wrap(
-              serializeEncoderMeta(
-                      blockletInfoColumnar.getEncodedTablePage().getMeasure(i).getMetaData())));
+      encoderMetaList.addAll(
+          blockletInfoColumnar.getEncodedTablePage().getMeasure(i).getPageHeader().encoder_meta);
       dataChunk.setEncoder_meta(encoderMetaList);
       colDataChunks.add(dataChunk);
     }
@@ -594,10 +592,8 @@ public class CarbonMetadataUtil {
       // dataChunk.setPresence(new PresenceMeta());
       // TODO : Need to write ValueCompression meta here.
       List<ByteBuffer> encoderMetaList = new ArrayList<ByteBuffer>();
-      encoderMetaList.add(
-          ByteBuffer.wrap(
-              serializeEncoderMeta(
-                      blockletInfoColumnar.getEncodedTablePage().getMeasure(i).getMetaData())));
+      encoderMetaList.addAll(
+          blockletInfoColumnar.getEncodedTablePage().getMeasure(i).getPageHeader().encoder_meta);
       dataChunk.setEncoder_meta(encoderMetaList);
       colDataChunks.add(dataChunk);
     }
@@ -634,7 +630,7 @@ public class CarbonMetadataUtil {
       int columnIndex) throws IOException {
     List<DataChunk2> dataChunksList = new ArrayList<>(encodedTablePageList.size());
     for (EncodedTablePage encodedTablePage : encodedTablePageList) {
-      dataChunksList.add(encodedTablePage.getDimension(columnIndex).getDataChunk2());
+      dataChunksList.add(encodedTablePage.getDimension(columnIndex).getPageHeader());
     }
     return CarbonMetadataUtil.getDataChunk3(dataChunksList);
   }
@@ -647,7 +643,7 @@ public class CarbonMetadataUtil {
       int columnIndex) throws IOException {
     List<DataChunk2> dataChunksList = new ArrayList<>(encodedTablePageList.size());
     for (EncodedTablePage encodedTablePage : encodedTablePageList) {
-      dataChunksList.add(encodedTablePage.getMeasure(columnIndex).getDataChunk2());
+      dataChunksList.add(encodedTablePage.getMeasure(columnIndex).getPageHeader());
     }
     return CarbonMetadataUtil.getDataChunk3(dataChunksList);
   }

@@ -15,25 +15,33 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.core.datastore.page.encoding;
+package org.apache.carbondata.core.datastore.page.encoding.adaptive;
 
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 
-import org.apache.carbondata.core.datastore.page.ColumnPage;
-import org.apache.carbondata.core.datastore.page.ComplexColumnPage;
-import org.apache.carbondata.core.memory.MemoryException;
+import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
+import org.apache.carbondata.core.metadata.datatype.DataType;
+import org.apache.carbondata.core.metadata.schema.table.Writable;
 
-public interface Encoder {
+public class AdaptiveIntegralEncoderMeta extends AdaptiveEncoderMeta implements Writable {
 
-  /**
-   * Apply encoding algorithm on input column page and return encoded data
-   */
-  EncodedColumnPage encode(ColumnPage input) throws MemoryException, IOException;
+  public AdaptiveIntegralEncoderMeta() {
+  }
 
-  /**
-   * Apply encoding algorithm for complex column page and return the coded data
-   * TODO: remove this interface after complex column page is unified with column page
-   */
-  EncodedColumnPage[] encodeComplexColumn(ComplexColumnPage input);
+  public AdaptiveIntegralEncoderMeta(DataType targetDataType, SimpleStatsResult stats,
+      String compressorName) {
+    super(targetDataType, stats, compressorName);
+  }
 
+  @Override
+  public void write(DataOutput out) throws IOException {
+    super.write(out);
+  }
+
+  @Override
+  public void readFields(DataInput in) throws IOException {
+    super.readFields(in);
+  }
 }

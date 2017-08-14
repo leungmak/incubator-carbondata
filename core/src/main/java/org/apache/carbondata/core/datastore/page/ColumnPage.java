@@ -461,6 +461,11 @@ public abstract class ColumnPage {
   public abstract BigDecimal getDecimal(int rowId);
 
   /**
+   * Get byte array at rowId
+   */
+  public abstract byte[] getBytes(int rowId);
+
+  /**
    * Get byte value page
    */
   public abstract byte[] getBytePage();
@@ -513,7 +518,7 @@ public abstract class ColumnPage {
   /**
    * Encode the page data by codec (Visitor)
    */
-  public abstract void encode(PrimitiveCodec codec);
+  public abstract void convertValue(ColumnPageValueConverter codec);
 
   /**
    * Compress page data using specified compressor

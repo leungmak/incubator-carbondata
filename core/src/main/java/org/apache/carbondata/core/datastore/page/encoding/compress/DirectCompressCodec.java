@@ -18,6 +18,8 @@
 package org.apache.carbondata.core.datastore.page.encoding.compress;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.carbondata.core.constants.CarbonCommonConstants;
@@ -26,15 +28,18 @@ import org.apache.carbondata.core.datastore.compression.CompressorFactory;
 import org.apache.carbondata.core.datastore.page.ColumnPage;
 import org.apache.carbondata.core.datastore.page.ComplexColumnPage;
 import org.apache.carbondata.core.datastore.page.LazyColumnPage;
-import org.apache.carbondata.core.datastore.page.PrimitiveCodec;
+import org.apache.carbondata.core.datastore.page.ColumnPageValueConverter;
 import org.apache.carbondata.core.datastore.page.encoding.ColumnPageCodec;
-import org.apache.carbondata.core.datastore.page.encoding.ColumnPageCodecMeta;
-import org.apache.carbondata.core.datastore.page.encoding.Decoder;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoderMeta;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageDecoder;
 import org.apache.carbondata.core.datastore.page.encoding.EncodedColumnPage;
 import org.apache.carbondata.core.datastore.page.encoding.EncodedMeasurePage;
-import org.apache.carbondata.core.datastore.page.encoding.Encoder;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoder;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
 import org.apache.carbondata.core.memory.MemoryException;
+import org.apache.carbondata.core.metadata.ValueEncoderMeta;
+import org.apache.carbondata.format.DataChunk2;
+import org.apache.carbondata.format.Encoding;
 
 /**
  * This codec directly apply compression on the input data
@@ -53,18 +58,18 @@ public class DirectCompressCodec implements ColumnPageCodec {
   }
 
   @Override
-  public Encoder createEncoder(Map<String, String> parameter) {
+  public ColumnPageEncoder createEncoder(Map<String, String> parameter) {
     // TODO: make compressor configurable in create table
     return new DirectCompressor(CarbonCommonConstants.DEFAULT_COMPRESSOR);
   }
 
   @Override
-  public Decoder createDecoder(ColumnPageCodecMeta meta) {
-    DirectCompressorCodecMeta codecMeta = (DirectCompressorCodecMeta) meta;
+  public ColumnPageDecoder createDecoder(ColumnPageEncoderMeta meta) {
+    DirectCompressorEncoderMeta codecMeta = (DirectCompressorEncoderMeta) meta;
     return new DirectDecompressor(codecMeta.getCompressorName());
   }
 
-  private class DirectCompressor implements Encoder {
+  private class DirectCompressor extends ColumnPageEncoder {
 
     private Compressor compressor;
 
@@ -73,22 +78,30 @@ public class DirectCompressCodec implements ColumnPageCodec {
     }
 
     @Override
-    public EncodedColumnPage encode(ColumnPage input) throws IOException, MemoryException {
-      byte[] result = input.compress(compressor);
-      return new EncodedMeasurePage(
-          input.getPageSize(),
-          result,
-          new DirectCompressorCodecMeta(compressor.getName(), stats.getDataType(), stats),
-          input.getNullBits());
+    protected byte[] encodeData(ColumnPage input) throws MemoryException, IOException {
+      return input.compress(compressor);
     }
 
     @Override
-    public EncodedColumnPage[] encodeComplexColumn(ComplexColumnPage input) {
-      throw new UnsupportedOperationException("internal error");
+    protected List<Encoding> getEncodingList() {
+      List<Encoding> encodings = new ArrayList<>();
+      encodings.add(Encoding.DIRECT_COMPRESS);
+      return encodings;
+    }
+
+    @Override
+    protected ColumnPageEncoderMeta getEncoderMeta(ColumnPage inputPage) {
+      return new DirectCompressorEncoderMeta(compressor.getName(), stats.getDataType(), stats);
+    }
+
+    @Override
+    protected void fillLegacyFields(ColumnPage inputPage, DataChunk2 dataChunk)
+        throws IOException {
+      // NOP
     }
   }
 
-  private class DirectDecompressor implements Decoder {
+  private class DirectDecompressor implements ColumnPageDecoder {
 
     private Compressor compressor;
 
@@ -103,7 +116,7 @@ public class DirectCompressCodec implements ColumnPageCodec {
       return LazyColumnPage.newPage(decodedPage, codec);
     }
 
-    private PrimitiveCodec codec = new PrimitiveCodec() {
+    private ColumnPageValueConverter codec = new ColumnPageValueConverter() {
       @Override
       public void encode(int rowId, byte value) {
         throw new RuntimeException("internal error");

@@ -27,16 +27,13 @@ import org.apache.carbondata.core.constants.CarbonCommonConstants;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.datatype.DataType;
-import org.apache.carbondata.core.metadata.encoder.Encoding;
 import org.apache.carbondata.core.metadata.schema.table.Writable;
 import org.apache.carbondata.core.util.DataTypeUtil;
 
 /**
  * It holds metadata for one column page
  */
-public class ColumnPageCodecMeta extends ValueEncoderMeta implements Writable {
-
-  private Encoding encoding;
+public class ColumnPageEncoderMeta extends ValueEncoderMeta implements Writable {
 
   // data type of this column
   private DataType dataType;
@@ -51,14 +48,22 @@ public class ColumnPageCodecMeta extends ValueEncoderMeta implements Writable {
   public static final char BIG_INT_MEASURE = 'd';
   public static final char DOUBLE_MEASURE = 'n';
   public static final char BIG_DECIMAL_MEASURE = 'b';
+  public static final char STRING = 's';
+  public static final char TIMESTAMP = 't';
+  public static final char DATE = 'x';
 
-  public ColumnPageCodecMeta() {
+  public ColumnPageEncoderMeta() {
   }
 
-  public ColumnPageCodecMeta(DataType dataType, Encoding encoding, SimpleStatsResult stats) {
+  public ColumnPageEncoderMeta(DataType dataType, SimpleStatsResult stats) {
+    if (dataType == null) {
+      throw new IllegalArgumentException("data type must not be null");
+    }
+    if (stats == null) {
+      throw new IllegalArgumentException("stats must not be null");
+    }
     this.dataType = dataType;
-    this.encoding = encoding;
-    setType(converType(stats.getDataType()));
+    setType(convertType(stats.getDataType()));
     setDecimal(stats.getDecimalPoint());
     setMaxValue(stats.getMax());
     setMinValue(stats.getMin());
@@ -82,7 +87,7 @@ public class ColumnPageCodecMeta extends ValueEncoderMeta implements Writable {
     this.precision = precision;
   }
 
-  private char converType(DataType type) {
+  private char convertType(DataType type) {
     switch (type) {
       case BYTE:
       case SHORT:
@@ -93,13 +98,15 @@ public class ColumnPageCodecMeta extends ValueEncoderMeta implements Writable {
         return CarbonCommonConstants.DOUBLE_MEASURE;
       case DECIMAL:
         return CarbonCommonConstants.BIG_DECIMAL_MEASURE;
+      case STRING:
+        return STRING;
+      case TIMESTAMP:
+        return TIMESTAMP;
+      case DATE:
+        return DATE;
       default:
         throw new RuntimeException("Unexpected type: " + type);
     }
-  }
-
-  public Encoding getEncoding() {
-    return encoding;
   }
 
   public DataType getDataType() {
@@ -108,7 +115,6 @@ public class ColumnPageCodecMeta extends ValueEncoderMeta implements Writable {
 
   @Override
   public void write(DataOutput out) throws IOException {
-    out.writeByte(encoding.ordinal());
     out.writeByte(dataType.ordinal());
     out.writeInt(getDecimal());
     out.writeByte(getDataTypeSelected());
@@ -117,7 +123,6 @@ public class ColumnPageCodecMeta extends ValueEncoderMeta implements Writable {
 
   @Override
   public void readFields(DataInput in) throws IOException {
-    encoding = Encoding.valueOf(in.readByte());
     dataType = DataType.valueOf(in.readByte());
     setDecimal(in.readInt());
     setDataTypeSelected(in.readByte());
@@ -254,8 +259,10 @@ public class ColumnPageCodecMeta extends ValueEncoderMeta implements Writable {
         return b.array();
       case DECIMAL:
         return DataTypeUtil.bigDecimalToByte((BigDecimal)value);
-      case BYTE_ARRAY:
-        return new byte[8];
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
+        return (byte[]) value;
       default:
         throw new IllegalArgumentException("Invalid data type: " + dataType);
     }

@@ -51,6 +51,8 @@ enum Encoding{
 	ADAPTIVE_INTEGRAL = 7; // Identifies that a column is encoded using AdaptiveIntegralCodec
 	ADAPTIVE_DELTA_INTEGRAL = 8; // Identifies that a column is encoded using AdaptiveDeltaIntegralCodec
 	RLE_INTEGRAL = 9;     // Identifies that a column is encoded using RLECodec
+	DIRECT_STRING = 10;   // Stores string value and string length separately in page data
+	GLOBAL_DICTIONARY_RLE_INTEGRAL; // Stores RLE_INTEGRAL encoded data for global dictionary integer in page data
 }
 
 enum PartitionType{

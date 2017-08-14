@@ -28,23 +28,23 @@ public class LazyColumnPage extends ColumnPage {
   // decorated column page
   private ColumnPage columnPage;
 
-  // encode that will apply to page data in getXXX
-  private PrimitiveCodec codec;
+  // convertValue that will apply to page data in getXXX
+  private ColumnPageValueConverter codec;
 
-  private LazyColumnPage(ColumnPage columnPage, PrimitiveCodec codec) {
+  private LazyColumnPage(ColumnPage columnPage, ColumnPageValueConverter codec) {
     super(columnPage.getDataType(), columnPage.getPageSize(), columnPage.scale,
         columnPage.precision);
     this.columnPage = columnPage;
     this.codec = codec;
   }
 
-  public static ColumnPage newPage(ColumnPage columnPage, PrimitiveCodec codec) {
+  public static ColumnPage newPage(ColumnPage columnPage, ColumnPageValueConverter codec) {
     return new LazyColumnPage(columnPage, codec);
   }
 
   @Override
   public String toString() {
-    return String.format("[encode: %s, data type: %s", codec, columnPage.getDataType());
+    return String.format("[convertValue: %s, data type: %s", codec, columnPage.getDataType());
   }
 
   @Override
@@ -95,6 +95,11 @@ public class LazyColumnPage extends ColumnPage {
   @Override
   public BigDecimal getDecimal(int rowId) {
     return columnPage.getDecimal(rowId);
+  }
+
+  @Override
+  public byte[] getBytes(int rowId) {
+    return columnPage.getBytes(rowId);
   }
 
   @Override
@@ -153,7 +158,7 @@ public class LazyColumnPage extends ColumnPage {
   }
 
   @Override
-  public void encode(PrimitiveCodec codec) {
+  public void convertValue(ColumnPageValueConverter codec) {
     throw new UnsupportedOperationException("internal error");
   }
 

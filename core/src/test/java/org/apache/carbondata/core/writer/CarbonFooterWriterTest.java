@@ -30,10 +30,12 @@ import org.apache.carbondata.core.datastore.block.SegmentProperties;
 import org.apache.carbondata.core.datastore.filesystem.CarbonFile;
 import org.apache.carbondata.core.datastore.impl.FileFactory;
 import org.apache.carbondata.core.datastore.page.EncodedTablePage;
+import org.apache.carbondata.core.datastore.page.encoding.EncodedColumnPage;
 import org.apache.carbondata.core.datastore.page.encoding.EncodedMeasurePage;
-import org.apache.carbondata.core.datastore.page.encoding.rle.RLECodecMeta;
+import org.apache.carbondata.core.datastore.page.encoding.rle.RLEEncoderMeta;
+import org.apache.carbondata.core.datastore.page.statistics.PrimitivePageStatsCollector;
 import org.apache.carbondata.core.metadata.BlockletInfoColumnar;
-import org.apache.carbondata.core.datastore.page.encoding.ColumnPageCodecMeta;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoderMeta;
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.datatype.DataType;
 import org.apache.carbondata.core.metadata.encoder.Encoding;
@@ -41,6 +43,7 @@ import org.apache.carbondata.core.reader.CarbonFooterReader;
 import org.apache.carbondata.core.util.CarbonMetadataUtil;
 import org.apache.carbondata.core.util.CarbonUtil;
 import org.apache.carbondata.format.ColumnSchema;
+import org.apache.carbondata.format.DataChunk2;
 
 import junit.framework.TestCase;
 import mockit.Mock;
@@ -152,9 +155,9 @@ public class CarbonFooterWriterTest extends TestCase{
     infoColumnar.setMeasureNullValueIndex(new BitSet[] {new BitSet(),new BitSet()});
     infoColumnar.setEncodedTablePage(EncodedTablePage.newEmptyInstance());
 
-    final ValueEncoderMeta meta = new RLECodecMeta();
+    final ValueEncoderMeta meta = new RLEEncoderMeta();
 
-    new MockUp<ColumnPageCodecMeta>() {
+    new MockUp<ColumnPageEncoderMeta>() {
       @SuppressWarnings("unused") @Mock
       public byte[] getMaxAsBytes() {
         return new byte[]{1,2};
@@ -166,10 +169,6 @@ public class CarbonFooterWriterTest extends TestCase{
       @SuppressWarnings("unused") @Mock
       public DataType getDataType() {
         return DataType.DOUBLE;
-      }
-      @SuppressWarnings("unused") @Mock
-      public Encoding getEncoding() {
-        return Encoding.RLE_INTEGRAL;
       }
       @SuppressWarnings("unused") @Mock
       public void write(DataOutput out) throws IOException {
@@ -184,11 +183,17 @@ public class CarbonFooterWriterTest extends TestCase{
       }
     };
 
-    final EncodedMeasurePage measure = new EncodedMeasurePage(2, new byte[]{0,1}, meta,
-        new BitSet());
+    List<org.apache.carbondata.format.Encoding> encodings = new ArrayList<>();
+    encodings.add(org.apache.carbondata.format.Encoding.RLE_INTEGRAL);
+    List<ValueEncoderMeta> metaDatas = new ArrayList<>();
+    metaDatas.add(meta);
+
+    final EncodedColumnPage measure = new EncodedColumnPage(new DataChunk2(), new byte[]{0,1},
+        new BitSet(2), PrimitivePageStatsCollector.newInstance(
+        org.apache.carbondata.core.metadata.datatype.DataType.BYTE, 0, 0));
     new MockUp<EncodedTablePage>() {
       @SuppressWarnings("unused") @Mock
-      public EncodedMeasurePage getMeasure(int measureIndex) {
+      public EncodedColumnPage getMeasure(int measureIndex) {
         return measure;
       }
     };

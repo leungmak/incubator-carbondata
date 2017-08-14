@@ -15,12 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.core.datastore.page.encoding;
+package org.apache.carbondata.core.datastore.page.encoding.dimension.legacy;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
-import org.apache.carbondata.core.datastore.DimensionType;
 import org.apache.carbondata.core.datastore.columnar.BlockIndexerStorageForInt;
 import org.apache.carbondata.core.datastore.columnar.BlockIndexerStorageForNoInvertedIndexForInt;
 import org.apache.carbondata.core.datastore.columnar.BlockIndexerStorageForNoInvertedIndexForShort;
@@ -28,14 +29,18 @@ import org.apache.carbondata.core.datastore.columnar.BlockIndexerStorageForShort
 import org.apache.carbondata.core.datastore.columnar.IndexStorage;
 import org.apache.carbondata.core.datastore.compression.Compressor;
 import org.apache.carbondata.core.datastore.page.ColumnPage;
-import org.apache.carbondata.core.datastore.page.ComplexColumnPage;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoder;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoderMeta;
 import org.apache.carbondata.core.memory.MemoryException;
 import org.apache.carbondata.core.metadata.ColumnarFormatVersion;
 import org.apache.carbondata.core.util.ByteUtil;
+import org.apache.carbondata.format.DataChunk2;
+import org.apache.carbondata.format.Encoding;
 
 public class DirectDictDimensionIndexCodec extends IndexStorageCodec {
 
-  DirectDictDimensionIndexCodec(boolean isSort, boolean isInvertedIndex, Compressor compressor) {
+  public DirectDictDimensionIndexCodec(boolean isSort, boolean isInvertedIndex,
+      Compressor compressor) {
     super(isSort, isInvertedIndex, compressor);
   }
 
@@ -45,11 +50,10 @@ public class DirectDictDimensionIndexCodec extends IndexStorageCodec {
   }
 
   @Override
-  public Encoder createEncoder(Map<String, String> parameter) {
-    return new Encoder() {
+  public ColumnPageEncoder createEncoder(Map<String, String> parameter) {
+    return new ColumnPageEncoder() {
       @Override
-      public EncodedColumnPage encode(ColumnPage input)
-          throws MemoryException, IOException {
+      protected byte[] encodeData(ColumnPage input) throws MemoryException, IOException {
         IndexStorage indexStorage;
         byte[][] data = input.getByteArrayPage();
         if (isInvertedIndex) {
@@ -67,13 +71,26 @@ public class DirectDictDimensionIndexCodec extends IndexStorageCodec {
         }
         byte[] flattened = ByteUtil.flatten(indexStorage.getDataPage());
         byte[] compressed = compressor.compressByte(flattened);
-        return new EncodedDimensionPage(input.getPageSize(), compressed, indexStorage,
-            DimensionType.GLOBAL_DICTIONARY);
+        return compressed;
       }
 
       @Override
-      public EncodedColumnPage[] encodeComplexColumn(ComplexColumnPage input) {
-        return DirectDictDimensionIndexCodec.super.encodeComplexColumn(input);
+      protected List<Encoding> getEncodingList() {
+        List<Encoding> encodings = new ArrayList<>();
+        encodings.add(Encoding.DICTIONARY);
+        encodings.add(Encoding.DIRECT_DICTIONARY);
+        return encodings;
+      }
+
+      @Override
+      protected ColumnPageEncoderMeta getEncoderMeta(ColumnPage inputPage) {
+        return null;
+      }
+
+      @Override
+      protected void fillLegacyFields(ColumnPage inputPage, DataChunk2 dataChunk)
+          throws IOException {
+
       }
     };
   }

@@ -20,6 +20,7 @@ package org.apache.carbondata.processing.store.writer.v1;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.BitSet;
 
 import org.apache.carbondata.common.logging.LogService;
 import org.apache.carbondata.common.logging.LogServiceFactory;
@@ -27,6 +28,7 @@ import org.apache.carbondata.core.constants.CarbonCommonConstants;
 import org.apache.carbondata.core.datastore.columnar.IndexStorage;
 import org.apache.carbondata.core.datastore.exception.CarbonDataWriterException;
 import org.apache.carbondata.core.datastore.page.EncodedTablePage;
+import org.apache.carbondata.core.datastore.page.encoding.EncodedColumnPage;
 import org.apache.carbondata.core.datastore.page.encoding.EncodedDimensionPage;
 import org.apache.carbondata.core.datastore.page.key.TablePageKey;
 import org.apache.carbondata.core.datastore.page.statistics.TablePageStatistics;
@@ -81,10 +83,10 @@ public class CarbonFactDataWriterImplV1 extends AbstractFactDataWriter<int[]> {
     TablePageStatistics stats = new TablePageStatistics(encodedTablePage.getDimensions(),
         encodedTablePage.getMeasures());
 
-    EncodedDimensionPage[] dimensions = encodedTablePage.getDimensions();
+    EncodedColumnPage[] dimensions = encodedTablePage.getDimensions();
     for (int i = 0; i < dimensions.length; i++) {
       IndexStorage indexStorage = dimensions[i].getIndexStorage();
-      keyLengths[i] = dimensions[i].getEncodedData().length;
+      keyLengths[i] = dimensions[i].getEncodedData().array().length;
       isSortedData[i] = indexStorage.isAlreadySorted();
       if (!isSortedData[i]) {
         keyBlockSize++;
@@ -151,10 +153,14 @@ public class CarbonFactDataWriterImplV1 extends AbstractFactDataWriter<int[]> {
       totalMsrArrySize += currentMsrLenght;
       msrLength[i] = currentMsrLenght;
     }
+    BitSet[] nullBitSetArray = new BitSet[encodedTablePage.getNumMeasures()];
+    for (int i = 0; i < nullBitSetArray.length; i++) {
+      nullBitSetArray[i] = encodedTablePage.getMeasure(i).getNullBitSet();
+    }
     NodeHolder holder = new NodeHolder();
     holder.setDataArray(measureArray);
     holder.setKeyArray(keyBlockData);
-    holder.setMeasureNullValueIndex(stats.getNullBitSet());
+    holder.setMeasureNullValueIndex(nullBitSetArray);
     // end key format will be <length of dictionary key><length of no
     // dictionary key><DictionaryKey><No Dictionary key>
     byte[] updatedNoDictionaryEndKey =

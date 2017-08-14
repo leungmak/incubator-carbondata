@@ -27,17 +27,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.carbondata.core.datastore.page.ColumnPage;
-import org.apache.carbondata.core.datastore.page.ComplexColumnPage;
 import org.apache.carbondata.core.datastore.page.encoding.ColumnPageCodec;
-import org.apache.carbondata.core.datastore.page.encoding.ColumnPageCodecMeta;
-import org.apache.carbondata.core.datastore.page.encoding.Decoder;
-import org.apache.carbondata.core.datastore.page.encoding.EncodedColumnPage;
-import org.apache.carbondata.core.datastore.page.encoding.EncodedMeasurePage;
-import org.apache.carbondata.core.datastore.page.encoding.Encoder;
-import org.apache.carbondata.core.datastore.page.encoding.rle.RLECodecMeta;
-import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageDecoder;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoder;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoderMeta;
 import org.apache.carbondata.core.memory.MemoryException;
 import org.apache.carbondata.core.metadata.datatype.DataType;
+import org.apache.carbondata.format.DataChunk2;
+import org.apache.carbondata.format.Encoding;
 
 /**
  * RLE encoding implementation for integral column page.
@@ -60,13 +57,13 @@ public class RLECodec implements ColumnPageCodec {
   }
 
   @Override
-  public Encoder createEncoder(Map<String, String> parameter) {
+  public ColumnPageEncoder createEncoder(Map<String, String> parameter) {
     return new RLEEncoder();
   }
 
   @Override
-  public Decoder createDecoder(ColumnPageCodecMeta meta) {
-    RLECodecMeta codecMeta = (RLECodecMeta) meta;
+  public ColumnPageDecoder createDecoder(ColumnPageEncoderMeta meta) {
+    RLEEncoderMeta codecMeta = (RLEEncoderMeta) meta;
     return new RLEDecoder(codecMeta.getDataType(), codecMeta.getPageSize());
   }
 
@@ -83,7 +80,7 @@ public class RLECodec implements ColumnPageCodec {
     }
   }
 
-  private class RLEEncoder implements Encoder {
+  private class RLEEncoder extends ColumnPageEncoder {
     // While encoding RLE, this class internally work as a state machine
     // INIT state is the initial state before any value comes
     // START state is the start for each run
@@ -116,7 +113,7 @@ public class RLECodec implements ColumnPageCodec {
     }
 
     @Override
-    public EncodedColumnPage encode(ColumnPage input) throws MemoryException, IOException {
+    protected byte[] encodeData(ColumnPage input) throws MemoryException, IOException {
       validateDataType(input.getDataType());
       this.dataType = input.getDataType();
       switch (dataType) {
@@ -148,18 +145,26 @@ public class RLECodec implements ColumnPageCodec {
           throw new UnsupportedOperationException(input.getDataType() +
               " does not support RLE encoding");
       }
-      byte[] encoded = collectResult();
-      SimpleStatsResult stats = input.getStatistics();
-      return new EncodedMeasurePage(
-          input.getPageSize(),
-          encoded,
-          new RLECodecMeta(input.getDataType(), input.getPageSize(), stats),
-          input.getNullBits());
+      return collectResult();
     }
 
     @Override
-    public EncodedColumnPage[] encodeComplexColumn(ComplexColumnPage input) {
-      throw new UnsupportedOperationException();
+    protected List<Encoding> getEncodingList() {
+      List<Encoding> encodings = new ArrayList<>();
+      encodings.add(Encoding.RLE_INTEGRAL);
+      return encodings;
+    }
+
+    @Override
+    protected ColumnPageEncoderMeta getEncoderMeta(ColumnPage inputPage) {
+      return new RLEEncoderMeta(
+          inputPage.getDataType(), inputPage.getPageSize(), inputPage.getStatistics());
+    }
+
+    @Override
+    protected void fillLegacyFields(ColumnPage inputPage, DataChunk2 dataChunk)
+        throws IOException {
+      // NOP
     }
 
     private void putValue(Object value) throws IOException {
@@ -249,7 +254,7 @@ public class RLECodec implements ColumnPageCodec {
           valueCount++;
           break;
         case NONREPEATED_RUN:
-          // non-repeated run ends, encode this run
+          // non-repeated run ends, convertValue this run
           encodeNonRepeatedRun();
           startNewRun(value);
           break;
@@ -271,7 +276,7 @@ public class RLECodec implements ColumnPageCodec {
           valueCount++;
           break;
         case REPEATED_RUN:
-          // repeated-run ends, encode this run
+          // repeated-run ends, convertValue this run
           encodeRepeatedRun();
           startNewRun(value);
           break;
@@ -290,7 +295,7 @@ public class RLECodec implements ColumnPageCodec {
 
   // It decodes data in one shot. It is suitable for scan query
   // TODO: add a on-the-fly decoder for filter query with high selectivity
-  private class RLEDecoder implements Decoder {
+  private class RLEDecoder implements ColumnPageDecoder {
 
     // src data type
     private DataType dataType;

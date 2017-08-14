@@ -15,34 +15,46 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.core.datastore.page.encoding.adaptive;
+package org.apache.carbondata.core.datastore.page.encoding.rle;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoderMeta;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
 import org.apache.carbondata.core.metadata.datatype.DataType;
-import org.apache.carbondata.core.metadata.encoder.Encoding;
 import org.apache.carbondata.core.metadata.schema.table.Writable;
 
-public class AdaptiveDeltaIntegralCodecMeta extends AdaptiveCodecMeta implements Writable {
+/**
+ * Metadata class for RLECodec
+ */
+public class RLEEncoderMeta extends ColumnPageEncoderMeta implements Writable {
 
-  public AdaptiveDeltaIntegralCodecMeta() {
+  private int pageSize;
+
+  public RLEEncoderMeta() {
+
   }
 
-  public AdaptiveDeltaIntegralCodecMeta(DataType targetDataType, SimpleStatsResult stats,
-      String compressorName) {
-    super(targetDataType, stats, compressorName, Encoding.ADAPTIVE_DELTA_INTEGRAL);
+  RLEEncoderMeta(DataType dataType, int pageSize, SimpleStatsResult stats) {
+    super(dataType, stats);
+    this.pageSize = pageSize;
+  }
+
+  public int getPageSize() {
+    return pageSize;
   }
 
   @Override
   public void write(DataOutput out) throws IOException {
     super.write(out);
+    out.writeInt(pageSize);
   }
 
   @Override
   public void readFields(DataInput in) throws IOException {
     super.readFields(in);
+    pageSize = in.readInt();
   }
 }

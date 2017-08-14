@@ -17,102 +17,86 @@
 
 package org.apache.carbondata.core.datastore.page.encoding;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-import org.apache.carbondata.core.datastore.compression.Compressor;
-import org.apache.carbondata.core.datastore.compression.CompressorFactory;
-import org.apache.carbondata.core.datastore.page.encoding.adaptive.AdaptiveDeltaIntegralCodecMeta;
-import org.apache.carbondata.core.datastore.page.encoding.adaptive.AdaptiveIntegralCodecMeta;
-import org.apache.carbondata.core.datastore.page.encoding.compress.DirectCompressorCodecMeta;
-import org.apache.carbondata.core.datastore.page.encoding.rle.RLECodecMeta;
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
-import org.apache.carbondata.core.util.CarbonMetadataUtil;
 import org.apache.carbondata.core.util.CarbonUtil;
 import org.apache.carbondata.format.BlockletMinMaxIndex;
 import org.apache.carbondata.format.DataChunk2;
 import org.apache.carbondata.format.Encoding;
-import org.apache.carbondata.format.PresenceMeta;
 
 /**
  * Encoded measure page that include data and statistics
  */
-public class EncodedMeasurePage extends EncodedColumnPage {
+public class EncodedMeasurePage {
 
-  private ValueEncoderMeta metaData;
-
-  public EncodedMeasurePage(int pageSize, byte[] encodedData, ValueEncoderMeta metaData,
-      BitSet nullBitSet) throws IOException {
-    super(pageSize, encodedData);
-    this.metaData = metaData;
-    this.nullBitSet = nullBitSet;
-    this.dataChunk2 = buildDataChunk2();
+  /**
+   * Constructor
+   * @param pageSize number of row of the encoded page
+   * @param encodedData encoded data for this page
+   * @param nullBitSet null bit set (1 indicates null at rowId)
+   * @param encodings encoding type used for this page
+   * @param metaDatas metadata of the encoding
+   */
+  /*
+  public EncodedMeasurePage(int pageSize, byte[] encodedData, BitSet nullBitSet,
+      List<Encoding> encodings, List<ValueEncoderMeta> metaDatas) {
+    super(pageSize, encodedData, nullBitSet, encodings, metaDatas);
   }
 
   @Override
-  public DataChunk2 buildDataChunk2() throws IOException {
-    DataChunk2 dataChunk = new DataChunk2();
-    dataChunk.min_max = new BlockletMinMaxIndex();
-    dataChunk.setChunk_meta(CarbonMetadataUtil.getSnappyChunkCompressionMeta());
-    dataChunk.setNumberOfRowsInpage(pageSize);
-    dataChunk.setData_page_length(encodedData.length);
-    dataChunk.setRowMajor(false);
-    // TODO : Change as per this encoders.
-    List<Encoding> encodings = new ArrayList<Encoding>();
-    PresenceMeta presenceMeta = new PresenceMeta();
-    presenceMeta.setPresent_bit_streamIsSet(true);
-    Compressor compressor = CompressorFactory.getInstance().getCompressor();
-    presenceMeta.setPresent_bit_stream(compressor.compressByte(nullBitSet.toByteArray()));
-    dataChunk.setPresence(presenceMeta);
-    List<ByteBuffer> encoderMetaList = new ArrayList<ByteBuffer>();
-    if (metaData instanceof ColumnPageCodecMeta) {
-      ColumnPageCodecMeta meta = (ColumnPageCodecMeta) metaData;
-      ByteArrayOutputStream stream = new ByteArrayOutputStream();
-      DataOutputStream out = new DataOutputStream(stream);
-      switch (meta.getEncoding()) {
-        case DIRECT_COMPRESS:
-          encodings.add(Encoding.DIRECT_COMPRESS);
-          DirectCompressorCodecMeta directCompressorCodecMeta = (DirectCompressorCodecMeta) meta;
-          directCompressorCodecMeta.write(out);
-          break;
-        case ADAPTIVE_INTEGRAL:
-          encodings.add(Encoding.ADAPTIVE_INTEGRAL);
-          AdaptiveIntegralCodecMeta adaptiveCodecMeta = (AdaptiveIntegralCodecMeta) meta;
-          adaptiveCodecMeta.write(out);
-          break;
-        case ADAPTIVE_DELTA_INTEGRAL:
-          encodings.add(Encoding.ADAPTIVE_DELTA_INTEGRAL);
-          AdaptiveDeltaIntegralCodecMeta deltaCodecMeta = (AdaptiveDeltaIntegralCodecMeta) meta;
-          deltaCodecMeta.write(out);
-          break;
-        case RLE_INTEGRAL:
-          encodings.add(Encoding.RLE_INTEGRAL);
-          RLECodecMeta rleCodecMeta = (RLECodecMeta) meta;
-          rleCodecMeta.write(out);
-          break;
-        default:
-          throw new UnsupportedOperationException("unknown encoding: " + meta.getEncoding());
-      }
-      encoderMetaList.add(ByteBuffer.wrap(stream.toByteArray()));
-      dataChunk.min_max.addToMax_values(ByteBuffer.wrap(meta.getMaxAsBytes()));
-      dataChunk.min_max.addToMin_values(ByteBuffer.wrap(meta.getMinAsBytes()));
+  BlockletMinMaxIndex buildMinMaxIndex() {
+    BlockletMinMaxIndex minMaxIndex = new BlockletMinMaxIndex();
+    assert (metaDatas.size() == 1);
+    ValueEncoderMeta metaData = metaDatas.get(0);
+    if (metaData instanceof ColumnPageEncoderMeta) {
+      ColumnPageEncoderMeta meta = (ColumnPageEncoderMeta) metaData;
+      minMaxIndex.addToMax_values(ByteBuffer.wrap(meta.getMaxAsBytes()));
+      minMaxIndex.addToMin_values(ByteBuffer.wrap(meta.getMinAsBytes()));
     } else {
-      encodings.add(Encoding.DELTA);
-      encoderMetaList.add(ByteBuffer.wrap(CarbonUtil.serializeEncodeMetaUsingByteBuffer(metaData)));
-      dataChunk.min_max.addToMax_values(ByteBuffer.wrap(CarbonUtil.getMaxValueAsBytes(metaData)));
-      dataChunk.min_max.addToMin_values(ByteBuffer.wrap(CarbonUtil.getMinValueAsBytes(metaData)));
+      // for backward compatibility
+      minMaxIndex.addToMax_values(ByteBuffer.wrap(CarbonUtil.getMaxValueAsBytes(metaData)));
+      minMaxIndex.addToMin_values(ByteBuffer.wrap(CarbonUtil.getMinValueAsBytes(metaData)));
     }
-    dataChunk.setEncoders(encodings);
-    dataChunk.setEncoder_meta(encoderMetaList);
-    return dataChunk;
+    return minMaxIndex;
+  }
+
+  @Override
+  List<ByteBuffer> buildEncoderMeta() throws IOException {
+    assert (metaDatas.size() == 1);
+    assert (encodings.size() == 1);
+    Encoding encoding = encodings.get(0);
+    ValueEncoderMeta metaData = metaDatas.get(0);
+    List<ByteBuffer> encoderMetaList = new ArrayList<ByteBuffer>();
+    if (metaData instanceof ColumnPageEncoderMeta) {
+      ColumnPageEncoderMeta meta = (ColumnPageEncoderMeta) metaData;
+      ByteBuffer buffer = serializeEncodingMetaData(encoding, meta);
+      encoderMetaList.add(buffer);
+    } else {
+      // for backward compatibility
+      encoderMetaList.add(ByteBuffer.wrap(CarbonUtil.serializeEncodeMetaUsingByteBuffer(metaData)));
+    }
+    return encoderMetaList;
+  }
+
+  @Override
+  void fillDimensionFields(DataChunk2 dataChunk) {
+  }
+
+  @Override
+  public int getTotalSerializedSize() throws IOException {
+    int metadataSize = CarbonUtil.getByteArray(getPageHeader()).length;
+    int dataSize = encodedData.length;
+    return dataSize + metadataSize;
   }
 
   public ValueEncoderMeta getMetaData() {
-    return metaData;
+    assert (metaDatas.size() == 1);
+    return metaDatas.get(0);
   }
+  */
 }

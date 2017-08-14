@@ -15,18 +15,24 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.core.datastore.page.encoding;
+package org.apache.carbondata.core.datastore.page;
 
-import java.io.IOException;
+// Transformation type that can be applied to ColumnPage
+public interface ColumnPageValueConverter {
+  void encode(int rowId, byte value);
+  void encode(int rowId, short value);
+  void encode(int rowId, int value);
+  void encode(int rowId, long value);
+  void encode(int rowId, float value);
+  void encode(int rowId, double value);
 
-import org.apache.carbondata.core.datastore.page.ColumnPage;
-import org.apache.carbondata.core.memory.MemoryException;
-
-public interface Decoder {
-
-  /**
-   * Apply decoding algorithm on input byte array and return decoded column page
-   */
-  ColumnPage decode(byte[] input, int offset, int length) throws MemoryException, IOException;
-
+  long decodeLong(byte value);
+  long decodeLong(short value);
+  long decodeLong(int value);
+  double decodeDouble(byte value);
+  double decodeDouble(short value);
+  double decodeDouble(int value);
+  double decodeDouble(long value);
+  double decodeDouble(float value);
+  double decodeDouble(double value);
 }

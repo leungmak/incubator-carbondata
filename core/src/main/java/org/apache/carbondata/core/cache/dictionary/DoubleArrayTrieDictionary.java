@@ -46,7 +46,7 @@ public class DoubleArrayTrieDictionary {
   private static final int UUSD_ROOM_VALUE = -2;   // unused position, only for zero
   private static final int EPTY_BACK_VALUE = 0;    // value of empty position
 
-  private static final int ENCODE_BASE_VALUE = 10; // encode start number
+  private static final int ENCODE_BASE_VALUE = 10; // convertValue start number
 
   private int[] base;
   private int[] check;

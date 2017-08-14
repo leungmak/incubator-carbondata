@@ -23,17 +23,16 @@ import java.io.IOException;
 
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
 import org.apache.carbondata.core.metadata.datatype.DataType;
-import org.apache.carbondata.core.metadata.encoder.Encoding;
 import org.apache.carbondata.core.metadata.schema.table.Writable;
 
-public class AdaptiveIntegralCodecMeta extends AdaptiveCodecMeta implements Writable {
+public class AdaptiveDeltaIntegralEncoderMeta extends AdaptiveEncoderMeta implements Writable {
 
-  public AdaptiveIntegralCodecMeta() {
+  public AdaptiveDeltaIntegralEncoderMeta() {
   }
 
-  public AdaptiveIntegralCodecMeta(DataType targetDataType, SimpleStatsResult stats,
-      String compressorName) {
-    super(targetDataType, stats, compressorName, Encoding.ADAPTIVE_INTEGRAL);
+  AdaptiveDeltaIntegralEncoderMeta(String compressorName, DataType targetDataType,
+      SimpleStatsResult stats) {
+    super(targetDataType, stats, compressorName);
   }
 
   @Override

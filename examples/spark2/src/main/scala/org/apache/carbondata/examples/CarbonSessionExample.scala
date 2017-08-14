@@ -55,20 +55,10 @@ object CarbonSessionExample {
     spark.sql(
       s"""
          | CREATE TABLE carbon_table(
-         | shortField SHORT,
-         | intField INT,
-         | bigintField LONG,
-         | doubleField DOUBLE,
-         | stringField STRING,
-         | timestampField TIMESTAMP,
-         | decimalField DECIMAL(18,2),
-         | dateField DATE,
-         | charField CHAR(5),
-         | floatField FLOAT,
-         | complexData ARRAY<STRING>
+         | stringField STRING
          | )
          | STORED BY 'carbondata'
-         | TBLPROPERTIES('SORT_COLUMNS'='', 'DICTIONARY_INCLUDE'='dateField, charField')
+         | TBLPROPERTIES('SORT_COLUMNS'='')
        """.stripMargin)
 
     val path = s"$rootPath/examples/spark2/src/main/resources/data.csv"
@@ -78,16 +68,22 @@ object CarbonSessionExample {
       s"""
          | LOAD DATA LOCAL INPATH '$path'
          | INTO TABLE carbon_table
-         | OPTIONS('FILEHEADER'='shortField,intField,bigintField,doubleField,stringField,timestampField,decimalField,dateField,charField,floatField,complexData',
+         | OPTIONS('header'='true',
          | 'COMPLEX_DELIMITER_LEVEL_1'='#')
        """.stripMargin)
     // scalastyle:on
 
     spark.sql(
       s"""
+         | SELECT *
+         | FROM carbon_table
+      """.stripMargin).show()
+
+    spark.sql(
+      s"""
         | SELECT *
         | FROM carbon_table
-        | WHERE stringfield = 'spark' AND decimalField > 40
+        | WHERE stringfield = 'spark'
       """.stripMargin).show()
 
     spark.sql(

@@ -24,13 +24,16 @@ import org.apache.carbondata.core.util.ByteUtil;
 
 public class VarLengthPageStatsCollector implements ColumnPageStatsCollector {
 
+  private DataType dataType;
+
   private byte[] min, max;
 
-  public static VarLengthPageStatsCollector newInstance() {
-    return new VarLengthPageStatsCollector();
+  public static VarLengthPageStatsCollector newInstance(DataType dataType) {
+    return new VarLengthPageStatsCollector(dataType);
   }
 
-  private VarLengthPageStatsCollector() {
+  private VarLengthPageStatsCollector(DataType dataType) {
+    this.dataType = dataType;
   }
 
   @Override
@@ -85,7 +88,6 @@ public class VarLengthPageStatsCollector implements ColumnPageStatsCollector {
 
   @Override
   public SimpleStatsResult getPageStats() {
-    // for binary type, we do not collect its stats
     return new SimpleStatsResult() {
 
       @Override public Object getMin() {
@@ -101,7 +103,7 @@ public class VarLengthPageStatsCollector implements ColumnPageStatsCollector {
       }
 
       @Override public DataType getDataType() {
-        return null;
+        return dataType;
       }
 
       @Override public int getScale() {

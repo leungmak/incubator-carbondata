@@ -15,47 +15,55 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.core.datastore.page.encoding.rle;
+package org.apache.carbondata.core.datastore.page.encoding.adaptive;
 
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-import org.apache.carbondata.core.datastore.page.encoding.ColumnPageCodecMeta;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoderMeta;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
 import org.apache.carbondata.core.metadata.datatype.DataType;
-import org.apache.carbondata.core.metadata.encoder.Encoding;
 import org.apache.carbondata.core.metadata.schema.table.Writable;
 
 /**
- * Metadata class for RLECodec
+ * Metadata for AdaptiveIntegralCodec and DeltaIntegralCodec
  */
-public class RLECodecMeta extends ColumnPageCodecMeta implements Writable {
+public class AdaptiveEncoderMeta extends ColumnPageEncoderMeta implements Writable {
 
-  private int pageSize;
+  private DataType targetDataType;
+  private String compressorName;
 
-  public RLECodecMeta() {
+  AdaptiveEncoderMeta() {
 
   }
 
-  public RLECodecMeta(DataType dataType, int pageSize, SimpleStatsResult stats) {
-    super(dataType, Encoding.RLE_INTEGRAL, stats);
-    this.pageSize = pageSize;
-  }
-
-  public int getPageSize() {
-    return pageSize;
+  AdaptiveEncoderMeta(DataType targetDataType, SimpleStatsResult stats,
+      String compressorName) {
+    super(stats.getDataType(), stats);
+    this.targetDataType = targetDataType;
+    this.compressorName = compressorName;
   }
 
   @Override
   public void write(DataOutput out) throws IOException {
     super.write(out);
-    out.writeInt(pageSize);
+    out.writeByte(targetDataType.ordinal());
+    out.writeUTF(compressorName);
   }
 
   @Override
   public void readFields(DataInput in) throws IOException {
     super.readFields(in);
-    pageSize = in.readInt();
+    this.targetDataType = DataType.valueOf(in.readByte());
+    this.compressorName = in.readUTF();
+  }
+
+  public DataType getTargetDataType() {
+    return targetDataType;
+  }
+
+  public String getCompressorName() {
+    return compressorName;
   }
 }

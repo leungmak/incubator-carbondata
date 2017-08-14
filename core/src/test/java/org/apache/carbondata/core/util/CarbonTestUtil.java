@@ -17,7 +17,7 @@
 
 package org.apache.carbondata.core.util;
 
-import org.apache.carbondata.core.datastore.page.encoding.ColumnPageCodecMeta;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoderMeta;
 import org.apache.carbondata.core.metadata.ColumnarFormatVersion;
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 
@@ -32,7 +32,7 @@ public class CarbonTestUtil {
       case V2:
         return new ValueEncoderMeta();
       case V3:
-        return new ColumnPageCodecMeta();
+        return new ColumnPageEncoderMeta();
       default:
         throw new UnsupportedOperationException("unsupported version: " + version);
     }

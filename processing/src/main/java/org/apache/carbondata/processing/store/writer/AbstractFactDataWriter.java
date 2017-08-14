@@ -317,6 +317,42 @@ public abstract class AbstractFactDataWriter<T> implements CarbonFactDataWriter<
   }
 
   /**
+   * This method will be used to update the file channel with new file; new
+   * file will be created once existing file reached the file size limit This
+   * method will first check whether existing file size is exceeded the file
+   * size limit if yes then write the leaf metadata to file then set the
+   * current file size to 0 close the existing file channel get the new file
+   * name and get the channel for new file
+   *
+   * @param blockletDataSize data size of one block
+   * @throws CarbonDataWriterException if any problem
+   */
+  protected void updateBlockletFileChannel(long blockletDataSize) throws CarbonDataWriterException {
+    if ((currentFileSize + blockletDataSize) >= blockSizeThreshold && currentFileSize != 0) {
+      // set the current file size to zero
+      LOGGER.info("Writing data to file as max file size reached for file: "
+          + carbonDataFileTempPath + " .Data block size: " + currentFileSize);
+      // write meta data to end of the existing file
+      writeBlockletInfoToFile(fileChannel, carbonDataFileTempPath);
+      this.currentFileSize = 0;
+      blockletInfoList = new ArrayList<>(CarbonCommonConstants.CONSTANT_SIZE_TEN);
+      this.dataChunksOffsets = new ArrayList<>();
+      this.dataChunksLength = new ArrayList<>();
+      this.blockletMetadata = new ArrayList<>();
+      this.blockletIndex = new ArrayList<>();
+      CarbonUtil.closeStreams(this.fileOutputStream, this.fileChannel);
+      // rename carbon data file from in progress status to actual
+      renameCarbonDataFile();
+      executorServiceSubmitList.add(executorService
+          .submit(new CopyThread(this.carbonDataFileTempPath
+              .substring(0, this.carbonDataFileTempPath.lastIndexOf('.')))));
+      // initialize the new channel
+      initializeWriter();
+    }
+    currentFileSize += blockletDataSize;
+  }
+
+  /**
    * This method will be used to initialize the channel
    *
    * @throws CarbonDataWriterException

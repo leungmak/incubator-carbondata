@@ -19,7 +19,7 @@ package org.apache.carbondata.core.datastore.page.statistics;
 
 import java.math.BigDecimal;
 
-import org.apache.carbondata.core.datastore.page.encoding.ColumnPageCodecMeta;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoderMeta;
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.datatype.DataType;
 
@@ -40,9 +40,8 @@ public class PrimitivePageStatsCollector implements ColumnPageStatsCollector, Si
   private boolean isFirst = true;
   private BigDecimal zeroDecimal;
 
-  // this is for encode flow
-  public static PrimitivePageStatsCollector newInstance(DataType dataType, int pageSize, int
-      scale, int precision) {
+  // this is for convertValue flow
+  public static PrimitivePageStatsCollector newInstance(DataType dataType, int scale, int precision) {
     switch (dataType) {
       default:
         return new PrimitivePageStatsCollector(dataType, scale, precision);
@@ -50,7 +49,7 @@ public class PrimitivePageStatsCollector implements ColumnPageStatsCollector, Si
   }
 
   // this is for decode flow
-  public static PrimitivePageStatsCollector newInstance(ColumnPageCodecMeta meta) {
+  public static PrimitivePageStatsCollector newInstance(ColumnPageEncoderMeta meta) {
     int scale = meta.getScale();
     int precision = meta.getPrecision();
     PrimitivePageStatsCollector instance =

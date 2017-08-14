@@ -29,14 +29,14 @@ public interface ColumnPageCodec {
   String getName();
 
   /**
-   * Return a new Encoder which will be used to encode one column page.
+   * Return a new Encoder which will be used to convertValue one column page.
    * This will be called for every column page
    */
-  Encoder createEncoder(Map<String, String> parameter);
+  ColumnPageEncoder createEncoder(Map<String, String> parameter);
 
   /**
    * Return a new Decoder with specified metadata.
    * This will be called for every column page
    */
-  Decoder createDecoder(ColumnPageCodecMeta meta);
+  ColumnPageDecoder createDecoder(ColumnPageEncoderMeta meta);
 }

@@ -18,22 +18,24 @@
 package org.apache.carbondata.core.datastore.page.encoding.adaptive;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
+import org.apache.carbondata.core.datastore.columnar.IndexStorage;
 import org.apache.carbondata.core.datastore.compression.Compressor;
 import org.apache.carbondata.core.datastore.compression.CompressorFactory;
 import org.apache.carbondata.core.datastore.page.ColumnPage;
-import org.apache.carbondata.core.datastore.page.ComplexColumnPage;
+import org.apache.carbondata.core.datastore.page.ColumnPageValueConverter;
 import org.apache.carbondata.core.datastore.page.LazyColumnPage;
-import org.apache.carbondata.core.datastore.page.PrimitiveCodec;
-import org.apache.carbondata.core.datastore.page.encoding.ColumnPageCodecMeta;
-import org.apache.carbondata.core.datastore.page.encoding.Decoder;
-import org.apache.carbondata.core.datastore.page.encoding.EncodedColumnPage;
-import org.apache.carbondata.core.datastore.page.encoding.EncodedMeasurePage;
-import org.apache.carbondata.core.datastore.page.encoding.Encoder;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageDecoder;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoder;
+import org.apache.carbondata.core.datastore.page.encoding.ColumnPageEncoderMeta;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
 import org.apache.carbondata.core.memory.MemoryException;
 import org.apache.carbondata.core.metadata.datatype.DataType;
+import org.apache.carbondata.format.DataChunk2;
+import org.apache.carbondata.format.Encoding;
 
 /**
  * Codec for integer (byte, short, int, long) data type page.
@@ -43,7 +45,6 @@ import org.apache.carbondata.core.metadata.datatype.DataType;
 public class AdaptiveDeltaIntegralCodec extends AdaptiveCodec {
 
   private ColumnPage encodedPage;
-
   private long max;
 
   public AdaptiveDeltaIntegralCodec(DataType srcDataType, DataType targetDataType,
@@ -51,20 +52,20 @@ public class AdaptiveDeltaIntegralCodec extends AdaptiveCodec {
     super(srcDataType, targetDataType, stats);
     switch (srcDataType) {
       case BYTE:
-        max = (byte) stats.getMax();
+        this.max = (byte) max;
         break;
       case SHORT:
-        max = (short) stats.getMax();
+        this.max = (short) max;
         break;
       case INT:
-        max = (int) stats.getMax();
+        this.max = (int) max;
         break;
       case LONG:
-        max = (long) stats.getMax();
+        this.max = (long) max;
         break;
       case FLOAT:
       case DOUBLE:
-        max = (long)((double) stats.getMax());
+        this.max = (long)(max);
         break;
     }
   }
@@ -75,49 +76,64 @@ public class AdaptiveDeltaIntegralCodec extends AdaptiveCodec {
   }
 
   @Override
-  public Encoder createEncoder(Map<String, String> parameter) {
-    final Compressor compressor = CompressorFactory.getInstance().getCompressor();
-    return new Encoder() {
+  public ColumnPageEncoder createEncoder(Map<String, String> parameter) {
+    return new ColumnPageEncoder() {
+      final Compressor compressor = CompressorFactory.getInstance().getCompressor();
+
       @Override
-      public EncodedColumnPage encode(ColumnPage input)
-          throws MemoryException, IOException {
-        encodedPage = ColumnPage.newPage(targetDataType, input.getPageSize(), stats.getScale(),
-            stats.getPrecision());
-        input.encode(codec);
+      protected byte[] encodeData(ColumnPage input) throws MemoryException, IOException {
+        if (encodedPage != null) {
+          throw new IllegalStateException("already encoded");
+        }
+        encodedPage = ColumnPage.newPage(targetDataType, input.getPageSize(),
+            input.getStatistics().getScale(), input.getStatistics().getPrecision());
+        input.convertValue(converter);
         byte[] result = encodedPage.compress(compressor);
         encodedPage.freeMemory();
-        return new EncodedMeasurePage(
-            input.getPageSize(),
-            result,
-            new AdaptiveDeltaIntegralCodecMeta(targetDataType, stats, compressor.getName()),
-            input.getNullBits());
+        return result;
       }
 
       @Override
-      public EncodedColumnPage[] encodeComplexColumn(ComplexColumnPage input) {
-        return AdaptiveDeltaIntegralCodec.super.encodeComplexColumn(input);
+      protected ColumnPageEncoderMeta getEncoderMeta(ColumnPage inputPage) {
+        return new AdaptiveDeltaIntegralEncoderMeta(
+            compressor.getName(), targetDataType, inputPage.getStatistics());
       }
+
+      @Override
+      protected List<Encoding> getEncodingList() {
+        List<Encoding> encodings = new ArrayList<>();
+        encodings.add(Encoding.ADAPTIVE_DELTA_INTEGRAL);
+        return encodings;
+      }
+
+      @Override
+      protected void fillLegacyFields(ColumnPage inputPage, DataChunk2 dataChunk)
+          throws IOException {
+        // NOP
+      }
+
     };
   }
 
   @Override
-  public Decoder createDecoder(ColumnPageCodecMeta meta) {
-    AdaptiveDeltaIntegralCodecMeta codecMeta = (AdaptiveDeltaIntegralCodecMeta) meta;
+  public ColumnPageDecoder createDecoder(ColumnPageEncoderMeta meta) {
+    AdaptiveDeltaIntegralEncoderMeta codecMeta = (AdaptiveDeltaIntegralEncoderMeta) meta;
     final Compressor compressor = CompressorFactory.getInstance().getCompressor(
         codecMeta.getCompressorName());
-    return new Decoder() {
+    return new ColumnPageDecoder() {
       @Override
       public ColumnPage decode(byte[] input, int offset, int length)
           throws MemoryException, IOException {
         ColumnPage page = ColumnPage.decompress(compressor, targetDataType, input, offset, length,
             stats.getScale(), stats.getPrecision());
-        return LazyColumnPage.newPage(page, codec);
+        DeltaIntegralConverter converter = new DeltaIntegralConverter(page, targetDataType,
+            srcDataType, stats.getMax());
+        return LazyColumnPage.newPage(page, converter);
       }
     };
   }
 
-  // encoded value = (max value of page) - (page value)
-  private PrimitiveCodec codec = new PrimitiveCodec() {
+  private ColumnPageValueConverter converter = new ColumnPageValueConverter() {
     @Override
     public void encode(int rowId, byte value) {
       switch (targetDataType) {
@@ -125,7 +141,7 @@ public class AdaptiveDeltaIntegralCodec extends AdaptiveCodec {
           encodedPage.putByte(rowId, (byte)(max - value));
           break;
         default:
-          throw new RuntimeException("internal error: " + debugInfo());
+          throw new RuntimeException("internal error");
       }
     }
 
@@ -139,7 +155,7 @@ public class AdaptiveDeltaIntegralCodec extends AdaptiveCodec {
           encodedPage.putShort(rowId, (short)(max - value));
           break;
         default:
-          throw new RuntimeException("internal error: " + debugInfo());
+          throw new RuntimeException("internal error");
       }
     }
 
@@ -159,7 +175,7 @@ public class AdaptiveDeltaIntegralCodec extends AdaptiveCodec {
           encodedPage.putInt(rowId, (int)(max - value));
           break;
         default:
-          throw new RuntimeException("internal error: " + debugInfo());
+          throw new RuntimeException("internal error");
       }
     }
 
@@ -182,7 +198,7 @@ public class AdaptiveDeltaIntegralCodec extends AdaptiveCodec {
           encodedPage.putLong(rowId, max - value);
           break;
         default:
-          throw new RuntimeException("internal error: " + debugInfo());
+          throw new RuntimeException("internal error");
       }
     }
 
@@ -205,7 +221,7 @@ public class AdaptiveDeltaIntegralCodec extends AdaptiveCodec {
           encodedPage.putLong(rowId, (long)(max - value));
           break;
         default:
-          throw new RuntimeException("internal error: " + debugInfo());
+          throw new RuntimeException("internal error");
       }
     }
 
@@ -228,7 +244,7 @@ public class AdaptiveDeltaIntegralCodec extends AdaptiveCodec {
           encodedPage.putLong(rowId, (long)(max - value));
           break;
         default:
-          throw new RuntimeException("internal error: " + debugInfo());
+          throw new RuntimeException("internal error");
       }
     }
 
@@ -270,13 +286,13 @@ public class AdaptiveDeltaIntegralCodec extends AdaptiveCodec {
     @Override
     public double decodeDouble(float value) {
       // this codec is for integer type only
-      throw new RuntimeException("internal error: " + debugInfo());
+      throw new RuntimeException("internal error");
     }
 
     @Override
     public double decodeDouble(double value) {
       // this codec is for integer type only
-      throw new RuntimeException("internal error: " + debugInfo());
+      throw new RuntimeException("internal error");
     }
   };
 }

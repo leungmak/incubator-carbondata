@@ -17,21 +17,28 @@
 
 package org.apache.carbondata.core.datastore.page.encoding;
 
+import java.io.IOException;
+
 import org.apache.carbondata.core.datastore.TableSpec;
 import org.apache.carbondata.core.datastore.compression.Compressor;
 import org.apache.carbondata.core.datastore.compression.CompressorFactory;
+import org.apache.carbondata.core.datastore.page.ColumnPage;
 import org.apache.carbondata.core.datastore.page.encoding.adaptive.AdaptiveDeltaIntegralCodec;
-import org.apache.carbondata.core.datastore.page.encoding.adaptive.AdaptiveDeltaIntegralCodecMeta;
+import org.apache.carbondata.core.datastore.page.encoding.adaptive.AdaptiveDeltaIntegralEncoderMeta;
 import org.apache.carbondata.core.datastore.page.encoding.adaptive.AdaptiveIntegralCodec;
-import org.apache.carbondata.core.datastore.page.encoding.adaptive.AdaptiveIntegralCodecMeta;
+import org.apache.carbondata.core.datastore.page.encoding.adaptive.AdaptiveIntegralEncoderMeta;
 import org.apache.carbondata.core.datastore.page.encoding.compress.DirectCompressCodec;
-import org.apache.carbondata.core.datastore.page.encoding.compress.DirectCompressorCodecMeta;
+import org.apache.carbondata.core.datastore.page.encoding.compress.DirectCompressorEncoderMeta;
+import org.apache.carbondata.core.datastore.page.encoding.dimension.legacy.ComplexDimensionIndexCodec;
+import org.apache.carbondata.core.datastore.page.encoding.dimension.legacy.DictDimensionIndexCodec;
+import org.apache.carbondata.core.datastore.page.encoding.dimension.legacy.DirectDictDimensionIndexCodec;
+import org.apache.carbondata.core.datastore.page.encoding.dimension.legacy.HighCardDictDimensionIndexCodec;
 import org.apache.carbondata.core.datastore.page.encoding.rle.RLECodec;
 import org.apache.carbondata.core.datastore.page.statistics.PrimitivePageStatsCollector;
 import org.apache.carbondata.core.datastore.page.statistics.SimpleStatsResult;
 import org.apache.carbondata.core.metadata.ValueEncoderMeta;
 import org.apache.carbondata.core.metadata.datatype.DataType;
-import org.apache.carbondata.core.metadata.encoder.Encoding;
+import org.apache.carbondata.format.Encoding;
 
 /**
  * Default strategy will select encoding base on column page data type and statistics
@@ -41,55 +48,88 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
   private static final int THREE_BYTES_MAX = (int) Math.pow(2, 23) - 1;
   private static final int THREE_BYTES_MIN = - THREE_BYTES_MAX - 1;
 
+  private static final boolean newWay = false;
+
   @Override
-  public Encoder createEncoder(TableSpec.ColumnSpec columnSpec, SimpleStatsResult stats) {
+  public ColumnPageEncoder createEncoder(TableSpec.ColumnSpec columnSpec, ColumnPage inputPage) {
     if (columnSpec instanceof TableSpec.MeasureSpec) {
-      switch (stats.getDataType()) {
-        case BYTE:
-        case SHORT:
-        case INT:
-        case LONG:
-          return selectCodecByAlgorithm(stats).createEncoder(null);
-        case FLOAT:
-        case DOUBLE:
-        case DECIMAL:
-        case BYTE_ARRAY:
-          return new DirectCompressCodec(stats).createEncoder(null);
-        default:
-          throw new RuntimeException("unsupported data type: " + stats.getDataType());
-      }
+      return createEncoderForMeasure(inputPage);
     } else {
-      TableSpec.DimensionSpec dimensionSpec = (TableSpec.DimensionSpec) columnSpec;
-      Compressor compressor = CompressorFactory.getInstance().getCompressor();
-      switch (dimensionSpec.getDimensionType()) {
-        case GLOBAL_DICTIONARY:
-          return new DictDimensionIndexCodec(
-              dimensionSpec.isInSortColumns(),
-              dimensionSpec.isInSortColumns() && dimensionSpec.isDoInvertedIndex(),
-              compressor).createEncoder(null);
-        case DIRECT_DICTIONARY:
-          return new DirectDictDimensionIndexCodec(
-              dimensionSpec.isInSortColumns(),
-              dimensionSpec.isInSortColumns() && dimensionSpec.isDoInvertedIndex(),
-              compressor).createEncoder(null);
-        case PLAIN_VALUE:
-          return new HighCardDictDimensionIndexCodec(
-              dimensionSpec.isInSortColumns(),
-              dimensionSpec.isInSortColumns() && dimensionSpec.isDoInvertedIndex(),
-              compressor).createEncoder(null);
-        case COMPLEX:
-          return new ComplexDimensionIndexCodec(false, false, compressor).createEncoder(null);
-        default:
-          throw new RuntimeException("unsupported dimension type: " +
-              dimensionSpec.getDimensionType());
+      if (newWay) {
+        return createEncoderForDimensionNewWay((TableSpec.DimensionSpec) columnSpec, inputPage);
+      } else {
+        return createEncoderForDimensionOldWay((TableSpec.DimensionSpec) columnSpec);
       }
     }
   }
 
+  private ColumnPageEncoder createEncoderForDimensionNewWay(TableSpec.DimensionSpec columnSpec,
+      ColumnPage inputPage) {
+    TableSpec.DimensionSpec dimensionSpec = columnSpec;
+    Compressor compressor = CompressorFactory.getInstance().getCompressor();
+    switch (dimensionSpec.getDimensionType()) {
+      case GLOBAL_DICTIONARY:
+      case DIRECT_DICTIONARY:
+      case PLAIN_VALUE:
+        SimpleStatsResult stats = inputPage.getStatistics();
+        return new DirectCompressCodec(stats).createEncoder(null);
+      case COMPLEX:
+        return new ComplexDimensionIndexCodec(false, false, compressor).createEncoder(null);
+      default:
+        throw new RuntimeException("unsupported dimension type: " +
+            dimensionSpec.getDimensionType());
+    }
+  }
+
+  private ColumnPageEncoder createEncoderForDimensionOldWay(TableSpec.DimensionSpec columnSpec) {
+    TableSpec.DimensionSpec dimensionSpec = columnSpec;
+    Compressor compressor = CompressorFactory.getInstance().getCompressor();
+    switch (dimensionSpec.getDimensionType()) {
+      case GLOBAL_DICTIONARY:
+        return new DictDimensionIndexCodec(
+            dimensionSpec.isInSortColumns(),
+            dimensionSpec.isInSortColumns() && dimensionSpec.isDoInvertedIndex(),
+            compressor).createEncoder(null);
+      case DIRECT_DICTIONARY:
+        return new DirectDictDimensionIndexCodec(
+            dimensionSpec.isInSortColumns(),
+            dimensionSpec.isInSortColumns() && dimensionSpec.isDoInvertedIndex(),
+            compressor).createEncoder(null);
+      case PLAIN_VALUE:
+        return new HighCardDictDimensionIndexCodec(
+            dimensionSpec.isInSortColumns(),
+            dimensionSpec.isInSortColumns() && dimensionSpec.isDoInvertedIndex(),
+            compressor).createEncoder(null);
+      case COMPLEX:
+        return new ComplexDimensionIndexCodec(false, false, compressor).createEncoder(null);
+      default:
+        throw new RuntimeException("unsupported dimension type: " +
+            dimensionSpec.getDimensionType());
+    }
+  }
+
+  private ColumnPageEncoder createEncoderForMeasure(ColumnPage columnPage) {
+    SimpleStatsResult stats = columnPage.getStatistics();
+    switch (stats.getDataType()) {
+      case BYTE:
+      case SHORT:
+      case INT:
+      case LONG:
+        return selectCodecByAlgorithm(stats).createEncoder(null);
+      case FLOAT:
+      case DOUBLE:
+      case DECIMAL:
+      case BYTE_ARRAY:
+        return new DirectCompressCodec(stats).createEncoder(null);
+      default:
+        throw new RuntimeException("unsupported data type: " + stats.getDataType());
+    }
+  }
+
   @Override
-  public Decoder createDecoder(ValueEncoderMeta meta) {
-    if (meta instanceof ColumnPageCodecMeta) {
-      return createDecoderByMeta((ColumnPageCodecMeta)meta);
+  public ColumnPageDecoder createDecoder(Encoding encoding, ValueEncoderMeta meta) throws IOException {
+    if (meta instanceof ColumnPageEncoderMeta) {
+      return createDecoderByMeta(encoding, (ColumnPageEncoderMeta)meta);
     } else {
       // for backward compatibility
       SimpleStatsResult stats = PrimitivePageStatsCollector.newInstance(meta);
@@ -105,7 +145,7 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
         case BYTE_ARRAY:
           // no dictionary dimension
           return new DirectCompressCodec(stats).createDecoder(
-              new DirectCompressorCodecMeta("snappy", stats.getDataType(), stats));
+              new DirectCompressorEncoderMeta("snappy", stats.getDataType(), stats));
         default:
           throw new RuntimeException("unsupported data type: " + stats.getDataType());
       }
@@ -207,23 +247,20 @@ public class DefaultEncodingStrategy extends EncodingStrategy {
   /**
    * select codec based on input metadata
    */
-  private Decoder createDecoderByMeta(ColumnPageCodecMeta meta) {
-    Encoding encoding = meta.getEncoding();
+  private ColumnPageDecoder createDecoderByMeta(Encoding encoding, ColumnPageEncoderMeta meta) {
+    SimpleStatsResult stats = PrimitivePageStatsCollector.newInstance(meta);
     switch (encoding) {
       case ADAPTIVE_INTEGRAL:
-        SimpleStatsResult stats = PrimitivePageStatsCollector.newInstance(meta);
-        AdaptiveIntegralCodecMeta codecMeta = (AdaptiveIntegralCodecMeta)meta;
+        AdaptiveIntegralEncoderMeta codecMeta = (AdaptiveIntegralEncoderMeta)meta;
         return new AdaptiveIntegralCodec(codecMeta.getDataType(),
             codecMeta.getTargetDataType(), stats).createDecoder(meta);
       case ADAPTIVE_DELTA_INTEGRAL:
-        stats = PrimitivePageStatsCollector.newInstance(meta);
-        AdaptiveDeltaIntegralCodecMeta deltaCodecMeta = (AdaptiveDeltaIntegralCodecMeta)meta;
+        AdaptiveDeltaIntegralEncoderMeta deltaCodecMeta = (AdaptiveDeltaIntegralEncoderMeta)meta;
         return new AdaptiveDeltaIntegralCodec(deltaCodecMeta.getDataType(),
             deltaCodecMeta.getTargetDataType(), stats).createDecoder(meta);
       case RLE_INTEGRAL:
         return new RLECodec().createDecoder(meta);
       case DIRECT_COMPRESS:
-        stats = PrimitivePageStatsCollector.newInstance(meta);
         return new DirectCompressCodec(stats).createDecoder(meta);
       default:
         throw new RuntimeException("unknown encoding: " + encoding);
