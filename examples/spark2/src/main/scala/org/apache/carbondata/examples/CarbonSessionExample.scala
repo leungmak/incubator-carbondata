@@ -55,12 +55,19 @@ object CarbonSessionExample {
     spark.sql(
       s"""
          | CREATE TABLE carbon_table(
+         | shortField SHORT,
          | intField INT,
+         | bigintField LONG,
+         | doubleField DOUBLE,
          | stringField STRING,
-         | charField CHAR(5)
+         | timestampField TIMESTAMP,
+         | decimalField DECIMAL(18,2),
+         | dateField DATE,
+         | charField CHAR(5),
+         | floatField FLOAT
          | )
          | STORED BY 'carbondata'
-         | TBLPROPERTIES('SORT_COLUMNS'='', 'DICTIONARY_INCLUDE'='charField')
+         | TBLPROPERTIES('SORT_COLUMNS'='', 'DICTIONARY_INCLUDE'='dateField, charField')
        """.stripMargin)
 
     val path = s"$rootPath/examples/spark2/src/main/resources/data.csv"
@@ -79,7 +86,7 @@ object CarbonSessionExample {
       s"""
          | SELECT *
          | FROM carbon_table
-         | WHERE stringfield = 'spark'
+         | WHERE stringfield = 'spark' and decimalField > 40
       """.stripMargin).show()
 
     spark.sql(

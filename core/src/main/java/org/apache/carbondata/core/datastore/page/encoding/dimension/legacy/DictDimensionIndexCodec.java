@@ -64,7 +64,6 @@ public class DictDimensionIndexCodec extends IndexStorageCodec {
           } else {
             indexStorage = new BlockIndexerStorageForInt(data, true, false, isSort);
           }
-          encodings.add(Encoding.RLE);
           if (indexStorage.getRowIdPage() != null) {
             encodings.add(Encoding.INVERTED_INDEX);
           }
@@ -96,6 +95,7 @@ public class DictDimensionIndexCodec extends IndexStorageCodec {
         SortState sort = (indexStorage.getRowIdPageLengthInBytes() > 0) ?
             SortState.SORT_EXPLICIT : SortState.SORT_NATIVE;
         dataChunk.setSort_state(sort);
+        encodings.add(Encoding.RLE);
       }
 
       @Override
