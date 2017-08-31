@@ -18,6 +18,7 @@
 package org.apache.carbondata.core.datastore.page;
 
 import java.math.BigDecimal;
+import java.util.BitSet;
 
 import org.apache.carbondata.core.metadata.datatype.DataType;
 import org.apache.carbondata.core.util.ByteUtil;
@@ -28,6 +29,7 @@ import org.apache.carbondata.core.util.ByteUtil;
 public class SafeFixLengthColumnPage extends ColumnPage {
 
   // Only one of following fields will be used
+  private BitSet boolData;
   private byte[] byteData;
   private short[] shortData;
   private int[] intData;
@@ -38,6 +40,15 @@ public class SafeFixLengthColumnPage extends ColumnPage {
 
   SafeFixLengthColumnPage(DataType dataType, int pageSize, int scale, int precision) {
     super(dataType, pageSize, scale, precision);
+  }
+
+  @Override
+  public void setBoolPage(boolean[] boolData) {
+    for (int i = 0; i < boolData.length; i++) {
+      if (boolData[i]) {
+        this.boolData.set(i);
+      }
+    }
   }
 
   /**
@@ -310,6 +321,13 @@ public class SafeFixLengthColumnPage extends ColumnPage {
 
   @Override
   public void freeMemory() {
+  }
+
+  @Override
+  public void putBool(int rowId, boolean value) {
+    if (value) {
+      this.boolData.set(rowId);
+    }
   }
 
   /**

@@ -31,6 +31,7 @@ import org.apache.carbondata.core.datastore.page.encoding.adaptive.AdaptiveFloat
 import org.apache.carbondata.core.datastore.page.encoding.adaptive.AdaptiveFloatingEncoderMeta;
 import org.apache.carbondata.core.datastore.page.encoding.adaptive.AdaptiveIntegralCodec;
 import org.apache.carbondata.core.datastore.page.encoding.adaptive.AdaptiveIntegralEncoderMeta;
+import org.apache.carbondata.core.datastore.page.encoding.bool.BoolEncoderMeta;
 import org.apache.carbondata.core.datastore.page.encoding.compress.DirectCompressCodec;
 import org.apache.carbondata.core.datastore.page.encoding.compress.DirectCompressorEncoderMeta;
 import org.apache.carbondata.core.datastore.page.encoding.rle.RLECodec;
@@ -95,6 +96,10 @@ public abstract class EncodingStrategy {
       SimpleStatsResult stats = PrimitivePageStatsCollector.newInstance(metadata);
       return new AdaptiveFloatingCodec(metadata.getDataType(), metadata.getTargetDataType(),
           stats).createDecoder(metadata);
+    } else if (encoding == BOOL_BITSET) {
+      BoolEncoderMeta metadata = new BoolEncoderMeta();
+      metadata.readFields(in);
+      return new BoolPageEncoder().createDecoder(metadata);
     } else {
       // for backward compatibility
       ValueEncoderMeta metadata = CarbonUtil.deserializeEncoderMetaV3(encoderMeta);

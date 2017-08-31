@@ -168,6 +168,7 @@ public abstract class ColumnPage {
     ColumnPage instance;
     if (unsafe) {
       switch (dataType) {
+        case BOOLEAN:
         case BYTE:
         case SHORT:
         case SHORT_INT:
@@ -187,6 +188,8 @@ public abstract class ColumnPage {
       }
     } else {
       switch (dataType) {
+        case BOOLEAN:
+          instance = newBoolPage(new boolean[pageSize]);
         case BYTE:
           instance = newBytePage(new byte[pageSize]);
           break;
@@ -225,6 +228,12 @@ public abstract class ColumnPage {
   public static ColumnPage wrapByteArrayPage(byte[][] byteArray) {
     ColumnPage columnPage = createPage(BYTE_ARRAY, byteArray.length, -1, -1);
     columnPage.setByteArrayPage(byteArray);
+    return columnPage;
+  }
+
+  private static ColumnPage newBoolPage(boolean[] boolData) {
+    ColumnPage columnPage = createPage(BYTE, boolData.length,  -1, -1);
+    columnPage.setBytePage(boolData);
     return columnPage;
   }
 
@@ -289,6 +298,11 @@ public abstract class ColumnPage {
   /**
    * Set byte values to page
    */
+  public abstract void setBoolPage(boolean[] byteData);
+
+  /**
+   * Set byte values to page
+   */
   public abstract void setBytePage(byte[] byteData);
 
   /**
@@ -342,6 +356,9 @@ public abstract class ColumnPage {
       return;
     }
     switch (dataType) {
+      case BOOLEAN:
+        int data = (int) value;
+        putBool(rowId, data == 1 ? true : false);
       case BYTE:
         putByte(rowId, (byte) value);
         statsCollector.update((byte) value);
@@ -375,6 +392,11 @@ public abstract class ColumnPage {
         throw new RuntimeException("unsupported data type: " + dataType);
     }
   }
+
+  /**
+   * Set byte value at rowId
+   */
+  public abstract void putBool(int rowId, boolean value);
 
   /**
    * Set byte value at rowId
@@ -427,6 +449,9 @@ public abstract class ColumnPage {
    */
   private void putNull(int rowId) {
     switch (dataType) {
+      case BOOLEAN:
+        putBool(rowId, false);
+        break;
       case BYTE:
         putByte(rowId, (byte) 0);
         break;
@@ -449,6 +474,8 @@ public abstract class ColumnPage {
         throw new IllegalArgumentException("unsupported data type: " + dataType);
     }
   }
+
+  public abstract boolean getBool(int rowId);
 
   /**
    * Get byte value at rowId
@@ -495,6 +522,10 @@ public abstract class ColumnPage {
    */
   public abstract byte[] getBytes(int rowId);
 
+  /**
+   * Get byte array at rowId
+   */
+  public abstract BitSet getBoolPage();
   /**
    * Get byte value page
    */

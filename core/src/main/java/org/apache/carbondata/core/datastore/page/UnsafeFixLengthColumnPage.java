@@ -56,6 +56,7 @@ public class UnsafeFixLengthColumnPage extends ColumnPage {
       throws MemoryException {
     super(dataType, pageSize, scale, precision);
     switch (dataType) {
+      case BOOLEAN:
       case BYTE:
       case SHORT:
       case INT:
@@ -77,6 +78,11 @@ public class UnsafeFixLengthColumnPage extends ColumnPage {
       case STRING:
         throw new UnsupportedOperationException("invalid data type: " + dataType);
     }
+  }
+
+  @Override
+  public void setBoolPage(boolean[] byteData) {
+    // TODO
   }
 
   @Override
@@ -324,6 +330,10 @@ public class UnsafeFixLengthColumnPage extends ColumnPage {
       baseAddress = null;
       baseOffset = 0;
     }
+  }
+
+  @Override public void putBool(int rowId, boolean value) {
+
   }
 
   @Override

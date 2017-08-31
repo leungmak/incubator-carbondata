@@ -53,6 +53,7 @@ enum Encoding{
 	RLE_INTEGRAL = 9;     // Identifies that a column is encoded using RLECodec
 	DIRECT_STRING = 10;   // Stores string value and string length separately in page data
   ADAPTIVE_FLOATING = 11; // Identifies that a column is encoded using AdaptiveFloatingCodec
+  BOOL_BITSET = 12; // TODO
 }
 
 enum PartitionType{
