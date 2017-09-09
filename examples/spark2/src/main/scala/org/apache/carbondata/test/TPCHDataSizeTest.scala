@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.examples
+package org.apache.carbondata.test
 
 import java.io.File
 
@@ -25,7 +25,7 @@ import org.apache.carbondata.core.constants.{CarbonCommonConstants, CarbonV3Data
 import org.apache.carbondata.core.util.CarbonProperties
 
 // scalastyle:off println
-object TPCHTest {
+object TPCHDataSizeTest {
 
   val blockletSize = "128"
   val blockSize = "300"
