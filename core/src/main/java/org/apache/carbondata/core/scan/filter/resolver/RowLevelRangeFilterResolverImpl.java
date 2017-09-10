@@ -279,8 +279,9 @@ public class RowLevelRangeFilterResolverImpl extends ConditionalFilterResolverIm
       // if any filter member provided by user is invalid throw error else
       // system can display inconsistent result.
       for (ExpressionResult result : listOfExpressionResults) {
-        filterValuesList.add(directDictionaryGenerator
-            .generateDirectSurrogateKey(result.getString(),
+        filterValuesList.add(
+            directDictionaryGenerator.generateDirectSurrogateKey(
+                result.getString(),
                 CarbonCommonConstants.CARBON_TIMESTAMP_DEFAULT_FORMAT));
       }
     } catch (FilterIllegalMemberException e) {
