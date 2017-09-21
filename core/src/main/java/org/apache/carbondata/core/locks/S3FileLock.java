@@ -30,14 +30,15 @@ import org.apache.carbondata.core.util.CarbonProperties;
 
 import org.apache.hadoop.conf.Configuration;
 
+
 /**
  * This class is used to handle the HDFS File locking.
  * This is acheived using the concept of acquiring the data out stream using Append option.
  */
-public class HdfsFileLock extends AbstractCarbonLock {
+public class S3FileLock extends AbstractCarbonLock {
 
   private static final LogService LOGGER =
-             LogServiceFactory.getLogService(HdfsFileLock.class.getName());
+      LogServiceFactory.getLogService(S3FileLock.class.getName());
   /**
    * location hdfs file location
    */
@@ -49,15 +50,13 @@ public class HdfsFileLock extends AbstractCarbonLock {
 
   static {
     Configuration conf = new Configuration(true);
-    String hdfsPath = conf.get(CarbonCommonConstants.FS_DEFAULT_FS);
-    // By default, we put the hdfs lock meta file for one table inside this table's store folder.
+    String s3Path = conf.get(CarbonCommonConstants.FS_DEFAULT_FS);
+    // By default, we put the s3 lock meta file for one table inside this table's store folder.
     // If can not get the STORE_LOCATION, then use hadoop.tmp.dir .
     tmpPath = CarbonProperties.getInstance().getProperty(CarbonCommonConstants.STORE_LOCATION,
-               System.getProperty(CarbonCommonConstants.HDFS_TEMP_LOCATION));
-    if (!tmpPath.startsWith(CarbonCommonConstants.HDFSURL_PREFIX) && !tmpPath
-        .startsWith(CarbonCommonConstants.VIEWFSURL_PREFIX) && !tmpPath
-        .startsWith(CarbonCommonConstants.ALLUXIOURL_PREFIX) ) {
-      tmpPath = hdfsPath + tmpPath;
+        System.getProperty(CarbonCommonConstants.HDFS_TEMP_LOCATION));
+    if (!tmpPath.startsWith(CarbonCommonConstants.S3URL_PREFIX)) {
+      tmpPath = s3Path + tmpPath;
     }
   }
 
@@ -65,17 +64,17 @@ public class HdfsFileLock extends AbstractCarbonLock {
    * @param lockFileLocation
    * @param lockFile
    */
-  public HdfsFileLock(String lockFileLocation, String lockFile) {
+  public S3FileLock(String lockFileLocation, String lockFile) {
     this.location = tmpPath + CarbonCommonConstants.FILE_SEPARATOR + lockFileLocation
         + CarbonCommonConstants.FILE_SEPARATOR + lockFile;
-    LOGGER.info("HDFS lock path:" + this.location);
+    LOGGER.info("S3 lock path:" + this.location);
     initRetry();
   }
 
   /**
    * @param lockFilePath
    */
-  public HdfsFileLock(String lockFilePath) {
+  public S3FileLock(String lockFilePath) {
     this.location = lockFilePath;
     initRetry();
   }
@@ -84,7 +83,7 @@ public class HdfsFileLock extends AbstractCarbonLock {
    * @param tableIdentifier
    * @param lockFile
    */
-  public HdfsFileLock(CarbonTableIdentifier tableIdentifier, String lockFile) {
+  public S3FileLock(CarbonTableIdentifier tableIdentifier, String lockFile) {
     this(tableIdentifier.getDatabaseName() + CarbonCommonConstants.FILE_SEPARATOR + tableIdentifier
         .getTableName(), lockFile);
   }

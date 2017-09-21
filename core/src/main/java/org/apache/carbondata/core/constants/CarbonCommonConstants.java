@@ -144,6 +144,12 @@ public final class CarbonCommonConstants {
    * ALLUXIO_PREFIX
    */
   public static final String ALLUXIOURL_PREFIX = "alluxio://";
+
+  /**
+   * VIEWS3URL_PREFIX
+   */
+  public static final String S3URL_PREFIX = "s3a://";
+
   /**
    * FS_DEFAULT_FS
    */
@@ -921,6 +927,11 @@ public final class CarbonCommonConstants {
    * HDFSLOCK TYPE
    */
   public static final String CARBON_LOCK_TYPE_HDFS = "HDFSLOCK";
+
+  /**
+   * HDFSLOCK TYPE
+   */
+  public static final String CARBON_LOCK_TYPE_S3 = "S3LOCK";
 
   /**
    * Invalid filter member log string

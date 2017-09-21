@@ -69,6 +69,8 @@ public final class FileFactory {
       case ALLUXIO:
       case VIEWFS:
         return new DFSFileHolderImpl();
+      case S3:
+        return new S3FileHolderImpl();
       default:
         return new FileHolderImpl();
     }
@@ -83,6 +85,9 @@ public final class FileFactory {
     }
     else if (path.startsWith(CarbonCommonConstants.VIEWFSURL_PREFIX)) {
       return FileType.VIEWFS;
+    }
+    else if (path.startsWith(CarbonCommonConstants.S3URL_PREFIX)) {
+      return FileType.S3;
     }
     return FileType.LOCAL;
   }
@@ -101,6 +106,8 @@ public final class FileFactory {
         return new AlluxioCarbonFile(path);
       case VIEWFS:
         return new ViewFSCarbonFile(path);
+      case S3:
+        return new S3CarbonFile(path);
       default:
         return new LocalCarbonFile(getUpdatedFilePath(path, fileType));
     }
@@ -150,6 +157,28 @@ public final class FileFactory {
           stream = codec.createInputStream(stream);
         }
         break;
+      case S3:
+        Path s3Path = new Path(path);
+        FileSystem s3Fs = new CarbonS3FileSystem();
+        s3Fs.initialize(s3Path.toUri(),configuration);
+        if (bufferSize == -1) {
+          stream = s3Fs.open(s3Path);
+        } else {
+          stream = s3Fs.open(s3Path, bufferSize);
+        }
+        String s3CodecName = null;
+        if (gzip) {
+          s3CodecName = GzipCodec.class.getName();
+        } else if (bzip2) {
+          s3CodecName = BZip2Codec.class.getName();
+        }
+        if (null != s3CodecName) {
+          CompressionCodecFactory ccf = new CompressionCodecFactory(configuration);
+          CompressionCodec codec = ccf.getCodecByClassName(s3CodecName);
+          stream = codec.createInputStream(stream);
+        }
+        break;
+
       default:
         throw new UnsupportedOperationException("unsupported file system");
     }
@@ -178,6 +207,13 @@ public final class FileFactory {
         FSDataInputStream stream = fs.open(pt, bufferSize);
         stream.seek(offset);
         return new DataInputStream(new BufferedInputStream(stream));
+      case S3:
+        Path s3Path = new Path(path);
+        FileSystem s3Fs = new CarbonS3FileSystem();
+        s3Fs.initialize(s3Path.toUri(),configuration);
+        FSDataInputStream s3Stream = s3Fs.open(s3Path, bufferSize);
+        s3Stream.seek(offset);
+        return new DataInputStream(new BufferedInputStream(s3Stream));
       default:
         path = getUpdatedFilePath(path, fileType);
         FileInputStream fis = new FileInputStream(path);
@@ -203,6 +239,11 @@ public final class FileFactory {
         Path pt = new Path(path);
         FileSystem fs = pt.getFileSystem(configuration);
         return fs.create(pt, true);
+      case S3:
+        Path s3Path = new Path(path);
+        FileSystem s3Fs = new CarbonS3FileSystem();
+        s3Fs.initialize(s3Path.toUri(),configuration);
+        return s3Fs.create(s3Path, true);
       default:
         return new DataOutputStream(new BufferedOutputStream(new FileOutputStream(path)));
     }
@@ -234,6 +275,23 @@ public final class FileFactory {
           stream = fs.create(pt, true, bufferSize);
         }
         return stream;
+      case S3:
+        Path s3Path = new Path(path);
+        FileSystem s3Fs = new CarbonS3FileSystem();
+        s3Fs.initialize(s3Path.toUri(),configuration);
+        FSDataOutputStream s3Stream;
+        if (append) {
+          // append to a file only if file already exists else file not found
+          // exception will be thrown by hdfs
+          if (CarbonUtil.isFileExists(path)) {
+            s3Stream = s3Fs.append(s3Path, bufferSize);
+          } else {
+            s3Stream = s3Fs.create(s3Path, true, bufferSize);
+          }
+        } else {
+          s3Stream = s3Fs.create(s3Path, true, bufferSize);
+        }
+        return s3Stream;
       default:
         path = getUpdatedFilePath(path, fileType);
         return new DataOutputStream(
@@ -255,6 +313,11 @@ public final class FileFactory {
         Path pt = new Path(path);
         FileSystem fs = pt.getFileSystem(configuration);
         return fs.create(pt, true, bufferSize, fs.getDefaultReplication(pt), blockSize);
+      case S3:
+        Path s3Path = new Path(path);
+        FileSystem s3Fs = new CarbonS3FileSystem();
+        s3Fs.initialize(s3Path.toUri(),configuration);
+        return s3Fs.create(s3Path, true, bufferSize, s3Fs.getDefaultReplication(s3Path), blockSize);
       default:
         path = getUpdatedFilePath(path, fileType);
         return new DataOutputStream(
@@ -284,7 +347,15 @@ public final class FileFactory {
         } else {
           return fs.exists(path);
         }
-
+      case S3:
+        Path s3Path = new Path(filePath);
+        FileSystem s3Fs = new CarbonS3FileSystem();
+        s3Fs.initialize(s3Path.toUri(),configuration);
+        if (performFileCheck) {
+          return s3Fs.exists(s3Path) && s3Fs.isFile(s3Path);
+        } else {
+          return s3Fs.exists(s3Path);
+        }
       case LOCAL:
       default:
         filePath = getUpdatedFilePath(filePath, fileType);
@@ -315,6 +386,12 @@ public final class FileFactory {
         FileSystem fs = path.getFileSystem(configuration);
         return fs.exists(path);
 
+      case S3:
+      Path s3Path = new Path(filePath);
+      FileSystem s3Fs = new CarbonS3FileSystem();
+      s3Fs.initialize(s3Path.toUri(),configuration);
+      return s3Fs.exists(s3Path);
+
       case LOCAL:
       default:
         filePath = getUpdatedFilePath(filePath, fileType);
@@ -332,6 +409,11 @@ public final class FileFactory {
         Path path = new Path(filePath);
         FileSystem fs = path.getFileSystem(configuration);
         return fs.createNewFile(path);
+      case S3:
+        Path s3Path = new Path(filePath);
+        FileSystem s3Fs = new CarbonS3FileSystem();
+        s3Fs.initialize(s3Path.toUri(),configuration);
+        return s3Fs.createNewFile(s3Path);
 
       case LOCAL:
       default:
@@ -350,6 +432,11 @@ public final class FileFactory {
         Path path = new Path(filePath);
         FileSystem fs = path.getFileSystem(configuration);
         return fs.delete(path, true);
+      case S3:
+        Path s3Path = new Path(filePath);
+        FileSystem s3Fs = new CarbonS3FileSystem();
+        s3Fs.initialize(s3Path.toUri(),configuration);
+        return s3Fs.delete(s3Path,true);
 
       case LOCAL:
       default:
@@ -399,6 +486,11 @@ public final class FileFactory {
         Path path = new Path(filePath);
         FileSystem fs = path.getFileSystem(configuration);
         return fs.mkdirs(path);
+      case S3:
+        Path s3Path = new Path(filePath);
+        FileSystem s3Fs = new CarbonS3FileSystem();
+        s3Fs.initialize(s3Path.toUri(),configuration);
+        return s3Fs.mkdirs(s3Path);
       case LOCAL:
       default:
         filePath = getUpdatedFilePath(filePath, fileType);
@@ -428,6 +520,11 @@ public final class FileFactory {
         Path pt = new Path(path);
         FileSystem fs = pt.getFileSystem(configuration);
         return fs.append(pt);
+      case S3:
+        Path s3Path = new Path(path);
+        FileSystem s3Fs = new CarbonS3FileSystem();
+        s3Fs.initialize(s3Path.toUri(),configuration);
+        return s3Fs.append(s3Path);
       default:
         return new DataOutputStream(new BufferedOutputStream(new FileOutputStream(path)));
     }
@@ -455,6 +552,15 @@ public final class FileFactory {
           return true;
         }
         return false;
+      case S3:
+        Path s3Path = new Path(filePath);
+        FileSystem s3Fs = new CarbonS3FileSystem();
+        s3Fs.initialize(s3Path.toUri(),configuration);
+        if (s3Fs.createNewFile(s3Path)) {
+          s3Fs.deleteOnExit(s3Path);
+          return true;
+        }
+        return false;
       case LOCAL:
       default:
         filePath = getUpdatedFilePath(filePath, fileType);
@@ -464,7 +570,7 @@ public final class FileFactory {
   }
 
   public enum FileType {
-    LOCAL, HDFS, ALLUXIO, VIEWFS
+    LOCAL, HDFS, ALLUXIO, VIEWFS, S3
   }
 
   /**
@@ -481,6 +587,7 @@ public final class FileFactory {
       case HDFS:
       case ALLUXIO:
       case VIEWFS:
+      case S3:
         return filePath;
       case LOCAL:
       default:
@@ -532,6 +639,11 @@ public final class FileFactory {
         Path path = new Path(filePath);
         FileSystem fs = path.getFileSystem(configuration);
         return fs.getContentSummary(path).getLength();
+      case S3:
+        Path s3Path = new Path(filePath);
+        FileSystem s3Fs = new CarbonS3FileSystem();
+        s3Fs.initialize(s3Path.toUri(),configuration);
+        return s3Fs.getContentSummary(s3Path).getLength();
       case LOCAL:
       default:
         filePath = getUpdatedFilePath(filePath, fileType);

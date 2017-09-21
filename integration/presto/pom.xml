@@ -457,12 +457,6 @@
       <resource>
         <directory>src/resources</directory>
       </resource>
-      <resource>
-        <directory>.</directory>
-        <includes>
-          <include>CARBON_SPARK_INTERFACELogResource.properties</include>
-        </includes>
-      </resource>
     </resources>
     <plugins>
       <plugin>
@@ -478,7 +472,6 @@
         <version>2.18</version>
         <!-- Note config is repeated in scalatest config -->
         <configuration>
-          <skip>false</skip>
           <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
           <argLine>-Xmx3g -XX:MaxPermSize=512m -XX:ReservedCodeCacheSize=512m</argLine>
           <systemProperties>
@@ -486,6 +479,9 @@
           </systemProperties>
           <testFailureIgnore>false</testFailureIgnore>
           <failIfNoTests>false</failIfNoTests>
+          <forkMode>once</forkMode>
+          <skipAfterFailureCount>1</skipAfterFailureCount>
+          <debugForkedProcess>true</debugForkedProcess>
         </configuration>
       </plugin>
 
@@ -562,7 +558,6 @@
         </configuration>
       </plugin>
       <plugin>
-
         <groupId>org.scalatest</groupId>
         <artifactId>scalatest-maven-plugin</artifactId>
         <version>1.0</version>
@@ -574,9 +569,6 @@
           <filereports>CarbonTestSuite.txt</filereports>
           <argLine>-ea -Xmx3g -XX:MaxPermSize=512m -XX:ReservedCodeCacheSize=512m
           </argLine>
-          <stderr />
-          <environmentVariables>
-          </environmentVariables>
           <systemProperties>
             <java.awt.headless>true</java.awt.headless>
           </systemProperties>
@@ -587,6 +579,16 @@
             <goals>
               <goal>test</goal>
             </goals>
+          </execution>
+          <execution>
+            <id>integration-test</id>
+            <phase>integration-test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <suffixes>(?&lt;=Integration)(test|Spec)</suffixes>
+            </configuration>
           </execution>
         </executions>
       </plugin>
