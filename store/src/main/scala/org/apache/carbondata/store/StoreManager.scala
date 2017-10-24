@@ -37,9 +37,59 @@ import org.apache.carbondata.core.service.CarbonCommonFactory
 import org.apache.carbondata.core.util.{CarbonProperties, CarbonUtil, DataTypeUtil}
 import org.apache.carbondata.store.util.{CommonUtil, DataTypeConverterUtil, PartitionUtils}
 
+class Table {
+  private TableInfo tableInfo
+
+  def get
+}
+
 object StoreManager {
 
   private val LOGGER = LogServiceFactory.getLogService(this.getClass.getCanonicalName)
+
+  // Table management API
+  // createTable: Table (persist on hdfs)
+  // dropTable: boolean (delete all metadata)
+  // existTable(string): boolean
+  // getTable(string): Table
+  // alterTableAddColumn(string, StructType): boolean (update and persist)
+  // alterTableDropColumn(string, StructType): boolean (update and persist)
+  // alterRenameTable(String, String): boolean
+  // alterTableChangeDataType(string, StructField)
+  // cleanTable(string):boolean (delete all stale data)
+  // deleteSegmentById(string, segmentId):boolean
+  // deleteSegmentByDate(string, date):boolean
+  // getAllSegments(string): List<Segment> (segment object is immutable containing information)
+
+
+  // Table Loader API
+  // solution 1:
+  // createLoader(EngineInterface): void    (engineinterface wrap all callback)
+  // loader.loadData(string, InputFormat class of the input file and configuration object,
+  //                 isOverwrite): boolean indicate success or not
+  // in loadData, we will manipulate all segment metadata and launch job using EngineInterface
+  // ??? insertSelect(string, input file and configuration object, isOverwrite)
+
+  // Table Compactor API
+  // createCompactor(EngineInterface)
+  // compactor.compactTable(string, segmentID)
+
+  // Internal API for metadata
+  // openNewSegment(): SegmentID as a string
+  // commitSegment(SegmentID)
+  // closeOnFail(SegmentID)
+  // dropSegments(list of SegmentID)
+  // overwriteWithSegment(SegmentID)
+
+  // Internal API for data
+  // SegmentTaskOutputFormat, OutputCommitter
+  // DictionaryOutputFormat (need to move to java from CarbonGlobalDictionaryGenerateRDD)
+
+
+  // delete all class in org.apache.spark.util command main function
+
+
+  // EngineInterface
 
   def createTable(
       tableName: String,
