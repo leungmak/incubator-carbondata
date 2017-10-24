@@ -71,6 +71,25 @@ object CarbonSessionExample {
          | TBLPROPERTIES('SORT_COLUMNS'='', 'DICTIONARY_INCLUDE'='dateField, charField')
        """.stripMargin)
 
+    spark.sql(
+      s"""
+         | CREATE TABLE carbon_table(
+         | shortField SHORT,
+         | intField INT,
+         | bigintField LONG,
+         | doubleField DOUBLE,
+         | stringField STRING,
+         | timestampField TIMESTAMP,
+         | decimalField DECIMAL(18,2),
+         | dateField DATE,
+         | charField CHAR(5),
+         | floatField FLOAT,
+         | complexData ARRAY<STRING>
+         | )
+         | USING BY 'carbondata'
+         | TBLPROPERTIES('SORT_COLUMNS'='', 'DICTIONARY_INCLUDE'='dateField, charField')
+       """.stripMargin)
+
     val path = s"$rootPath/examples/spark2/src/main/resources/data.csv"
 
     // scalastyle:off
