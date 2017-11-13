@@ -478,9 +478,8 @@ public final class CarbonDataMergerUtil {
       SimpleDateFormat sdf = new SimpleDateFormat(CarbonCommonConstants.CARBON_TIMESTAMP);
       for (LoadMetadataDetails segment : listOfSegmentsBelowThresholdSize) {
         // compaction should skip streaming segments
-        if (CarbonCommonConstants.STORE_LOADSTATUS_STREAMING.equals(segment.getLoadStatus()) ||
-            CarbonCommonConstants.STORE_LOADSTATUS_STREAMING_FINISH.equals(
-                segment.getLoadStatus())) {
+        if (segment.getSegmentStatus() == SegmentStatus.STREAMING ||
+            segment.getSegmentStatus() == SegmentStatus.STREAMING_FINISH) {
           continue;
         }
 
@@ -513,9 +512,8 @@ public final class CarbonDataMergerUtil {
     } else {
       for (LoadMetadataDetails segment : listOfSegmentsBelowThresholdSize) {
         // compaction should skip streaming segments
-        if (CarbonCommonConstants.STORE_LOADSTATUS_STREAMING.equals(segment.getLoadStatus()) ||
-            CarbonCommonConstants.STORE_LOADSTATUS_STREAMING_FINISH.equals(
-                segment.getLoadStatus())) {
+        if (segment.getSegmentStatus() == SegmentStatus.STREAMING ||
+            segment.getSegmentStatus() == SegmentStatus.STREAMING_FINISH) {
           continue;
         }
         loadsOfSameDate.add(segment);
@@ -597,8 +595,8 @@ public final class CarbonDataMergerUtil {
     // check size of each segment , sum it up across partitions
     for (LoadMetadataDetails segment : listOfSegmentsAfterPreserve) {
       // compaction should skip streaming segments
-      if (CarbonCommonConstants.STORE_LOADSTATUS_STREAMING.equals(segment.getLoadStatus()) ||
-          CarbonCommonConstants.STORE_LOADSTATUS_STREAMING_FINISH.equals(segment.getLoadStatus())) {
+      if (segment.getSegmentStatus() == SegmentStatus.STREAMING ||
+          segment.getSegmentStatus() == SegmentStatus.STREAMING_FINISH) {
         continue;
       }
 
@@ -707,8 +705,8 @@ public final class CarbonDataMergerUtil {
     // check size of each segment , sum it up across partitions
     for (LoadMetadataDetails segment : listOfSegmentsAfterPreserve) {
       // compaction should skip streaming segments
-      if (CarbonCommonConstants.STORE_LOADSTATUS_STREAMING.equals(segment.getLoadStatus()) ||
-          CarbonCommonConstants.STORE_LOADSTATUS_STREAMING_FINISH.equals(segment.getLoadStatus())) {
+      if (segment.getSegmentStatus() == SegmentStatus.STREAMING ||
+          segment.getSegmentStatus() == SegmentStatus.STREAMING_FINISH) {
         continue;
       }
       String segName = segment.getLoadName();
