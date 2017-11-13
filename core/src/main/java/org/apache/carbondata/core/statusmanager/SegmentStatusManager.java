@@ -280,14 +280,13 @@ public class SegmentStatusManager {
         CarbonTablePath carbonTablePath = CarbonStorePath.getCarbonTablePath(
             identifier.getStorePath(), identifier.getCarbonTableIdentifier());
         String dataLoadLocation = carbonTablePath.getTableStatusFilePath();
-        LoadMetadataDetails[] listOfLoadFolderDetailsArray = null;
         if (!FileFactory.isFileExist(dataLoadLocation, FileFactory.getFileType(dataLoadLocation))) {
           // log error.
           LOG.error("Load metadata file is not present.");
           return loadIds;
         }
         // read existing metadata details in load metadata.
-        listOfLoadFolderDetailsArray = readLoadMetadata(tableFolderPath);
+        LoadMetadataDetails[] listOfLoadFolderDetailsArray = readLoadMetadata(tableFolderPath);
         if (listOfLoadFolderDetailsArray != null && listOfLoadFolderDetailsArray.length != 0) {
           updateDeletionStatus(loadIds, listOfLoadFolderDetailsArray, invalidLoadIds);
           if (invalidLoadIds.isEmpty()) {
