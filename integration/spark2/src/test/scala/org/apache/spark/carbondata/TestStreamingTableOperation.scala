@@ -103,6 +103,9 @@ class TestStreamingTableOperation extends QueryTest with BeforeAndAfterAll {
 
     // 10. fault tolerant
     createTable(tableName = "stream_table_tolerant", streaming = true, withBatchLoad = true)
+
+    // 11. table for delete segment test
+    createTable(tableName = "stream_table_delete", streaming = true, withBatchLoad = false)
   }
 
   test("validate streaming property") {
@@ -181,6 +184,7 @@ class TestStreamingTableOperation extends QueryTest with BeforeAndAfterAll {
     sql("drop table if exists streaming.stream_table_compact")
     sql("drop table if exists streaming.stream_table_new")
     sql("drop table if exists streaming.stream_table_tolerant")
+    sql("drop table if exists streaming.stream_table_delete")
   }
 
   // normal table not support streaming ingest
@@ -577,14 +581,34 @@ class TestStreamingTableOperation extends QueryTest with BeforeAndAfterAll {
       badRecordAction = "force",
       handoffSize = 1024L * 200
     )
-    sql("show segments for table streaming.stream_table_new").show(100, false)
-
     assert(sql("show segments for table streaming.stream_table_new").count() == 4)
 
     checkAnswer(
       sql("select count(*) from streaming.stream_table_new"),
       Seq(Row(5 + 10000 * 6))
     )
+  }
+
+  test("test deleting streaming segment while ingesting") {
+    executeStreamingIngest(
+      tableName = "stream_table_delete",
+      batchNums = 6,
+      rowNumsEachBatch = 10000,
+      intervalOfSource = 3,
+      intervalOfIngest = 5,
+      continueSeconds = 20,
+      generateBadRecords = false,
+      badRecordAction = "force",
+      handoffSize = 1024L * 200
+    )
+    sql("show segments for table streaming.stream_table_delete").show(100, truncate = false)
+
+    sql("delete from table streaming.stream_table_delete where segment.id in (0,1) ")
+
+    val rows = sql("show segments for table streaming.stream_table_delete").collect()
+    assertResult(2)(rows.length)
+    assertResult(SegmentStatus.MARKED_FOR_DELETE.getMessage)(rows(0).getString(1))
+    assertResult(SegmentStatus.MARKED_FOR_DELETE.getMessage)(rows(1).getString(1))
   }
 
   def createWriteSocketThread(
@@ -671,6 +695,9 @@ class TestStreamingTableOperation extends QueryTest with BeforeAndAfterAll {
     }
   }
 
+  /**
+   * start ingestion thread: write `rowNumsEachBatch` rows repeatly for `batchNums` times.
+   */
   def executeStreamingIngest(
       tableName: String,
       batchNums: Int,
