@@ -20,32 +20,13 @@ package org.apache.carbondata.processing.store.file;
 
 public class FileData extends FileManager {
 
-  /**
-   * Store Path
-   */
-  private String storePath;
 
   /**
    * hierarchyValueWriter
    */
 
-  public FileData(String fileName, String storePath) {
+  public FileData(String fileName) {
     this.fileName = fileName;
-    this.storePath = storePath;
-  }
-
-  /**
-   * @return Returns the carbonDataFileTempPath.
-   */
-  public String getFileName() {
-    return fileName;
-  }
-
-  /**
-   * @return Returns the storePath.
-   */
-  public String getStorePath() {
-    return storePath;
   }
 
 }

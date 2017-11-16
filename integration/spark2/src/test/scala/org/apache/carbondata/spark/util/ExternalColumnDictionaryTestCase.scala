@@ -151,9 +151,9 @@ class ExternalColumnDictionaryTestCase extends Spark2QueryTest with BeforeAndAft
       extColFilePath: String,
       csvDelimiter: String = ","): CarbonLoadModel = {
     val carbonLoadModel = new CarbonLoadModel
-    carbonLoadModel.setTableName(relation.tableMeta.carbonTable.getDatabaseName)
-    carbonLoadModel.setDatabaseName(relation.tableMeta.carbonTable.getTableName)
-    val table = relation.tableMeta.carbonTable
+    carbonLoadModel.setTableName(relation.carbonTable.getDatabaseName)
+    carbonLoadModel.setDatabaseName(relation.carbonTable.getTableName)
+    val table = relation.carbonTable
     val carbonSchema = new CarbonDataLoadSchema(table)
     carbonLoadModel.setDatabaseName(table.getDatabaseName)
     carbonLoadModel.setTableName(table.getTableName)
@@ -198,7 +198,7 @@ class ExternalColumnDictionaryTestCase extends Spark2QueryTest with BeforeAndAft
     var carbonLoadModel = buildCarbonLoadModel(extComplexRelation, complexFilePath1,
       header, extColDictFilePath1)
     GlobalDictionaryUtil.generateGlobalDictionary(sqlContext, carbonLoadModel,
-      extComplexRelation.tableMeta.carbonTable.getTablePath)
+      extComplexRelation.carbonTable.getTablePath)
     // check whether the dictionary is generated
     DictionaryTestCaseUtil.checkDictionary(
       extComplexRelation, "deviceInformationId", "10086")
@@ -207,7 +207,7 @@ class ExternalColumnDictionaryTestCase extends Spark2QueryTest with BeforeAndAft
     carbonLoadModel = buildCarbonLoadModel(extComplexRelation, complexFilePath1,
       header, extColDictFilePath2)
     GlobalDictionaryUtil.generateGlobalDictionary(sqlContext, carbonLoadModel,
-      extComplexRelation.tableMeta.carbonTable.getTablePath)
+      extComplexRelation.carbonTable.getTablePath)
     // check the old dictionary and whether the new distinct value is generated
     DictionaryTestCaseUtil.checkDictionary(
       extComplexRelation, "deviceInformationId", "10086")
@@ -220,7 +220,7 @@ class ExternalColumnDictionaryTestCase extends Spark2QueryTest with BeforeAndAft
     var carbonLoadModel = buildCarbonLoadModel(extComplexRelation, complexFilePath1,
       header, extColDictFilePath3)
     GlobalDictionaryUtil.generateGlobalDictionary(sqlContext, carbonLoadModel,
-      extComplexRelation.tableMeta.carbonTable.getTablePath)
+      extComplexRelation.carbonTable.getTablePath)
     // check whether the dictionary is generated
     DictionaryTestCaseUtil.checkDictionary(
       extComplexRelation, "channelsId", "1421|")
@@ -229,7 +229,7 @@ class ExternalColumnDictionaryTestCase extends Spark2QueryTest with BeforeAndAft
     carbonLoadModel = buildCarbonLoadModel(verticalDelimiteRelation, complexFilePath2,
       header2, extColDictFilePath3, "|")
     GlobalDictionaryUtil.generateGlobalDictionary(sqlContext, carbonLoadModel,
-      verticalDelimiteRelation.tableMeta.carbonTable.getTablePath)
+      verticalDelimiteRelation.carbonTable.getTablePath)
     // check whether the dictionary is generated
     DictionaryTestCaseUtil.checkDictionary(
       verticalDelimiteRelation, "channelsId", "1431,")

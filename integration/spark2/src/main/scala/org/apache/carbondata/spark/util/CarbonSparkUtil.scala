@@ -21,11 +21,8 @@ import scala.collection.JavaConverters._
 
 import org.apache.spark.sql.hive.{CarbonMetaData, CarbonRelation, DictionaryMap}
 
-import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier
 import org.apache.carbondata.core.metadata.encoder.Encoding
 import org.apache.carbondata.core.metadata.schema.table.{CarbonTable, TableInfo}
-import org.apache.carbondata.core.util.CarbonUtil
-import org.apache.carbondata.processing.merger.TableMeta
 
 case class TransformHolder(rdd: Any, mataData: CarbonMetaData)
 
@@ -47,9 +44,11 @@ object CarbonSparkUtil {
 
   def createCarbonRelation(tableInfo: TableInfo, tablePath: String): CarbonRelation = {
     val table = CarbonTable.buildFromTableInfo(tableInfo)
-    val meta = new TableMeta(table)
-    CarbonRelation(tableInfo.getDatabaseName, tableInfo.getFactTable.getTableName,
-      CarbonSparkUtil.createSparkMeta(table), meta)
+    CarbonRelation(
+      tableInfo.getDatabaseName,
+      tableInfo.getFactTable.getTableName,
+      CarbonSparkUtil.createSparkMeta(table),
+      table)
   }
 
 }

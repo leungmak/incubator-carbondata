@@ -106,12 +106,12 @@ case class LoadTableCommand(
         if (relation == null) {
           sys.error(s"Table $dbName.$tableName does not exist")
         }
-        if (null == relation.tableMeta.carbonTable) {
+        if (null == relation.carbonTable) {
           LOGGER.error(s"Data loading failed. table not found: $dbName.$tableName")
           LOGGER.audit(s"Data loading failed. table not found: $dbName.$tableName")
           sys.error(s"Data loading failed. table not found: $dbName.$tableName")
         }
-        relation.tableMeta.carbonTable
+        relation.carbonTable
       }
 
       val tableProperties = table.getTableInfo.getFactTable.getTableProperties
@@ -379,8 +379,7 @@ case class LoadTableCommand(
     val identifier = model.table.getCarbonTableIdentifier
     // update CarbonDataLoadSchema
     val carbonTable = metastore.lookupRelation(Option(identifier.getDatabaseName),
-      identifier.getTableName)(sqlContext.sparkSession).asInstanceOf[CarbonRelation].tableMeta
-      .carbonTable
+      identifier.getTableName)(sqlContext.sparkSession).asInstanceOf[CarbonRelation].carbonTable
     carbonLoadModel.setCarbonDataLoadSchema(new CarbonDataLoadSchema(carbonTable))
   }
 }

@@ -58,7 +58,7 @@ case class CarbonDatasourceHadoopRelation(
     createCarbonRelation(parameters, identifier, sparkSession)
 
 
-  @transient lazy val carbonTable: CarbonTable = carbonRelation.tableMeta.carbonTable
+  @transient lazy val carbonTable: CarbonTable = carbonRelation.carbonTable
 
   override def sqlContext: SQLContext = sparkSession.sqlContext
 

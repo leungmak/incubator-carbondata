@@ -29,10 +29,10 @@ import org.apache.spark.sql.types._
 
 import org.apache.carbondata.core.datastore.impl.FileFactory
 import org.apache.carbondata.core.metadata.datatype.DataTypes
+import org.apache.carbondata.core.metadata.schema.table.CarbonTable
 import org.apache.carbondata.core.metadata.schema.table.column.{CarbonColumn, CarbonDimension}
 import org.apache.carbondata.core.statusmanager.SegmentStatusManager
 import org.apache.carbondata.core.util.path.CarbonStorePath
-import org.apache.carbondata.processing.merger.TableMeta
 
 /**
  * Represents logical plan for one carbon table
@@ -41,7 +41,7 @@ case class CarbonRelation(
     databaseName: String,
     tableName: String,
     var metaData: CarbonMetaData,
-    tableMeta: TableMeta)
+    carbonTable: CarbonTable)
   extends LeafNode with MultiInstanceRelation {
 
   def recursiveMethod(dimName: String, childDim: CarbonDimension): String = {
@@ -84,13 +84,13 @@ case class CarbonRelation(
   }
 
   override def newInstance(): LogicalPlan = {
-    CarbonRelation(databaseName, tableName, metaData, tableMeta)
+    CarbonRelation(databaseName, tableName, metaData, carbonTable)
       .asInstanceOf[this.type]
   }
 
-  val dimensionsAttr = {
+  val dimensionsAttr: Seq[AttributeReference] = {
     val sett = new LinkedHashSet(
-      tableMeta.carbonTable.getDimensionByTableName(tableMeta.carbonTable.getTableName)
+      carbonTable.getDimensionByTableName(carbonTable.getTableName)
         .asScala.asJava)
     sett.asScala.toSeq.map(dim => {
       val dimval = metaData.carbonTable
@@ -113,11 +113,10 @@ case class CarbonRelation(
   }
 
   val measureAttr = {
-    val factTable = tableMeta.carbonTable.getTableName
+    val factTable = carbonTable.getTableName
     new LinkedHashSet(
-      tableMeta.carbonTable.
-        getMeasureByTableName(tableMeta.carbonTable.getTableName).
-        asScala.asJava).asScala.toSeq.map { x =>
+      carbonTable.getMeasureByTableName(carbonTable.getTableName).asScala.asJava).asScala.toSeq
+      .map { x =>
       val metastoreType = metaData.carbonTable.getMeasureByName(factTable, x.getColName)
         .getDataType.getName.toLowerCase match {
         case "decimal" => "decimal(" + x.getPrecision + "," + x.getScale + ")"
@@ -131,7 +130,7 @@ case class CarbonRelation(
   }
 
   override val output = {
-    val columns = tableMeta.carbonTable.getCreateOrderColumn(tableMeta.carbonTable.getTableName)
+    val columns = carbonTable.getCreateOrderColumn(carbonTable.getTableName)
       .asScala
     // convert each column to Attribute
     columns.filter(!_.isInvisible).map { column =>
@@ -196,11 +195,11 @@ case class CarbonRelation(
 
   def sizeInBytes: Long = {
     val tableStatusNewLastUpdatedTime = SegmentStatusManager.getTableStatusLastModifiedTime(
-      tableMeta.carbonTable.getAbsoluteTableIdentifier)
+      carbonTable.getAbsoluteTableIdentifier)
 
     if (tableStatusLastUpdateTime != tableStatusNewLastUpdatedTime) {
       val tablePath = CarbonStorePath.getCarbonTablePath(
-        tableMeta.carbonTable.getAbsoluteTableIdentifier).getPath
+        carbonTable.getAbsoluteTableIdentifier).getPath
       val fileType = FileFactory.getFileType(tablePath)
       if(FileFactory.isFileExist(tablePath, fileType)) {
         tableStatusLastUpdateTime = tableStatusNewLastUpdatedTime

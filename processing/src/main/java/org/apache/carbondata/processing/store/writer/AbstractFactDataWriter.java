@@ -318,7 +318,7 @@ public abstract class AbstractFactDataWriter implements CarbonFactDataWriter {
             dataWriterVo.getBucketNumber(), dataWriterVo.getTaskExtension(),
             "" + dataWriterVo.getCarbonDataFileAttributes().getFactTimeStamp());
     String actualFileNameVal = carbonDataFileName + CarbonCommonConstants.FILE_INPROGRESS_STATUS;
-    FileData fileData = new FileData(actualFileNameVal, chosenTempLocation);
+    FileData fileData = new FileData(actualFileNameVal);
     dataWriterVo.getFileManager().add(fileData);
     this.carbonDataFileTempPath = chosenTempLocation + File.separator
         + carbonDataFileName + CarbonCommonConstants.FILE_INPROGRESS_STATUS;

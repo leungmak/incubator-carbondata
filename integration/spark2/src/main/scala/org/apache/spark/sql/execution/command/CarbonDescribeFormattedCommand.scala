@@ -68,7 +68,7 @@ private[sql] case class CarbonDescribeFormattedCommand(
       val fieldName = field.name.toLowerCase
       val comment = if (dims.contains(fieldName)) {
         val dimension = relation.metaData.carbonTable.getDimensionByName(
-          relation.tableMeta.carbonTable.getTableName, fieldName)
+          relation.carbonTable.getTableName, fieldName)
         if (null != dimension.getColumnProperties && !dimension.getColumnProperties.isEmpty) {
           colProps.append(fieldName).append(".")
             .append(mapper.writeValueAsString(dimension.getColumnProperties))
@@ -100,11 +100,11 @@ private[sql] case class CarbonDescribeFormattedCommand(
       colProps.toString()
     }
     results ++= Seq(("", "", ""), ("##Detailed Table Information", "", ""))
-    results ++= Seq(("Database Name: ", relation.tableMeta.carbonTable.getDatabaseName, "")
+    results ++= Seq(("Database Name: ", relation.carbonTable.getDatabaseName, "")
     )
-    results ++= Seq(("Table Name: ", relation.tableMeta.carbonTable.getTableName, ""))
+    results ++= Seq(("Table Name: ", relation.carbonTable.getTableName, ""))
     results ++= Seq(("CARBON Store Path: ", CarbonProperties.getStorePath, ""))
-    val carbonTable = relation.tableMeta.carbonTable
+    val carbonTable = relation.carbonTable
     // Carbon table support table comment
     val tableComment = carbonTable.getTableInfo.getFactTable.getTableProperties
       .getOrDefault(CarbonCommonConstants.TABLE_COMMENT, "")
@@ -120,10 +120,10 @@ private[sql] case class CarbonDescribeFormattedCommand(
       results ++= Seq(("ADAPTIVE", "", ""))
     }
     results ++= Seq(("SORT_COLUMNS", relation.metaData.carbonTable.getSortColumns(
-      relation.tableMeta.carbonTable.getTableName).asScala
+      relation.carbonTable.getTableName).asScala
       .map(column => column).mkString(","), ""))
     val dimension = carbonTable
-      .getDimensionByTableName(relation.tableMeta.carbonTable.getTableName)
+      .getDimensionByTableName(relation.carbonTable.getTableName)
     results ++= getColumnGroups(dimension.asScala.toList)
     if (carbonTable.getPartitionInfo(carbonTable.getTableName) != null) {
       results ++=
