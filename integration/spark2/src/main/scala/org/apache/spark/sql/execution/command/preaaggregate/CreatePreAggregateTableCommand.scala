@@ -73,7 +73,7 @@ case class CreatePreAggregateTableCommand(
     // getting the parent table
     val parentTable = PreAggregateUtil.getParentCarbonTable(df.logicalPlan)
     // getting the table name
-    val parentTableName = parentTable.getFactTableName
+    val parentTableName = parentTable.getTableName
     // getting the db name of parent table
     val parentDbName = parentTable.getDatabaseName
 

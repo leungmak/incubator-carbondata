@@ -44,7 +44,7 @@ private[sql] case class ShowCarbonPartitionsCommand(
       .lookupRelation(tableIdentifier)(sparkSession).
       asInstanceOf[CarbonRelation]
     val carbonTable = relation.tableMeta.carbonTable
-    val tableName = carbonTable.getFactTableName
+    val tableName = carbonTable.getTableName
     val partitionInfo = carbonTable.getPartitionInfo(
       carbonTable.getAbsoluteTableIdentifier.getCarbonTableIdentifier.getTableName)
     if (partitionInfo == null) {

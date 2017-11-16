@@ -32,12 +32,12 @@ case class TransformHolder(rdd: Any, mataData: CarbonMetaData)
 object CarbonSparkUtil {
 
   def createSparkMeta(carbonTable: CarbonTable): CarbonMetaData = {
-    val dimensionsAttr = carbonTable.getDimensionByTableName(carbonTable.getFactTableName)
+    val dimensionsAttr = carbonTable.getDimensionByTableName(carbonTable.getTableName)
         .asScala.map(x => x.getColName) // wf : may be problem
-    val measureAttr = carbonTable.getMeasureByTableName(carbonTable.getFactTableName)
+    val measureAttr = carbonTable.getMeasureByTableName(carbonTable.getTableName)
         .asScala.map(x => x.getColName)
     val dictionary =
-      carbonTable.getDimensionByTableName(carbonTable.getFactTableName).asScala.map { f =>
+      carbonTable.getDimensionByTableName(carbonTable.getTableName).asScala.map { f =>
         (f.getColName.toLowerCase,
             f.hasEncoding(Encoding.DICTIONARY) && !f.hasEncoding(Encoding.DIRECT_DICTIONARY) &&
                 !f.getDataType.isComplexType)
@@ -47,8 +47,7 @@ object CarbonSparkUtil {
 
   def createCarbonRelation(tableInfo: TableInfo, tablePath: String): CarbonRelation = {
     val table = CarbonTable.buildFromTableInfo(tableInfo)
-    val meta = new TableMeta(table.getCarbonTableIdentifier,
-      table.getTablePath, tablePath, table)
+    val meta = new TableMeta(table)
     CarbonRelation(tableInfo.getDatabaseName, tableInfo.getFactTable.getTableName,
       CarbonSparkUtil.createSparkMeta(table), meta)
   }

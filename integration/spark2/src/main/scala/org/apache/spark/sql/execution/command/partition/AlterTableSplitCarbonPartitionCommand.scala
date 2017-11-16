@@ -69,8 +69,7 @@ case class AlterTableSplitCarbonPartitionCommand(
     val tableName = splitPartitionModel.tableName
     val relation = carbonMetaStore.lookupRelation(Option(dbName), tableName)(sparkSession)
       .asInstanceOf[CarbonRelation]
-    val carbonTableIdentifier = relation.tableMeta.carbonTableIdentifier
-    val tablePath = relation.tableMeta.tablePath
+    val tablePath = relation.tableMeta.carbonTable.getTablePath
     if (relation == null) {
       sys.error(s"Table $dbName.$tableName does not exist")
     }
@@ -95,7 +94,7 @@ case class AlterTableSplitCarbonPartitionCommand(
 
     updatePartitionInfo(partitionInfo, partitionIds)
 
-    val carbonTablePath = CarbonStorePath.getCarbonTablePath(tablePath, carbonTableIdentifier)
+    val carbonTablePath = CarbonStorePath.getCarbonTablePath(table.getAbsoluteTableIdentifier)
     val schemaFilePath = carbonTablePath.getSchemaFilePath
     // read TableInfo
     val tableInfo = carbonMetaStore.getThriftTableInfo(carbonTablePath)(sparkSession)
@@ -153,13 +152,12 @@ case class AlterTableSplitCarbonPartitionCommand(
       val carbonMetaStore = CarbonEnv.getInstance(sparkSession).carbonMetastore
       val relation = carbonMetaStore.lookupRelation(Option(dbName), tableName)(sparkSession)
         .asInstanceOf[CarbonRelation]
-      val tablePath = relation.tableMeta.tablePath
       val table = relation.tableMeta.carbonTable
-      val carbonTableIdentifier = relation.tableMeta.carbonTableIdentifier
+      val tablePath = table.getTablePath
       val dataLoadSchema = new CarbonDataLoadSchema(table)
       carbonLoadModel.setCarbonDataLoadSchema(dataLoadSchema)
-      carbonLoadModel.setTableName(carbonTableIdentifier.getTableName)
-      carbonLoadModel.setDatabaseName(carbonTableIdentifier.getDatabaseName)
+      carbonLoadModel.setTableName(table.getTableName)
+      carbonLoadModel.setDatabaseName(table.getDatabaseName)
       carbonLoadModel.setTablePath(tablePath)
       val loadStartTime = CarbonUpdateUtil.readCurrentTime
       carbonLoadModel.setFactTimeStamp(loadStartTime)

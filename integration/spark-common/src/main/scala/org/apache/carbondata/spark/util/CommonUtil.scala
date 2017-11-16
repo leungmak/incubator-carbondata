@@ -516,7 +516,6 @@ object CommonUtil {
   }
 
   def readAndUpdateLoadProgressInTableMeta(model: CarbonLoadModel,
-      storePath: String,
       insertOverwrite: Boolean): Unit = {
     val newLoadMetaEntry = new LoadMetadataDetails
     val status = if (insertOverwrite) {
@@ -528,16 +527,13 @@ object CommonUtil {
     // reading the start time of data load.
     val loadStartTime = CarbonUpdateUtil.readCurrentTime
     model.setFactTimeStamp(loadStartTime)
-    CarbonLoaderUtil
-      .populateNewLoadMetaEntry(newLoadMetaEntry, status, model.getFactTimeStamp, false)
+    CarbonLoaderUtil.populateNewLoadMetaEntry(
+      newLoadMetaEntry, status, model.getFactTimeStamp, false)
     val entryAdded: Boolean =
       CarbonLoaderUtil.recordLoadMetadata(newLoadMetaEntry, model, true, insertOverwrite)
     if (!entryAdded) {
-      sys
-        .error(s"Failed to add entry in table status for ${ model.getDatabaseName }.${
-          model
-            .getTableName
-        }")
+      sys.error(s"Failed to add entry in table status for " +
+                s"${ model.getDatabaseName }.${model.getTableName}")
     }
   }
 
@@ -856,25 +852,8 @@ object CommonUtil {
       CarbonCommonConstants.CARBON_MERGE_INDEX_IN_SEGMENT,
       CarbonCommonConstants.CARBON_MERGE_INDEX_IN_SEGMENT_DEFAULT).toBoolean) {
       new CarbonMergeFilesRDD(sparkContext, AbsoluteTableIdentifier.from(tablePath,
-        carbonTable.getDatabaseName, carbonTable.getFactTableName).getTablePath,
+        carbonTable.getDatabaseName, carbonTable.getTableName).getTablePath,
         segmentIds).collect()
-    }
-  }
-
-  /**
-   * can be removed with the spark 1.6 removal
-   * @param tableMeta
-   * @return
-   */
-  @deprecated
-  def getTablePath(tableMeta: TableMeta): String = {
-    if (tableMeta.tablePath == null) {
-      tableMeta.storePath + CarbonCommonConstants.FILE_SEPARATOR +
-      tableMeta.carbonTableIdentifier.getDatabaseName +
-      CarbonCommonConstants.FILE_SEPARATOR + tableMeta.carbonTableIdentifier.getTableName
-    }
-    else {
-      tableMeta.tablePath
     }
   }
 

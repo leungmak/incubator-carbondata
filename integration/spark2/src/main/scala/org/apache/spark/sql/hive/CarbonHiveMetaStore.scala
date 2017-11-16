@@ -56,8 +56,7 @@ class CarbonHiveMetaStore extends CarbonFileMetastore {
     val info = CarbonUtil.convertGsonToTableInfo(parameters.asJava)
     if (info != null) {
       val table = CarbonTable.buildFromTableInfo(info)
-      val meta = new TableMeta(table.getCarbonTableIdentifier,
-        absIdentifier.getTablePath, absIdentifier.getTablePath, table)
+      val meta = new TableMeta(table)
       CarbonRelation(info.getDatabaseName, info.getFactTable.getTableName,
         CarbonSparkUtil.createSparkMeta(table), meta)
     } else {
@@ -107,7 +106,7 @@ class CarbonHiveMetaStore extends CarbonFileMetastore {
     val schemaConverter = new ThriftWrapperSchemaConverterImpl
     schemaConverter.fromWrapperToExternalTableInfo(carbonTable.getTableInfo,
       carbonTable.getDatabaseName,
-      carbonTable.getFactTableName)
+      carbonTable.getTableName)
   }
 
 

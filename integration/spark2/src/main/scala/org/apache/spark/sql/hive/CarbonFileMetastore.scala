@@ -166,8 +166,8 @@ class CarbonFileMetastore extends CarbonMetaStore {
    */
   def getTableFromMetadataCache(database: String, tableName: String): Option[TableMeta] = {
     metadata.tablesMeta
-      .find(c => c.carbonTableIdentifier.getDatabaseName.equalsIgnoreCase(database) &&
-        c.carbonTableIdentifier.getTableName.equalsIgnoreCase(tableName))
+      .find(c => c.carbonTable.getDatabaseName.equalsIgnoreCase(database) &&
+        c.carbonTable.getTableName.equalsIgnoreCase(tableName))
   }
 
   def tableExists(
@@ -210,10 +210,7 @@ class CarbonFileMetastore extends CarbonMetaStore {
         .setMetaDataFilepath(CarbonTablePath.getFolderContainingFile(schemaFilePath))
       CarbonMetadata.getInstance().loadTableMetadata(wrapperTableInfo)
       val carbonTable = CarbonMetadata.getInstance().getCarbonTable(tableUniqueName)
-      val tableMeta = new TableMeta(carbonTable.getCarbonTableIdentifier,
-        identifier.getTablePath,
-        identifier.getTablePath,
-        carbonTable)
+      val tableMeta = new TableMeta(carbonTable)
       metadata.tablesMeta += tableMeta
       Some(tableMeta)
     } else {
@@ -378,9 +375,7 @@ class CarbonFileMetastore extends CarbonMetaStore {
     CarbonMetadata.getInstance.removeTable(tableInfo.getTableUniqueName)
     removeTableFromMetadata(identifier.getDatabaseName, identifier.getTableName)
     CarbonMetadata.getInstance().loadTableMetadata(tableInfo)
-    val tableMeta = new TableMeta(identifier, absoluteTableIdentifier.getTablePath,
-      absoluteTableIdentifier.getTablePath,
-      CarbonMetadata.getInstance().getCarbonTable(identifier.getTableUniqueName))
+    val tableMeta = new TableMeta(CarbonMetadata.getInstance().getCarbonTable(identifier.getTableUniqueName))
     metadata.tablesMeta += tableMeta
   }
 
@@ -411,7 +406,7 @@ class CarbonFileMetastore extends CarbonMetaStore {
       wrapperTableInfo.getTableUniqueName)
     for (i <- metadata.tablesMeta.indices) {
       if (wrapperTableInfo.getTableUniqueName.equals(
-        metadata.tablesMeta(i).carbonTableIdentifier.getTableUniqueName)) {
+        metadata.tablesMeta(i).carbonTable.getTableUniqueName)) {
         metadata.tablesMeta(i).carbonTable = carbonTable
       }
     }
@@ -434,8 +429,8 @@ class CarbonFileMetastore extends CarbonMetaStore {
 
   def isTablePathExists(tableIdentifier: TableIdentifier)(sparkSession: SparkSession): Boolean = {
     try {
-      val tablePath = lookupRelation(tableIdentifier)(sparkSession).
-        asInstanceOf[CarbonRelation].tableMeta.tablePath
+      val tablePath = lookupRelation(tableIdentifier)(sparkSession)
+        .asInstanceOf[CarbonRelation].tableMeta.carbonTable.getTablePath
       val fileType = FileFactory.getFileType(tablePath)
       FileFactory.isFileExist(tablePath, fileType)
     } catch {

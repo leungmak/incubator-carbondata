@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import org.apache.carbondata.core.metadata.datatype.DataType;
 import org.apache.carbondata.core.metadata.datatype.DataTypes;
 import org.apache.carbondata.core.metadata.encoder.Encoding;
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
@@ -94,7 +93,7 @@ public class CarbonMetadataTest {
 
   @Test public void testGetCarbonTableReturingProperTableWithProperFactTableName() {
     String expectedResult = "carbonTestTable";
-    assertEquals(expectedResult, carbonMetadata.getCarbonTable(tableUniqueName).getFactTableName());
+    assertEquals(expectedResult, carbonMetadata.getCarbonTable(tableUniqueName).getTableName());
   }
 
   @Test public void testGetCarbonTableReturingProperTableWithProperTableUniqueName() {

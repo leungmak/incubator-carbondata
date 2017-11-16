@@ -26,16 +26,9 @@ public class TableMeta implements Serializable {
 
   private static final long serialVersionUID = -1749874611119829431L;
 
-  public CarbonTableIdentifier carbonTableIdentifier;
-  public String storePath;
   public CarbonTable carbonTable;
-  public String tablePath;
 
-  public TableMeta(CarbonTableIdentifier carbonTableIdentifier, String storePath, String tablePath,
-      CarbonTable carbonTable) {
-    this.carbonTableIdentifier = carbonTableIdentifier;
-    this.storePath = storePath;
-    this.tablePath = tablePath;
+  public TableMeta(CarbonTable carbonTable) {
     this.carbonTable = carbonTable;
   }
 

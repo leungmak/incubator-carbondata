@@ -374,7 +374,7 @@ object PreAggregateUtil {
   def updateSchemaInfo(carbonTable: CarbonTable,
       thriftTable: TableInfo)(sparkSession: SparkSession): Unit = {
     val dbName = carbonTable.getDatabaseName
-    val tableName = carbonTable.getFactTableName
+    val tableName = carbonTable.getTableName
     CarbonEnv.getInstance(sparkSession).carbonMetastore
       .updateTableSchemaForDataMap(carbonTable.getCarbonTableIdentifier,
         carbonTable.getCarbonTableIdentifier,

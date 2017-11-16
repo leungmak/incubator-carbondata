@@ -29,6 +29,7 @@ import org.codehaus.jackson.map.ObjectMapper
 import org.apache.carbondata.core.constants.CarbonCommonConstants
 import org.apache.carbondata.core.metadata.encoder.Encoding
 import org.apache.carbondata.core.metadata.schema.table.column.CarbonDimension
+import org.apache.carbondata.core.util.CarbonProperties
 
 private[sql] case class CarbonDescribeFormattedCommand(
     child: SparkPlan,
@@ -67,7 +68,7 @@ private[sql] case class CarbonDescribeFormattedCommand(
       val fieldName = field.name.toLowerCase
       val comment = if (dims.contains(fieldName)) {
         val dimension = relation.metaData.carbonTable.getDimensionByName(
-          relation.tableMeta.carbonTableIdentifier.getTableName, fieldName)
+          relation.tableMeta.carbonTable.getTableName, fieldName)
         if (null != dimension.getColumnProperties && !dimension.getColumnProperties.isEmpty) {
           colProps.append(fieldName).append(".")
             .append(mapper.writeValueAsString(dimension.getColumnProperties))
@@ -99,11 +100,10 @@ private[sql] case class CarbonDescribeFormattedCommand(
       colProps.toString()
     }
     results ++= Seq(("", "", ""), ("##Detailed Table Information", "", ""))
-    results ++= Seq(("Database Name: ", relation.tableMeta.carbonTableIdentifier
-      .getDatabaseName, "")
+    results ++= Seq(("Database Name: ", relation.tableMeta.carbonTable.getDatabaseName, "")
     )
-    results ++= Seq(("Table Name: ", relation.tableMeta.carbonTableIdentifier.getTableName, ""))
-    results ++= Seq(("CARBON Store Path: ", relation.tableMeta.storePath, ""))
+    results ++= Seq(("Table Name: ", relation.tableMeta.carbonTable.getTableName, ""))
+    results ++= Seq(("CARBON Store Path: ", CarbonProperties.getStorePath, ""))
     val carbonTable = relation.tableMeta.carbonTable
     // Carbon table support table comment
     val tableComment = carbonTable.getTableInfo.getFactTable.getTableProperties
@@ -120,14 +120,14 @@ private[sql] case class CarbonDescribeFormattedCommand(
       results ++= Seq(("ADAPTIVE", "", ""))
     }
     results ++= Seq(("SORT_COLUMNS", relation.metaData.carbonTable.getSortColumns(
-      relation.tableMeta.carbonTableIdentifier.getTableName).asScala
+      relation.tableMeta.carbonTable.getTableName).asScala
       .map(column => column).mkString(","), ""))
     val dimension = carbonTable
-      .getDimensionByTableName(relation.tableMeta.carbonTableIdentifier.getTableName)
+      .getDimensionByTableName(relation.tableMeta.carbonTable.getTableName)
     results ++= getColumnGroups(dimension.asScala.toList)
-    if (carbonTable.getPartitionInfo(carbonTable.getFactTableName) != null) {
+    if (carbonTable.getPartitionInfo(carbonTable.getTableName) != null) {
       results ++=
-      Seq(("Partition Columns: ", carbonTable.getPartitionInfo(carbonTable.getFactTableName)
+      Seq(("Partition Columns: ", carbonTable.getPartitionInfo(carbonTable.getTableName)
         .getColumnSchemaList.asScala.map(_.getColumnName).mkString(","), ""))
     }
     results.map { case (name, dataType, comment) =>

@@ -65,12 +65,12 @@ case class AlterTableCompactionCommand(
     val carbonLoadModel = new CarbonLoadModel()
 
     val table = relation.tableMeta.carbonTable
-    carbonLoadModel.setTableName(table.getFactTableName)
+    carbonLoadModel.setTableName(table.getTableName)
     val dataLoadSchema = new CarbonDataLoadSchema(table)
     // Need to fill dimension relation
     carbonLoadModel.setCarbonDataLoadSchema(dataLoadSchema)
-    carbonLoadModel.setTableName(relation.tableMeta.carbonTableIdentifier.getTableName)
-    carbonLoadModel.setDatabaseName(relation.tableMeta.carbonTableIdentifier.getDatabaseName)
+    carbonLoadModel.setTableName(relation.tableMeta.carbonTable.getTableName)
+    carbonLoadModel.setDatabaseName(relation.tableMeta.carbonTable.getDatabaseName)
     carbonLoadModel.setTablePath(relation.tableMeta.carbonTable.getTablePath)
 
     var storeLocation = CarbonProperties.getInstance

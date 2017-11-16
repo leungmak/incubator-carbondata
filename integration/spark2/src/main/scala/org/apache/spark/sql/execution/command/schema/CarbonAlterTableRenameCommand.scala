@@ -134,7 +134,7 @@ private[sql] case class CarbonAlterTableRenameCommand(
         carbonTable.getCarbonTableIdentifier,
         tableInfo,
         schemaEvolutionEntry,
-        tableMeta.tablePath)(sparkSession)
+        carbonTable.getTablePath)(sparkSession)
 
       val alterTableRenamePostEvent: AlterTableRenamePostEvent = AlterTableRenamePostEvent(
         carbonTable,

@@ -90,11 +90,11 @@ case class CarbonRelation(
 
   val dimensionsAttr = {
     val sett = new LinkedHashSet(
-      tableMeta.carbonTable.getDimensionByTableName(tableMeta.carbonTableIdentifier.getTableName)
+      tableMeta.carbonTable.getDimensionByTableName(tableMeta.carbonTable.getTableName)
         .asScala.asJava)
     sett.asScala.toSeq.map(dim => {
       val dimval = metaData.carbonTable
-        .getDimensionByName(metaData.carbonTable.getFactTableName, dim.getColName)
+        .getDimensionByName(metaData.carbonTable.getTableName, dim.getColName)
       val output: DataType = dimval.getDataType.getName.toLowerCase match {
         case "array" =>
           CarbonMetastoreTypes.toDataType(s"array<${ getArrayChildren(dim.getColName) }>")
@@ -113,10 +113,10 @@ case class CarbonRelation(
   }
 
   val measureAttr = {
-    val factTable = tableMeta.carbonTable.getFactTableName
+    val factTable = tableMeta.carbonTable.getTableName
     new LinkedHashSet(
       tableMeta.carbonTable.
-        getMeasureByTableName(tableMeta.carbonTable.getFactTableName).
+        getMeasureByTableName(tableMeta.carbonTable.getTableName).
         asScala.asJava).asScala.toSeq.map { x =>
       val metastoreType = metaData.carbonTable.getMeasureByName(factTable, x.getColName)
         .getDataType.getName.toLowerCase match {
@@ -131,7 +131,7 @@ case class CarbonRelation(
   }
 
   override val output = {
-    val columns = tableMeta.carbonTable.getCreateOrderColumn(tableMeta.carbonTable.getFactTableName)
+    val columns = tableMeta.carbonTable.getCreateOrderColumn(tableMeta.carbonTable.getTableName)
       .asScala
     // convert each column to Attribute
     columns.filter(!_.isInvisible).map { column =>
@@ -200,8 +200,7 @@ case class CarbonRelation(
 
     if (tableStatusLastUpdateTime != tableStatusNewLastUpdatedTime) {
       val tablePath = CarbonStorePath.getCarbonTablePath(
-        tableMeta.storePath,
-        tableMeta.carbonTableIdentifier).getPath
+        tableMeta.carbonTable.getAbsoluteTableIdentifier).getPath
       val fileType = FileFactory.getFileType(tablePath)
       if(FileFactory.isFileExist(tablePath, fileType)) {
         tableStatusLastUpdateTime = tableStatusNewLastUpdatedTime

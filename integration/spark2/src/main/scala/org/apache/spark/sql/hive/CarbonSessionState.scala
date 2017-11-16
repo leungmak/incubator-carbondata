@@ -112,7 +112,7 @@ class CarbonSessionCatalog(
 
     val tableMeta = carbonEnv.carbonMetastore
       .getTableFromMetadataCache(carbonDatasourceHadoopRelation.carbonTable.getDatabaseName,
-        carbonDatasourceHadoopRelation.carbonTable.getFactTableName)
+        carbonDatasourceHadoopRelation.carbonTable.getTableName)
     if (tableMeta.isEmpty || (tableMeta.isDefined &&
         tableMeta.get.carbonTable.getTableLastUpdatedTime !=
           carbonDatasourceHadoopRelation.carbonTable.getTableLastUpdatedTime)) {

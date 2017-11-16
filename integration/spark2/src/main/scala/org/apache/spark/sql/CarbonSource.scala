@@ -203,7 +203,7 @@ class CarbonSource extends CreatableRelationProvider with RelationProvider
       } else {
         val relation = CarbonEnv.getInstance(sparkSession).carbonMetastore
           .lookupRelation(Option(dbName), tableName)(sparkSession).asInstanceOf[CarbonRelation]
-        (relation.tableMeta.tablePath, parameters)
+        (relation.tableMeta.carbonTable.getTablePath, parameters)
       }
     } catch {
       case ex: Exception =>
@@ -243,7 +243,7 @@ class CarbonSource extends CreatableRelationProvider with RelationProvider
 
       if (!carbonTable.isStreamingTable) {
         throw new CarbonStreamException(s"Table ${carbonTable.getDatabaseName}." +
-                                        s"${carbonTable.getFactTableName} is not a streaming table")
+                                        s"${carbonTable.getTableName} is not a streaming table")
       }
 
       // create sink
