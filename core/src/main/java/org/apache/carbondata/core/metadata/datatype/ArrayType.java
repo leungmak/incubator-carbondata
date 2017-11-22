@@ -33,8 +33,11 @@ public class ArrayType extends DataType {
 
   @Override
   public int getNumOfChild() {
-    // beside the element column, we keep one more column for offset
-    return elementType.getNumOfChild();
+    if (elementType.isComplexType()) {
+      return elementType.getNumOfChild();
+    } else {
+      return 1;
+    }
   }
 
   public DataType getElementType() {
