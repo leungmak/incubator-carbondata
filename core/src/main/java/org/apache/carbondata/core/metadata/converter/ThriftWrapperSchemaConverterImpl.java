@@ -143,6 +143,8 @@ public class ThriftWrapperSchemaConverterImpl implements SchemaConverter {
       return org.apache.carbondata.format.DataType.LONG;
     } else if (dataType.getId() == DataTypes.DOUBLE.getId()) {
       return org.apache.carbondata.format.DataType.DOUBLE;
+    } else if (dataType.getId() == DataTypes.FLOAT.getId()) {
+      return org.apache.carbondata.format.DataType.DOUBLE;
     } else if (DataTypes.isDecimal(dataType)) {
       return org.apache.carbondata.format.DataType.DECIMAL;
     } else if (dataType.getId() == DataTypes.DATE.getId()) {
@@ -154,7 +156,7 @@ public class ThriftWrapperSchemaConverterImpl implements SchemaConverter {
     } else if (DataTypes.isStructType(dataType)) {
       return org.apache.carbondata.format.DataType.STRUCT;
     } else {
-      return org.apache.carbondata.format.DataType.STRING;
+      throw new UnsupportedOperationException("unsupported type: " + dataType);
     }
   }
 
