@@ -20,6 +20,7 @@ package org.apache.carbondata.core.metadata.datatype;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -99,7 +100,8 @@ public class StructField implements Serializable {
     List<String> dictionaryColumns = TableProperty.getDictionaryColumns(tableProperties);
     String fieldName = this.fieldName.toLowerCase();
     boolean inSortColumn = sortColumns.contains(fieldName);
-    boolean useInvertedIndex = sortColumns.contains(fieldName) && !noInvertedIndexColumns.contains(fieldName);
+    boolean useInvertedIndex = sortColumns.contains(fieldName) &&
+        !noInvertedIndexColumns.contains(fieldName);
     boolean useDictionary = dictionaryColumns.contains(fieldName);
     boolean hasDataMap = dataMapFields != null && dataMapFields.get(fieldName) != null;
 
@@ -134,7 +136,8 @@ public class StructField implements Serializable {
     columnSchema.setDataType(dataType);
     columnSchema.setColumnName(fieldName);
     columnSchema.setEncodingList(encodings);
-    String columnUniqueId = CarbonCommonFactory.getColumnUniqueIdGenerator().generateUniqueId(columnSchema);
+    String columnUniqueId =
+        CarbonCommonFactory.getColumnUniqueIdGenerator().generateUniqueId(columnSchema);
     columnSchema.setColumnUniqueId(columnUniqueId);
     columnSchema.setColumnReferenceId(columnUniqueId);
     columnSchema.setDimensionColumn(isDimension);
@@ -149,10 +152,7 @@ public class StructField implements Serializable {
     columnSchema.setColumnName(fieldName);
     columnSchema.setColumnar(true);
     columnSchema.setColumnGroup(-1);
-    columnSchema.setDefaultValue(null);
-    columnSchema.setAggFunction(null);
-    columnSchema.setParentColumnTableRelations(null);
-    columnSchema.setColumnProperties(null);
+    columnSchema.setColumnProperties(new HashMap<String, String>());
 
     if (hasDataMap) {
       DataMapField dataMapField = dataMapFields.get(fieldName);
@@ -160,10 +160,15 @@ public class StructField implements Serializable {
       ColumnTableRelation relation = dataMapField.getColumnTableRelation();
       List<ParentColumnTableRelation> parentColumnTableRelationList = new ArrayList<>();
       RelationIdentifier relationIdentifier =
-          new RelationIdentifier(relation.getParentDatabaseName(), relation.getParentTableName(),
+          new RelationIdentifier(
+              relation.getParentDatabaseName(),
+              relation.getParentTableName(),
               relation.getParentTableId());
       ParentColumnTableRelation parentColumnTableRelation =
-          new ParentColumnTableRelation(relationIdentifier, relation.getParentColumnId(), relation.getParentColumnName());
+          new ParentColumnTableRelation(
+              relationIdentifier,
+              relation.getParentColumnId(),
+              relation.getParentColumnName());
       parentColumnTableRelationList.add(parentColumnTableRelation);
       columnSchema.setParentColumnTableRelations(parentColumnTableRelationList);
     }

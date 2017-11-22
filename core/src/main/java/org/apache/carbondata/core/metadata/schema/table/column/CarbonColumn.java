@@ -18,15 +18,12 @@
 package org.apache.carbondata.core.metadata.schema.table.column;
 
 import java.io.Serializable;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.carbondata.core.metadata.ColumnIdentifier;
 import org.apache.carbondata.core.metadata.datatype.DataType;
 import org.apache.carbondata.core.metadata.encoder.Encoding;
-import org.apache.carbondata.core.metadata.schema.table.MalformedCarbonCommandException;
 
 public class CarbonColumn implements Serializable {
 
