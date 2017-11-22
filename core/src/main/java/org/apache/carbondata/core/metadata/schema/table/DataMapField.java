@@ -14,26 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.carbondata.core.service.impl;
 
-import java.util.UUID;
+package org.apache.carbondata.core.metadata.schema.table;
 
-import org.apache.carbondata.core.metadata.schema.table.column.ColumnSchema;
-import org.apache.carbondata.core.service.ColumnUniqueIdService;
+public class DataMapField {
+  private String aggregateFunction = "";
 
-/**
- * It returns unique id given column
- */
-public class ColumnUniqueIdGenerator implements ColumnUniqueIdService {
+  // can be null
+  private ColumnTableRelation columnTableRelation;
 
-  private static ColumnUniqueIdService columnUniqueIdService = new ColumnUniqueIdGenerator();
-
-  @Override public String generateUniqueId(ColumnSchema columnSchema) {
-    return UUID.randomUUID().toString();
+  public DataMapField(String aggregateFunction, ColumnTableRelation columnTableRelation) {
+    this.aggregateFunction = aggregateFunction;
+    this.columnTableRelation = columnTableRelation;
   }
 
-  public static ColumnUniqueIdService getInstance() {
-    return columnUniqueIdService;
+  public String getAggregateFunction() {
+    return aggregateFunction;
   }
 
+  public ColumnTableRelation getColumnTableRelation() {
+    return columnTableRelation;
+  }
 }

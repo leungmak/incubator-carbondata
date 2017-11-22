@@ -27,7 +27,6 @@ import org.apache.carbondata.common.logging.LogServiceFactory
 import org.apache.carbondata.core.constants.CarbonCommonConstants
 import org.apache.carbondata.core.metadata.datatype.{DataTypes => CarbonType}
 import org.apache.carbondata.core.util.CarbonProperties
-import org.apache.carbondata.spark.CarbonOption
 
 class CarbonDataFrameWriter(sqlContext: SQLContext, val dataFrame: DataFrame) {
 
@@ -36,7 +35,9 @@ class CarbonDataFrameWriter(sqlContext: SQLContext, val dataFrame: DataFrame) {
   def saveAsCarbonFile(parameters: Map[String, String] = Map()): Unit = {
     // create a new table using dataframe's schema and write its content into the table
     sqlContext.sparkSession.sql(
-      makeCreateTableString(dataFrame.schema, new CarbonOption(parameters)))
+      makeCreateTableString(
+        dataFrame.schema,
+        new CarbonOption(sqlContext.sparkSession, parameters)))
     writeToCarbonFile(parameters)
   }
 
@@ -45,7 +46,7 @@ class CarbonDataFrameWriter(sqlContext: SQLContext, val dataFrame: DataFrame) {
   }
 
   private def writeToCarbonFile(parameters: Map[String, String] = Map()): Unit = {
-    val options = new CarbonOption(parameters)
+    val options = new CarbonOption(sqlContext.sparkSession, parameters)
     if (options.tempCSV) {
       loadTempCSV(options)
     } else {

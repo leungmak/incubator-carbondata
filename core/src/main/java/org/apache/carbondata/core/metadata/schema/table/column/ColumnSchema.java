@@ -214,18 +214,21 @@ public class ColumnSchema implements Serializable, Writable {
   }
 
   /**
+   * this field is obsoleted, columnGroupId should be always -1
    */
   public void setColumnGroup(int columnGroupId) {
     this.columnGroupId = columnGroupId;
   }
 
   /**
-   * Set the scale if it is decimal type
+   * Set the scale from `maybeDecimalType` if it is decimal type, otherwise set -1
    */
-  public void setScale(int scale) {
-    this.scale = scale;
+  public void setScale(DataType maybeDecimalType) {
     if (DataTypes.isDecimal(dataType)) {
-      ((DecimalType) dataType).setScale(scale);
+      this.scale = ((DecimalType) maybeDecimalType).getScale();
+      ((DecimalType) dataType).setPrecision(this.scale);
+    } else {
+      this.scale = -1;
     }
   }
 
@@ -237,12 +240,14 @@ public class ColumnSchema implements Serializable, Writable {
   }
 
   /**
-   * Set the precision if it is decimal type
+   * Set the precision from `maybeDecimalType` if it is decimal type, otherwise set -1
    */
-  public void setPrecision(int precision) {
-    this.precision = precision;
+  public void setPrecision(DataType maybeDecimalType) {
     if (DataTypes.isDecimal(dataType)) {
-      ((DecimalType) dataType).setPrecision(precision);
+      this.precision = ((DecimalType) maybeDecimalType).getPrecision();
+      ((DecimalType) dataType).setPrecision(this.precision);
+    } else {
+      this.precision = -1;
     }
   }
 

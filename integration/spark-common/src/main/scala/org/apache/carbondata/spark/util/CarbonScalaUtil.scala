@@ -17,6 +17,7 @@
 
 package org.apache.carbondata.spark.util
 
+import scala.collection.JavaConverters._
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util
@@ -26,7 +27,7 @@ import org.apache.spark.sql.execution.command.DataTypeInfo
 import org.apache.spark.sql.types._
 
 import org.apache.carbondata.core.constants.CarbonCommonConstants
-import org.apache.carbondata.core.metadata.datatype.{DataType => CarbonDataType, DataTypes => CarbonDataTypes, DecimalType => CarbonDecimalType, StructField => CarbonStructField}
+import org.apache.carbondata.core.metadata.datatype.{ArrayType => CarbonArrayType, DataType => CarbonDataType, DataTypes => CarbonDataTypes, DecimalType => CarbonDecimalType, MapType => CarbonMapType, StructField => CarbonStructField, StructType => CarbonStructType}
 import org.apache.carbondata.core.metadata.schema.table.column.CarbonColumn
 
 object CarbonScalaUtil {
@@ -47,7 +48,7 @@ object CarbonScalaUtil {
         val carbonFields = new util.ArrayList[CarbonStructField]
         fields.map { field =>
           carbonFields.add(
-            new CarbonStructField(
+            CarbonDataTypes.createStructField(
               field.name,
               CarbonScalaUtil.convertSparkToCarbonDataType(field.dataType)))
         }
@@ -78,13 +79,31 @@ object CarbonScalaUtil {
 
   def convertCarbonToSparkDataType(dataType: CarbonDataType): types.DataType = {
     if (CarbonDataTypes.isDecimal(dataType)) {
-      DecimalType.SYSTEM_DEFAULT
+      val decimalType = dataType.asInstanceOf[CarbonDecimalType]
+      DataTypes.createDecimalType(decimalType.getPrecision, decimalType.getScale)
+    } else if (CarbonDataTypes.isArrayType(dataType)) {
+      DataTypes.createArrayType(
+        convertCarbonToSparkDataType(dataType.asInstanceOf[CarbonArrayType].getElementType))
+    } else if (CarbonDataTypes.isStructType(dataType)) {
+      val fields = dataType.asInstanceOf[CarbonStructType].getFields.asScala.map { field =>
+        DataTypes.createStructField(
+          field.getFieldName,
+          convertCarbonToSparkDataType(field.getDataType),
+          true)
+      }.toArray
+      DataTypes.createStructType(fields)
+    } else if (CarbonDataTypes.isMapType(dataType)) {
+      DataTypes.createMapType(
+        convertCarbonToSparkDataType(dataType.asInstanceOf[CarbonMapType].getKeyType),
+        convertCarbonToSparkDataType(dataType.asInstanceOf[CarbonMapType].getValueType)
+      )
     } else {
       dataType match {
         case CarbonDataTypes.STRING => StringType
         case CarbonDataTypes.SHORT => ShortType
         case CarbonDataTypes.INT => IntegerType
         case CarbonDataTypes.LONG => LongType
+        case CarbonDataTypes.FLOAT => FloatType
         case CarbonDataTypes.DOUBLE => DoubleType
         case CarbonDataTypes.BOOLEAN => BooleanType
         case CarbonDataTypes.TIMESTAMP => TimestampType

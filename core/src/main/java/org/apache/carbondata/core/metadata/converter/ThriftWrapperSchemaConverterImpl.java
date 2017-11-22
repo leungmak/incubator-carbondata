@@ -490,11 +490,11 @@ public class ThriftWrapperSchemaConverterImpl implements SchemaConverter {
     wrapperColumnSchema.setColumnUniqueId(externalColumnSchema.getColumn_id());
     wrapperColumnSchema.setColumnName(externalColumnSchema.getColumn_name());
     wrapperColumnSchema.setColumnar(externalColumnSchema.isColumnar());
-    wrapperColumnSchema.setDataType(
-        fromExternalToWrapperDataType(
-            externalColumnSchema.data_type,
-            externalColumnSchema.precision,
-            externalColumnSchema.scale));
+    DataType dataType = fromExternalToWrapperDataType(
+        externalColumnSchema.data_type,
+        externalColumnSchema.precision,
+        externalColumnSchema.scale);
+    wrapperColumnSchema.setDataType(dataType);
     wrapperColumnSchema.setDimensionColumn(externalColumnSchema.isDimension());
     List<Encoding> encoders = new ArrayList<Encoding>();
     for (org.apache.carbondata.format.Encoding encoder : externalColumnSchema.getEncoders()) {
@@ -502,9 +502,9 @@ public class ThriftWrapperSchemaConverterImpl implements SchemaConverter {
     }
     wrapperColumnSchema.setEncodingList(encoders);
     wrapperColumnSchema.setNumberOfChild(externalColumnSchema.getNum_child());
-    wrapperColumnSchema.setPrecision(externalColumnSchema.getPrecision());
+    wrapperColumnSchema.setPrecision(dataType);
+    wrapperColumnSchema.setScale(dataType);
     wrapperColumnSchema.setColumnGroup(externalColumnSchema.getColumn_group_id());
-    wrapperColumnSchema.setScale(externalColumnSchema.getScale());
     wrapperColumnSchema.setDefaultValue(externalColumnSchema.getDefault_value());
     wrapperColumnSchema.setInvisible(externalColumnSchema.isInvisible());
     wrapperColumnSchema.setColumnReferenceId(externalColumnSchema.getColumnReferenceId());

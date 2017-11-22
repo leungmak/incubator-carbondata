@@ -27,7 +27,7 @@ import org.apache.spark.sql.execution.command.partition.ShowCarbonPartitionsComm
 import org.apache.spark.sql.execution.command.schema._
 import org.apache.spark.sql.hive.execution.command.{CarbonDropDatabaseCommand, CarbonResetCommand, CarbonSetCommand}
 
-import org.apache.carbondata.spark.exception.MalformedCarbonCommandException
+import org.apache.carbondata.core.metadata.schema.table.MalformedCarbonCommandException
 
 /**
  * Carbon strategies for ddl commands
@@ -104,10 +104,10 @@ class DDLStrategy(sparkSession: SparkSession) extends SparkStrategy {
         } else {
           throw new MalformedCarbonCommandException("Unsupported alter operation on hive table")
         }
-      case addColumn@CarbonAlterTableAddColumnCommand(alterTableAddColumnsModel) =>
+      case addColumn@CarbonAlterTableAddColumnCommand(
+        databaseNameOp, tableName, newFields, tableProperties) =>
         val isCarbonTable = CarbonEnv.getInstance(sparkSession).carbonMetastore
-          .tableExists(TableIdentifier(alterTableAddColumnsModel.tableName,
-            alterTableAddColumnsModel.databaseName))(sparkSession)
+          .tableExists(TableIdentifier(tableName, databaseNameOp))(sparkSession)
         if (isCarbonTable) {
           ExecutedCommandExec(addColumn) :: Nil
         } else {

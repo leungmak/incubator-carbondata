@@ -82,8 +82,7 @@ case class AlterTableRenamePreEvent(carbonTable: CarbonTable,
  * @param carbonTable
  * @param alterTableAddColumnsModel
  */
-case class AlterTableAddColumnPreEvent(carbonTable: CarbonTable,
-    alterTableAddColumnsModel: AlterTableAddColumnsModel)
+case class AlterTableAddColumnPreEvent(carbonTable: CarbonTable)
   extends Event with AlterTableAddColumnEventInfo
 
 

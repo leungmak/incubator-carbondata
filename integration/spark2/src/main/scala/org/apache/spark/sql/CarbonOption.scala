@@ -15,21 +15,19 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.spark
-
-import org.apache.carbondata.core.constants.CarbonCommonConstants
+package org.apache.spark.sql
 
 /**
  * Contains all options for Spark data source
  */
-class CarbonOption(options: Map[String, String]) {
-  def tableIdentifier: String = options.getOrElse("tableName", s"$dbName.$tableName")
+class CarbonOption(sparkSession: SparkSession, options: Map[String, String]) {
+//  def tableIdentifier: String = options.getOrElse("tableName", s"$dbName.$tableName")
 
-  def dbName: String = options.getOrElse("dbName", CarbonCommonConstants.DATABASE_DEFAULT_NAME)
+  def dbName: String = CarbonEnv.getDatabaseName(options.get("dbName"))(sparkSession)
 
   def tableName: String = options.getOrElse("tableName", "default_table")
 
-  def tablePath: String = s"$dbName/$tableName"
+  def tablePath: String = CarbonEnv.getTablePath(Some(dbName), tableName)(sparkSession)
 
   def tableId: String = options.getOrElse("tableId", "default_table_id")
 

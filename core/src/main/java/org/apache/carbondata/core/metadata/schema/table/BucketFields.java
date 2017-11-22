@@ -14,26 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.carbondata.core.service.impl;
 
-import java.util.UUID;
+package org.apache.carbondata.core.metadata.schema.table;
 
-import org.apache.carbondata.core.metadata.schema.table.column.ColumnSchema;
-import org.apache.carbondata.core.service.ColumnUniqueIdService;
+import java.util.List;
 
-/**
- * It returns unique id given column
- */
-public class ColumnUniqueIdGenerator implements ColumnUniqueIdService {
+public class BucketFields {
+  private List<String> bucketColumns;
+  private int numberOfBuckets;
 
-  private static ColumnUniqueIdService columnUniqueIdService = new ColumnUniqueIdGenerator();
-
-  @Override public String generateUniqueId(ColumnSchema columnSchema) {
-    return UUID.randomUUID().toString();
+  public BucketFields(List<String> bucketColumns, int numberOfBuckets) {
+    this.bucketColumns = bucketColumns;
+    this.numberOfBuckets = numberOfBuckets;
   }
 
-  public static ColumnUniqueIdService getInstance() {
-    return columnUniqueIdService;
+  public List<String> getBucketColumns() {
+    return bucketColumns;
   }
 
+  public int getNumberOfBuckets() {
+    return numberOfBuckets;
+  }
 }

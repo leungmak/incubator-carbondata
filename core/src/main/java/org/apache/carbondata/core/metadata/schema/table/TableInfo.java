@@ -24,13 +24,23 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.carbondata.common.logging.LogService;
 import org.apache.carbondata.common.logging.LogServiceFactory;
 import org.apache.carbondata.core.constants.CarbonCommonConstants;
 import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier;
 import org.apache.carbondata.core.metadata.CarbonTableIdentifier;
+import org.apache.carbondata.core.metadata.TableProperty;
+import org.apache.carbondata.core.metadata.datatype.DataTypes;
+import org.apache.carbondata.core.metadata.datatype.StructField;
+import org.apache.carbondata.core.metadata.datatype.StructType;
+import org.apache.carbondata.core.metadata.schema.BucketingInfo;
+import org.apache.carbondata.core.metadata.schema.PartitionInfo;
 import org.apache.carbondata.core.metadata.schema.table.column.ColumnSchema;
 import org.apache.carbondata.core.metadata.schema.table.column.ParentColumnTableRelation;
 
@@ -339,6 +349,219 @@ public class TableInfo implements Serializable, Writable {
 
   public List<RelationIdentifier> getParentRelationIdentifiers() {
     return parentRelationIdentifiers;
+  }
+
+  public static TableInfoBuilder builder() {
+    return new TableInfo.TableInfoBuilder();
+  }
+
+  public static class TableInfoBuilder {
+
+    // following members are required to build TableInfo
+
+    private String databaseName;
+    private String tableName;
+    private List<ColumnSchema> allColumns;
+    private String metaDataFilepath;
+    private String tablePath;
+    private List<DataMapSchema> dataMapSchemaList = new ArrayList<>();
+    private Map<String, String> tableProperties;
+    private BucketingInfo bucketingInfo;
+    private PartitionInfo partitionInfo;
+
+    // parent table object, which can be used during dropping of pre-aggreate table as
+    // parent table will also get updated
+    private CarbonTable parentTable;
+
+    // column name -> DataMapField
+    private Map<String, DataMapField> dataMapFields;
+
+    private TableInfoBuilder() {
+    }
+
+    public TableInfo create() throws MalformedCarbonCommandException {
+      if (databaseName == null || tablePath == null || metaDataFilepath == null) {
+        throw new IllegalArgumentException("parameter must not be null");
+      }
+      TableSchema tableSchema =
+          TableSchema.builder()
+              .tableName(tableName)
+              .allColumns(allColumns)
+              .tableProperties(tableProperties)
+              .partitionInfo(partitionInfo)
+              .bucketingInfo(bucketingInfo)
+              .create();
+      TableInfo tableInfo = new TableInfo();
+      tableInfo.setDatabaseName(databaseName);
+      tableInfo.setTableUniqueName(databaseName + "_" + tableName);
+      tableInfo.setFactTable(tableSchema);
+      tableInfo.setTablePath(tablePath);
+      tableInfo.setMetaDataFilepath(metaDataFilepath);
+      tableInfo.setLastUpdatedTime(System.currentTimeMillis());
+      tableInfo.setDataMapSchemaList(dataMapSchemaList);
+      tableInfo.updateParentRelationIdentifier();
+      tableInfo.getOrCreateAbsoluteTableIdentifier();
+      return tableInfo;
+    }
+
+    public TableInfoBuilder databaseName(String databaseName) {
+      this.databaseName = databaseName;
+      return this;
+    }
+
+    public TableInfoBuilder tableName(String tableName) {
+      this.tableName = tableName;
+      return this;
+    }
+
+    public TableInfoBuilder tableProperties(Map<String, String> tableProperties) {
+      this.tableProperties = tableProperties;
+      return this;
+    }
+
+    public TableInfoBuilder schema(StructType schema) throws MalformedCarbonCommandException {
+      schema.validateSchema();
+      if (tableProperties == null) {
+        throw new IllegalArgumentException("table property should not be null");
+      }
+
+      this.allColumns = createColumnsSchemas(
+          schema,
+          parentTable,
+          dataMapFields);
+      return this;
+    }
+
+    public TableInfoBuilder metadataFilePath(String metaDataFilepath) {
+      this.metaDataFilepath = metaDataFilepath;
+      return this;
+    }
+
+    public TableInfoBuilder tablePath(String tablePath) {
+      this.tablePath = tablePath;
+      return this;
+    }
+
+    // bucketFields must be either in sort_columns or dimension if not in sort_columns
+    public TableInfoBuilder bucketFields(BucketFields bucketFields)
+        throws MalformedCarbonCommandException {
+      if (bucketFields != null) {
+        List<ColumnSchema> bucketColumns = new ArrayList<ColumnSchema>();
+        for (String bucketField : bucketFields.getBucketColumns()) {
+          for (ColumnSchema column : allColumns) {
+            if (column.getColumnName().equals(bucketField) &&
+                column.isDimensionColumn() && !column.getDataType().isComplexType()) {
+              bucketColumns.add(column);
+              break;
+            }
+            String msg = "Bucket field must be dimension column and "
+                + "not complex column, invalid bucket field: " + bucketField;
+            LOGGER.error(msg);
+            throw new MalformedCarbonCommandException(msg);
+          }
+          String msg = "Bucket field is not present in table schema: " + bucketField;
+          LOGGER.error(msg);
+          throw new MalformedCarbonCommandException(msg);
+        }
+
+        this.bucketingInfo = new BucketingInfo(bucketColumns, bucketFields.getNumberOfBuckets());
+      }
+      return this;
+    }
+
+    // partition column can be any column
+    public TableInfoBuilder partitionInfo(PartitionInfo partitionInfo) {
+      this.partitionInfo = partitionInfo;
+      return this;
+    }
+
+    public TableInfoBuilder dataMapSchemaList(List<DataMapSchema> dataMapSchemaList) {
+      this.dataMapSchemaList = dataMapSchemaList;
+      return this;
+    }
+
+    public TableInfoBuilder parentTable(CarbonTable parentTable) {
+      this.parentTable = parentTable;
+      return this;
+    }
+
+    public TableInfoBuilder dataMapFields(Map<String, DataMapField> dataMapFields) {
+      this.dataMapFields = dataMapFields;
+      return this;
+    }
+
+    private List<ColumnSchema> createColumnsSchemas(
+        StructType schema,
+        CarbonTable parentTable,
+        Map<String, DataMapField> dataMapFields
+    ) throws MalformedCarbonCommandException {
+
+      // create ColumnSchema for every field in schema
+      List<ColumnSchema> allColumns = new ArrayList<>();
+      List<StructField> fields = schema.getFields();
+      boolean hasMeasure = false;
+      List<String> sortColumns = TableProperty.getSortColumns(schema, tableProperties);
+      List<String> noInvertedIndexColumns = TableProperty.getNoInvertedIndexColumns(tableProperties);
+      for (StructField field : fields) {
+        if (!field.getDataType().isComplexType() && field.getDataType() != DataTypes.STRING) {
+          hasMeasure = true;
+        }
+        ColumnSchema column = field.createColumnSchema(
+            sortColumns,
+            tableProperties,
+            parentTable,
+            dataMapFields);
+        allColumns.add(column);
+      }
+
+      // Adding dummy measure if no measure is provided.
+      // TODO: remove this limitation
+      if (!hasMeasure) {
+        StructField dummyField = DataTypes.createStructField(
+            CarbonCommonConstants.DEFAULT_INVISIBLE_DUMMY_MEASURE,
+            DataTypes.DOUBLE);
+
+        ColumnSchema dummyColumn = dummyField.createColumnSchema(
+            sortColumns,
+            tableProperties,
+            parentTable,
+            dataMapFields);
+        dummyColumn.setInvisible(true);
+        allColumns.add(dummyColumn);
+      }
+
+      // set whether to use InvertedIndex in column schema
+      for (ColumnSchema column : allColumns) {
+        // If the column is in sort_columns, use inverted index unless noInvertedIndex is set
+        // by user.
+        // If the column is not sort_columns, do not use inverted index always.
+        if (sortColumns.contains(column.getColumnName())) {
+          if (noInvertedIndexColumns.contains(column.getColumnName())) {
+            column.setUseInvertedIndex(false);
+          } else {
+            column.setUseInvertedIndex(true);
+          }
+        } else {
+          column.setUseInvertedIndex(false);
+        }
+      }
+
+      validateColumns(allColumns);
+      return allColumns;
+    }
+
+    private void validateColumns(List<ColumnSchema> allColumns)
+        throws MalformedCarbonCommandException {
+      Set<String> columnIdSet = new HashSet<>();
+      for (ColumnSchema columnSchema : allColumns) {
+        columnIdSet.add(columnSchema.getColumnUniqueId());
+      }
+
+      if (columnIdSet.size() != allColumns.size()) {
+        throw new MalformedCarbonCommandException("Two column can not have same columnId");
+      }
+    }
+
   }
 
 }

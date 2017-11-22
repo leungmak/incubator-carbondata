@@ -30,4 +30,14 @@ public class ArrayType extends DataType {
   public boolean isComplexType() {
     return true;
   }
+
+  @Override
+  public int getNumOfChild() {
+    // beside the element column, we keep one more column for offset
+    return 1 + elementType.getNumOfChild();
+  }
+
+  public DataType getElementType() {
+    return elementType;
+  }
 }

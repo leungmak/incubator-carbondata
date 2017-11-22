@@ -85,9 +85,9 @@ public class RestructureUtil {
             tableDimension.getColumnSchema()
                 .setDataType(queryDimension.getDimension().getDataType());
             tableDimension.getColumnSchema()
-                .setPrecision(queryDimension.getDimension().getColumnSchema().getPrecision());
+                .setPrecision(queryDimension.getDimension().getColumnSchema().getDataType());
             tableDimension.getColumnSchema()
-                .setScale(queryDimension.getDimension().getColumnSchema().getScale());
+                .setScale(queryDimension.getDimension().getColumnSchema().getDataType());
             tableDimension.getColumnSchema()
                 .setDefaultValue(queryDimension.getDimension().getDefaultValue());
             currentBlockDimension.setDimension(tableDimension);
@@ -376,8 +376,8 @@ public class RestructureUtil {
         if (carbonMeasure.getColumnId().equals(queryMeasure.getMeasure().getColumnId())) {
           QueryMeasure currentBlockMeasure = new QueryMeasure(carbonMeasure.getColName());
           carbonMeasure.getColumnSchema().setDataType(queryMeasure.getMeasure().getDataType());
-          carbonMeasure.getColumnSchema().setPrecision(queryMeasure.getMeasure().getPrecision());
-          carbonMeasure.getColumnSchema().setScale(queryMeasure.getMeasure().getScale());
+          carbonMeasure.getColumnSchema().setPrecision(queryMeasure.getMeasure().getDataType());
+          carbonMeasure.getColumnSchema().setScale(queryMeasure.getMeasure().getDataType());
           carbonMeasure.getColumnSchema()
               .setDefaultValue(queryMeasure.getMeasure().getDefaultValue());
           currentBlockMeasure.setMeasure(carbonMeasure);

@@ -17,9 +17,13 @@
 
 package org.apache.carbondata.core.metadata.datatype;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-class StructType extends DataType {
+import org.apache.carbondata.core.metadata.schema.table.MalformedCarbonCommandException;
+
+public class StructType extends DataType {
 
   private List<StructField> fields;
 
@@ -35,5 +39,24 @@ class StructType extends DataType {
 
   public List<StructField> getFields() {
     return fields;
+  }
+
+  public int getNumOfChild() {
+    int numOfChild = 0;
+    for (StructField field : fields) {
+      numOfChild += field.getDataType().getNumOfChild();
+    }
+    return numOfChild;
+  }
+
+  public void validateSchema() throws MalformedCarbonCommandException {
+    Set<String> fieldNames = new HashSet<>();
+    for (StructField field : fields) {
+      if (fieldNames.contains(field.getFieldName())) {
+        throw new MalformedCarbonCommandException(
+            "Duplicate column found with name " + field.getFieldName());
+      }
+      fieldNames.add(field.getFieldName());
+    }
   }
 }

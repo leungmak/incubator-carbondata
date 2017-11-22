@@ -279,9 +279,9 @@ public abstract class AbstractDataFileFooterConverter {
     }
     wrapperColumnSchema.setEncodingList(encoders);
     wrapperColumnSchema.setNumberOfChild(externalColumnSchema.getNum_child());
-    wrapperColumnSchema.setPrecision(externalColumnSchema.getPrecision());
+    wrapperColumnSchema.setPrecision(dataType);
+    wrapperColumnSchema.setScale(dataType);
     wrapperColumnSchema.setColumnGroup(externalColumnSchema.getColumn_group_id());
-    wrapperColumnSchema.setScale(externalColumnSchema.getScale());
     wrapperColumnSchema.setDefaultValue(externalColumnSchema.getDefault_value());
     Map<String, String> properties = externalColumnSchema.getColumnProperties();
     if (properties != null) {

@@ -26,7 +26,9 @@ import org.apache.spark.sql.internal.CarbonSQLConf
 
 import org.apache.carbondata.common.logging.LogServiceFactory
 import org.apache.carbondata.core.constants.CarbonCommonConstants
+import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable
+import org.apache.carbondata.core.util.path.{CarbonStorePath, CarbonTablePath}
 import org.apache.carbondata.core.util.{CarbonProperties, CarbonSessionInfo, SessionParams, ThreadLocalSessionInfo}
 import org.apache.carbondata.events.{CarbonEnvInitPreEvent, OperationListenerBus}
 import org.apache.carbondata.spark.rdd.SparkReadSupport
@@ -138,4 +140,38 @@ object CarbonEnv {
       .asInstanceOf[CarbonRelation]
       .carbonTable
   }
+
+  def getTablePath(
+      databaseNameOp: Option[String],
+      tableName: String
+  )(sparkSession: SparkSession): String = {
+    val dbLocation = GetDB.getDatabaseLocation(
+      databaseNameOp.getOrElse(sparkSession.sessionState.catalog.getCurrentDatabase),
+      sparkSession,
+      CarbonProperties.getStorePath)
+    dbLocation + CarbonCommonConstants.FILE_SEPARATOR + tableName
+  }
+
+  def getDatabaseName(
+      databaseNameOp: Option[String]
+  )(sparkSession: SparkSession): String = {
+    databaseNameOp.getOrElse(sparkSession.sessionState.catalog.getCurrentDatabase)
+  }
+
+  def getStorePath: String = CarbonProperties.getStorePath
+
+  def getMetastorePath(
+      databaseNameOp: Option[String],
+      tableName: String
+  )(sparkSession: SparkSession): String = {
+    val absoluteTableIdentifier = AbsoluteTableIdentifier.from(
+      getTablePath(databaseNameOp, tableName)(sparkSession),
+      getDatabaseName(databaseNameOp)(sparkSession),
+      tableName)
+    val carbonTablePath = CarbonStorePath
+      .getCarbonTablePath(absoluteTableIdentifier)
+    val schemaFilePath = carbonTablePath.getSchemaFilePath
+    CarbonTablePath.getFolderContainingFile(schemaFilePath)
+  }
+
 }

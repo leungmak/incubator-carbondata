@@ -21,7 +21,7 @@ import java.io.File
 import java.math.{BigDecimal, RoundingMode}
 import java.sql.Timestamp
 
-import org.apache.spark.sql.{CarbonEnv, Row}
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.common.util.Spark2QueryTest
 import org.apache.spark.sql.execution.command.preaaggregate.PreAggregateUtil
 import org.apache.spark.sql.test.Spark2TestQueryExecutor

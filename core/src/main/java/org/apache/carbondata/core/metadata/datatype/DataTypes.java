@@ -166,6 +166,10 @@ public class DataTypes {
     return dataType.getId() == STRUCT_TYPE_ID;
   }
 
+  public static StructField createStructField(String fieldName, DataType dataType) {
+    return new StructField(fieldName, dataType);
+  }
+
   /**
    * create map type with specified key type and value type
    */
