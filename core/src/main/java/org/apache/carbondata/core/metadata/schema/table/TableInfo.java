@@ -498,53 +498,56 @@ public class TableInfo implements Serializable, Writable {
 
       // create ColumnSchema for every field in schema
       List<ColumnSchema> allColumns = new ArrayList<>();
+      List<ColumnSchema> dimensionColumns = new ArrayList<>();
+      List<ColumnSchema> measureColumns = new ArrayList<>();
       List<StructField> fields = schema.getFields();
-      boolean hasMeasure = false;
-      List<String> sortColumns = TableProperty.getSortColumns(schema, tableProperties);
-      List<String> noInvertedIndexColumns = TableProperty.getNoInvertedIndexColumns(tableProperties);
+      TableProperty tableProperty = new TableProperty(schema, tableProperties);
+
       for (StructField field : fields) {
-        if (!field.getDataType().isComplexType() && field.getDataType() != DataTypes.STRING) {
-          hasMeasure = true;
-        }
-        ColumnSchema column = field.createColumnSchema(
-            sortColumns,
-            tableProperties,
+        List<ColumnSchema> column = field.createColumnSchema(
+            tableProperty,
             parentTable,
             dataMapFields);
-        allColumns.add(column);
+        if (field.isDimension(tableProperty)) {
+          dimensionColumns.addAll(column);
+        } else {
+          measureColumns.addAll(column);
+        }
       }
+
+      allColumns.addAll(dimensionColumns);
+      allColumns.addAll(measureColumns);
 
       // Adding dummy measure if no measure is provided.
       // TODO: remove this limitation
-      if (!hasMeasure) {
+      if (measureColumns.size() == 0) {
         StructField dummyField = DataTypes.createStructField(
             CarbonCommonConstants.DEFAULT_INVISIBLE_DUMMY_MEASURE,
             DataTypes.DOUBLE);
 
-        ColumnSchema dummyColumn = dummyField.createColumnSchema(
-            sortColumns,
-            tableProperties,
+        List<ColumnSchema> dummyColumn = dummyField.createColumnSchema(
+            tableProperty,
             parentTable,
             dataMapFields);
-        dummyColumn.setInvisible(true);
-        allColumns.add(dummyColumn);
+        dummyColumn.get(0).setInvisible(true);
+        allColumns.addAll(dummyColumn);
       }
 
-      // set whether to use InvertedIndex in column schema
-      for (ColumnSchema column : allColumns) {
-        // If the column is in sort_columns, use inverted index unless noInvertedIndex is set
-        // by user.
-        // If the column is not sort_columns, do not use inverted index always.
-        if (sortColumns.contains(column.getColumnName())) {
-          if (noInvertedIndexColumns.contains(column.getColumnName())) {
-            column.setUseInvertedIndex(false);
-          } else {
-            column.setUseInvertedIndex(true);
-          }
-        } else {
-          column.setUseInvertedIndex(false);
-        }
-      }
+//      // set whether to use InvertedIndex in column schema
+//      for (ColumnSchema column : allColumns) {
+//        // If the column is in sort_columns, use inverted index unless noInvertedIndex is set
+//        // by user.
+//        // If the column is not sort_columns, do not use inverted index always.
+//        if (tableProperty.getSortColumns().contains(column.getColumnName())) {
+//          if (noInvertedIndexColumns.contains(column.getColumnName())) {
+//            column.setUseInvertedIndex(false);
+//          } else {
+//            column.setUseInvertedIndex(true);
+//          }
+//        } else {
+//          column.setUseInvertedIndex(false);
+//        }
+//      }
 
       validateColumns(allColumns);
       return allColumns;

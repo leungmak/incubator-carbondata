@@ -84,76 +84,78 @@ public class StructField implements Serializable {
    * Create ColumnSchema object represent for this field, it will be multiple ColumnSchema objects
    * if it is a complex type
    *
-   * @param sortColumns column name list in sort_columns property
+   * @param tableProperty table property
    * @param parentTable parent table of this field, can be null
    * @param dataMapFields datamap on this field, can be null
    * @return ColumnSchema list
    */
-  public ColumnSchema createColumnSchema(
-      List<String> sortColumns,
-      Map<String, String> tableProperties,
+  public List<ColumnSchema> createColumnSchema(
+      TableProperty tableProperty,
       CarbonTable parentTable,
       Map<String, DataMapField> dataMapFields) {
-    boolean isDimension = false;
-    List<Encoding> encodings = new ArrayList<>();
-    List<String> noInvertedIndexColumns = TableProperty.getNoInvertedIndexColumns(tableProperties);
-    List<String> dictionaryColumns = TableProperty.getDictionaryColumns(tableProperties);
-    String fieldName = this.fieldName.toLowerCase();
-    boolean inSortColumn = sortColumns.contains(fieldName);
-    boolean useInvertedIndex = sortColumns.contains(fieldName) &&
-        !noInvertedIndexColumns.contains(fieldName);
-    boolean useDictionary = dictionaryColumns.contains(fieldName);
-    boolean hasDataMap = dataMapFields != null && dataMapFields.get(fieldName) != null;
+    List<ColumnSchema> columnSchemas = new ArrayList<>();
 
-    if (inSortColumn) {
-      // if this field datamap field, use encoder from parent table,
-      // otherwise use no dictionary (means encoding should be empty)
-      if (parentTable != null && dataMapFields.containsKey(fieldName)) {
-        encodings = parentTable.getColumnByName(
-            parentTable.getTableName(),
-            dataMapFields.get(fieldName).getColumnTableRelation().getParentColumnName()
-        ).getEncoder();
+    if (!dataType.isComplexType()) {
+      ColumnSchema columnSchema = createPrivitiveColumnSchema(tableProperty, parentTable, dataMapFields);
+      columnSchemas.add(columnSchema);
+    } else if (DataTypes.isStructType(dataType)) {
+      List<StructField> fields = ((StructType) dataType).getFields();
+      for (StructField field : fields) {
+        List<ColumnSchema> columns = field.createColumnSchema(tableProperty, parentTable, dataMapFields);
+        columnSchemas.addAll(columns);
       }
-      isDimension = true;
+    } else if (DataTypes.isArrayType(dataType)) {
+      DataType type = ((ArrayType) dataType).getElementType();
+      StructField keyField = DataTypes.createStructField("_array_offset", DataTypes.INT);
+      List<ColumnSchema> keyColumns = keyField.createColumnSchema(tableProperty, parentTable, dataMapFields);
+      keyColumns.get(0).setInvisible(true);
+      columnSchemas.addAll(keyColumns);
+      StructField valueField = DataTypes.createStructField(fieldName, type);
+      List<ColumnSchema> valueColumns = valueField.createColumnSchema(tableProperty, parentTable, dataMapFields);
+      columnSchemas.addAll(valueColumns);
+    } else if (DataTypes.isMapType(dataType)) {
+      // TODO
+    } else {
+      throw new UnsupportedOperationException("unsupported type: " + dataType);
     }
 
-    if (dataType == DataTypes.DATE || dataType == DataTypes.TIMESTAMP) {
-      encodings.add(Encoding.DIRECT_DICTIONARY);
-      encodings.add(Encoding.DICTIONARY);
-      isDimension = true;
-    } else if (dataType == DataTypes.STRING || dataType.isComplexType()) {
-      isDimension = true;
-    } else if (useDictionary) {
-      encodings.add(Encoding.DICTIONARY);
-      isDimension = true;
-    }
+    return columnSchemas;
+  }
 
-    if (useInvertedIndex) {
-      encodings.add(Encoding.INVERTED_INDEX);
-    }
-
+  /**
+   * Create ColumnSchema object represent for privite field
+   *
+   * @param tableProperty table property
+   * @param parentTable parent table of this field, can be null
+   * @param dataMapFields datamap on this field, can be null
+   * @return ColumnSchema
+   */
+  public ColumnSchema createPrivitiveColumnSchema(
+      TableProperty tableProperty,
+      CarbonTable parentTable,
+      Map<String, DataMapField> dataMapFields) {
     ColumnSchema columnSchema = new ColumnSchema();
     columnSchema.setDataType(dataType);
     columnSchema.setColumnName(fieldName);
-    columnSchema.setEncodingList(encodings);
+    columnSchema.setEncodingList(getEncodingsForField(tableProperty, parentTable, dataMapFields));
     String columnUniqueId =
         CarbonCommonFactory.getColumnUniqueIdGenerator().generateUniqueId(columnSchema);
     columnSchema.setColumnUniqueId(columnUniqueId);
     columnSchema.setColumnReferenceId(columnUniqueId);
-    columnSchema.setDimensionColumn(isDimension);
-    columnSchema.setSortColumn(inSortColumn);
-    columnSchema.setUseInvertedIndex(useInvertedIndex);
+    columnSchema.setDimensionColumn(isDimension(tableProperty));
+    columnSchema.setSortColumn(isSortColumn(tableProperty));
+    columnSchema.setUseInvertedIndex(isInvertedIndexColumn(tableProperty));
     columnSchema.setPrecision(dataType);
     columnSchema.setScale(dataType);
     columnSchema.setSchemaOrdinal(schemaOrdinal);
     columnSchema.setNumberOfChild(dataType.getNumOfChild());
     columnSchema.setInvisible(false);
     columnSchema.setDataType(dataType);
-    columnSchema.setColumnName(fieldName);
     columnSchema.setColumnar(true);
     columnSchema.setColumnGroup(-1);
     columnSchema.setColumnProperties(new HashMap<String, String>());
 
+    boolean hasDataMap = dataMapFields != null && dataMapFields.get(fieldName) != null;
     if (hasDataMap) {
       DataMapField dataMapField = dataMapFields.get(fieldName);
       columnSchema.setAggFunction(dataMapField.getAggregateFunction());
@@ -176,18 +178,70 @@ public class StructField implements Serializable {
   }
 
   /**
-   * return true if it is dimension data type
+   * Return true if this field is dimension
    */
-  public boolean isDimension(Map<String, String> tableProperties) {
-    String dictInclude = tableProperties.get(CarbonCommonConstants.DICTIONARY_INCLUDE);
-    if (dictInclude != null) {
-      String[] dictIncludeCols = dictInclude.split(",");
-      if (Arrays.asList(dictIncludeCols).indexOf(fieldName) != -1) {
-        return true;
+  public boolean isDimension(TableProperty tableProperty) {
+    boolean isDimension = false;
+    String fieldName = this.fieldName.toLowerCase();
+    if (tableProperty.getSortColumns().contains(fieldName)) {
+      isDimension = true;
+    }
+    if (dataType == DataTypes.DATE || dataType == DataTypes.TIMESTAMP) {
+      isDimension = true;
+    } else if (dataType == DataTypes.STRING || dataType.isComplexType()) {
+      isDimension = true;
+    } else if (tableProperty.getDictionaryColumns().contains(fieldName)) {
+      isDimension = true;
+    }
+    return isDimension;
+  }
+
+  /**
+   * Return true if this field is in sort columns
+   */
+  public boolean isSortColumn(TableProperty tableProperty) {
+    String fieldName = this.fieldName.toLowerCase();
+    return tableProperty.getSortColumns().contains(fieldName);
+  }
+
+  /**
+   * Return true if this field is in sort columns
+   */
+  public boolean isInvertedIndexColumn(TableProperty tableProperty) {
+    String fieldName = this.fieldName.toLowerCase();
+    return tableProperty.getSortColumns().contains(fieldName) &&
+        !tableProperty.getNoInvertedIndexColumns().contains(fieldName);
+  }
+
+  public List<Encoding> getEncodingsForField(TableProperty tableProperty, CarbonTable parentTable,
+      Map<String, DataMapField> dataMapFields) {
+    String fieldName = this.fieldName.toLowerCase();
+    boolean inSortColumn = isSortColumn(tableProperty);
+    boolean useInvertedIndex = isInvertedIndexColumn(tableProperty);
+    boolean useDictionary = tableProperty.getDictionaryColumns().contains(fieldName);
+
+    List<Encoding> encodings = new ArrayList<>();
+    if (inSortColumn) {
+      // if this field datamap field, use encoder from parent table,
+      // otherwise use no dictionary (means encoding should be empty)
+      if (parentTable != null && dataMapFields.containsKey(fieldName)) {
+        encodings = parentTable.getColumnByName(
+            parentTable.getTableName(),
+            dataMapFields.get(fieldName).getColumnTableRelation().getParentColumnName()
+        ).getEncoder();
       }
     }
-    return dataType == DataTypes.STRING || dataType.isComplexType() ||
-        dataType == DataTypes.TIMESTAMP || dataType == DataTypes.DATE;
+
+    if (useInvertedIndex) {
+      encodings.add(Encoding.INVERTED_INDEX);
+    }
+    if (dataType == DataTypes.DATE || dataType == DataTypes.TIMESTAMP) {
+      encodings.add(Encoding.DIRECT_DICTIONARY);
+      encodings.add(Encoding.DICTIONARY);
+    } else if (useDictionary) {
+      encodings.add(Encoding.DICTIONARY);
+    }
+    return encodings;
   }
 
 }

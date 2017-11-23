@@ -135,6 +135,18 @@ class CarbonSqlAstBuilder(conf: SQLConf) extends SparkSqlAstBuilder(conf) {
       val fields = colsStructFields ++ partitionByStructFields
       val schema = CarbonDataTypes.createStructType(fields.asJava)
 
+      // update the schema to change all float field to double, since carbon does not support
+      // float data type currently
+      // TODO: remove this limitation
+      val updatedFields = schema.getFields.asScala.map { field =>
+        if (field.getDataType == CarbonDataTypes.FLOAT) {
+          CarbonDataTypes.createStructField(field.getFieldName, CarbonDataTypes.DOUBLE)
+        } else {
+          field
+        }
+      }
+      val tableSchema = CarbonDataTypes.createStructType(updatedFields.asJava)
+
       // validate and get bucket fields
       val bucketFields: Option[BucketFields] = parser.createBucketFields(tableProperties, options)
 
@@ -145,7 +157,7 @@ class CarbonSqlAstBuilder(conf: SQLConf) extends SparkSqlAstBuilder(conf) {
         databaseNameOp = name.database,
         tableName = name.table,
         tableProperties = tableProperties,
-        tableSchema = schema,
+        tableSchema = tableSchema,
         bucketFields = bucketFields,
         partitionInfo = partitionInfo)
     } else {

@@ -170,7 +170,7 @@ class AlterTableColumnSchemaGenerator(
 
     newFields.foreach { field =>
       // datamap does not support alter table, so parent table must be null
-      newCols +:= field.createColumnSchema(sortColumns, tableProperties.asJava, null, null)
+      newCols ++= field.createColumnSchema(null, null, null).asScala
     }
 
     // Check if there is any duplicate measures or dimensions.

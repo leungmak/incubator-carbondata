@@ -23,15 +23,44 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.carbondata.core.constants.CarbonCommonConstants;
+import org.apache.carbondata.core.metadata.datatype.DataType;
+import org.apache.carbondata.core.metadata.datatype.DataTypes;
 import org.apache.carbondata.core.metadata.datatype.StructField;
 import org.apache.carbondata.core.metadata.datatype.StructType;
+import org.apache.carbondata.core.metadata.encoder.Encoding;
+import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
+import org.apache.carbondata.core.metadata.schema.table.DataMapField;
 import org.apache.carbondata.core.util.CarbonUtil;
 
 public class TableProperty {
 
-  public static List<String> getSortColumns(
-      StructType schema,
-      Map<String, String> tableProperties) {
+  private StructType schema;
+  private Map<String, String> tableProperties;
+  private List<String> sortColumns;
+  private List<String> noInvertedIndexColumns;
+  private List<String> dictionaryColumns;
+
+  public TableProperty(StructType schema, Map<String, String> tableProperties) {
+    this.schema = schema;
+    this.tableProperties = tableProperties;
+    this.noInvertedIndexColumns = extractNoInvertedIndexColumns();
+    this.dictionaryColumns = extractDictionaryColumns();
+    this.sortColumns = extractSortColumns();
+  }
+
+  public List<String> getSortColumns() {
+    return sortColumns;
+  }
+
+  public List<String> getNoInvertedIndexColumns() {
+    return noInvertedIndexColumns;
+  }
+
+  public List<String> getDictionaryColumns() {
+    return dictionaryColumns;
+  }
+
+  private List<String> extractSortColumns() {
     String sortColumnsString = tableProperties.get(CarbonCommonConstants.SORT_COLUMNS);
     List<String> sortColumns = new ArrayList<>();
     if (sortColumnsString != null) {
@@ -46,7 +75,12 @@ public class TableProperty {
       // default sort columns is all dimension except complex type
       List<StructField> fields = schema.getFields();
       for (StructField field : fields) {
-        if (field.isDimension(tableProperties) && !field.getDataType().isComplexType()) {
+        DataType dataType = field.getDataType();
+        if (dictionaryColumns.contains(field.getFieldName().toLowerCase()) &&
+            !field.getDataType().isComplexType()) {
+          sortColumns.add(field.getFieldName());
+        }
+        if (dataType == DataTypes.TIMESTAMP || dataType == DataTypes.DATE) {
           sortColumns.add(field.getFieldName());
         }
       }
@@ -54,8 +88,7 @@ public class TableProperty {
     return sortColumns;
   }
 
-  public static List<String> getNoInvertedIndexColumns(
-      Map<String, String> tableProperties) {
+  private List<String> extractNoInvertedIndexColumns() {
     // Column names that does not do inverted index.
     // Note that inverted index is allowed only in sort columns
     String noInvertedIndexString = tableProperties.get(CarbonCommonConstants.NO_INVERTED_INDEX);
@@ -70,8 +103,7 @@ public class TableProperty {
     }
   }
 
-  public static List<String> getDictionaryColumns(
-      Map<String, String> tableProperties) {
+  private List<String> extractDictionaryColumns() {
     String dictionaryColumns = tableProperties.get(CarbonCommonConstants.DICTIONARY_INCLUDE);
     if (dictionaryColumns == null) {
       return new ArrayList<>(0);
