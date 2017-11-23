@@ -222,15 +222,19 @@ public class StructField implements Serializable {
   }
 
   /**
-   * Return true if this field is in sort columns
+   * Return true if this field use inverted index
    */
   public boolean isInvertedIndexColumn(TableProperty tableProperty) {
-    String fieldName = this.fieldName.toLowerCase();
-    return tableProperty.getSortColumns().contains(fieldName) &&
-        !tableProperty.getNoInvertedIndexColumns().contains(fieldName);
+    if (dataType.isComplexType()) {
+      return true;
+    } else {
+      String fieldName = this.fieldName.toLowerCase();
+      return tableProperty.getSortColumns().contains(fieldName) &&
+          !tableProperty.getNoInvertedIndexColumns().contains(fieldName);
+    }
   }
 
-  public List<Encoding> getEncodingsForField(TableProperty tableProperty, CarbonTable parentTable,
+  private List<Encoding> getEncodingsForField(TableProperty tableProperty, CarbonTable parentTable,
       Map<String, DataMapField> dataMapFields) {
     String fieldName = this.fieldName.toLowerCase();
     boolean inSortColumn = isSortColumn(tableProperty);
@@ -252,7 +256,9 @@ public class StructField implements Serializable {
     if (useInvertedIndex) {
       encodings.add(Encoding.INVERTED_INDEX);
     }
-    if (dataType == DataTypes.DATE || dataType == DataTypes.TIMESTAMP) {
+    if (dataType.isComplexType()) {
+      encodings.add(Encoding.DICTIONARY);
+    } else if (dataType == DataTypes.DATE || dataType == DataTypes.TIMESTAMP) {
       encodings.add(Encoding.DIRECT_DICTIONARY);
       encodings.add(Encoding.DICTIONARY);
     } else if (useDictionary) {
