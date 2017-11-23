@@ -105,12 +105,29 @@ public class StructField implements Serializable {
         columnSchemas.addAll(columns);
       }
     } else if (DataTypes.isArrayType(dataType)) {
-      DataType type = ((ArrayType) dataType).getElementType();
-      StructField keyField = DataTypes.createStructField("_array_offset", DataTypes.INT);
-      List<ColumnSchema> keyColumns = keyField.createColumnSchema(tableProperty, parentTable, dataMapFields);
-      keyColumns.get(0).setInvisible(true);
-      columnSchemas.addAll(keyColumns);
-      StructField valueField = DataTypes.createStructField(fieldName, type);
+      ColumnSchema columnSchema = new ColumnSchema();
+      columnSchema.setDataType(dataType);
+      columnSchema.setColumnName(fieldName);
+      columnSchema.setEncodingList(getEncodingsForField(tableProperty, parentTable, dataMapFields));
+      String columnUniqueId =
+          CarbonCommonFactory.getColumnUniqueIdGenerator().generateUniqueId(columnSchema);
+      columnSchema.setColumnUniqueId(columnUniqueId);
+      columnSchema.setColumnReferenceId(columnUniqueId);
+      columnSchema.setDimensionColumn(isDimension(tableProperty));
+      columnSchema.setSortColumn(isSortColumn(tableProperty));
+      columnSchema.setUseInvertedIndex(isInvertedIndexColumn(tableProperty));
+      columnSchema.setPrecision(dataType);
+      columnSchema.setScale(dataType);
+      columnSchema.setSchemaOrdinal(schemaOrdinal);
+      columnSchema.setNumberOfChild(dataType.getNumOfChild());
+      columnSchema.setInvisible(false);
+      columnSchema.setColumnar(true);
+      columnSchema.setColumnGroup(-1);
+      columnSchema.setColumnProperties(new HashMap<String, String>());
+      columnSchemas.add(columnSchema);
+
+      DataType elementType = ((ArrayType) dataType).getElementType();
+      StructField valueField = DataTypes.createStructField(fieldName + ".val", elementType);
       List<ColumnSchema> valueColumns = valueField.createColumnSchema(tableProperty, parentTable, dataMapFields);
       columnSchemas.addAll(valueColumns);
     } else if (DataTypes.isMapType(dataType)) {
