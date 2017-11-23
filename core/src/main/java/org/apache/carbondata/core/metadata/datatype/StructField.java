@@ -129,6 +129,7 @@ public class StructField implements Serializable {
       DataType elementType = ((ArrayType) dataType).getElementType();
       StructField valueField = DataTypes.createStructField(fieldName + ".val", elementType);
       List<ColumnSchema> valueColumns = valueField.createColumnSchema(tableProperty, parentTable, dataMapFields);
+      valueColumns.get(0).setEncodingList(columnSchema.getEncodingList());
       columnSchemas.addAll(valueColumns);
     } else if (DataTypes.isMapType(dataType)) {
       // TODO
