@@ -62,7 +62,7 @@ object CarbonSessionExample {
 
     spark.sql(
       s"""
-        | SELECT intField
+        | SELECT complexData
         | FROM carbon_table
         | WHERE stringfield = 'spark' AND decimalField > 40
       """.stripMargin).show()
