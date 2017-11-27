@@ -50,6 +50,12 @@ object LoadPostAggregateListener extends OperationEventListener {
         val childTableName = dataMapSchema.getRelationIdentifier.getTableName
         val childDatabaseName = dataMapSchema.getRelationIdentifier.getDatabaseName
         val selectQuery = dataMapSchema.getProperties.get("CHILD_SELECT QUERY")
+        // REVIEW_COMMENT:
+        // 1. change to use LoadTableCommand runnable command
+        // 2. there maybe concurrent load, for example, datamap load will triggered
+        // after create datamap on main table, and user load main table again immediately, then
+        // datamap load will be triggered again. Will this cause problem? Is there dictionary in
+        // datamap?
         sparkSession.sql(s"insert into $childDatabaseName.$childTableName $selectQuery")
       }
     }

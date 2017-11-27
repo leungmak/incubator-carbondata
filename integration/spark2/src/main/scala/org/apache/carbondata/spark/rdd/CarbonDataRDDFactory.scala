@@ -499,6 +499,9 @@ object CarbonDataRDDFactory {
       LoadTablePostExecutionEvent(sqlContext.sparkSession,
         carbonTable.getCarbonTableIdentifier,
         carbonLoadModel)
+      // REVIEW_COMMENT: I think here we should know the datamap loading is failed or sucess,
+      // if it is failed, loading of main table should fail also. So that user can know it is
+      // failed atomically, then he can retry loading again.
       OperationListenerBus.getInstance.fireEvent(loadTablePostExecutionEvent, operationContext)
       val done = updateTableStatus(status, carbonLoadModel, loadStatus, overwriteTable)
       if (!done) {

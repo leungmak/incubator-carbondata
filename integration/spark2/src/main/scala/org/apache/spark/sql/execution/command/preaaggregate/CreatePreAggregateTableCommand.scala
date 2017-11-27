@@ -42,9 +42,18 @@ case class CreatePreAggregateTableCommand(
     dmClassName: String,
     dmproperties: Map[String, String],
     queryString: String)
+  // REVIEW_COMMENT: implement DataProcessCommand also and put the loading logic in processData function
   extends RunnableCommand with SchemaProcessCommand {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
+    // REVIEW_COMMENT: change the logic similar to following.
+//    processSchema(sparkSession)
+//    try {
+//      processData(sparkSession)
+//    } catch {
+//      case e:Exception =>
+//        undoProcessSchema(sparkSession)
+//    }
     processSchema(sparkSession)
   }
 
@@ -96,11 +105,17 @@ case class CreatePreAggregateTableCommand(
       PreAggregateUtil.updateMainTable(parentDbName, parentTableName, childSchema, sparkSession)
       val loadAvailable = PreAggregateUtil.checkMainTableLoad(parentTable)
       if (loadAvailable) {
+        // REVIEW_COMMENT:
+        // 1. extract a common function to do loading,
+        // 2. change to use LoadTableCommand runnable command in that common function
+        // 3. use the common function here and in PreAggregationListeners.onEvent
         sparkSession.sql(
           s"insert into ${ tableModel.databaseName }.${ tableModel.tableName } $queryString")
       }
     } catch {
       case e: Exception =>
+        // REVIEW_COMMENT: when loading datamap failed, should revert back the tableInfo
+        // modification in parent table also. It is modified in line 96
         CarbonDropTableCommand(
           ifExistsSet = true,
           Some( tableModel.databaseName ), tableModel.tableName ).run(sparkSession)

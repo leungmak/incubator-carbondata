@@ -152,6 +152,8 @@ class CarbonSessionState(sparkSession: SparkSession) extends HiveSessionState(sp
         catalog.ParquetConversions ::
         catalog.OrcConversions ::
         CarbonPreInsertionCasts ::
+        // REVIEW_COMMENT: another way is that put this rule after optimization instead of in analysis phase
+        // it maybe can match the plan after optimization, it can cover more cases?
         CarbonPreAggregateQueryRules(sparkSession) ::
         CarbonIUDAnalysisRule(sparkSession) ::
         AnalyzeCreateTable(sparkSession) ::

@@ -91,6 +91,8 @@ case class CarbonPreAggregateQueryRules(sparkSession: SparkSession) extends Rule
       // create buffer to collect all the column and its metadata information
       val list = scala.collection.mutable.ListBuffer.empty[QueryColumn]
       var isValidPlan = true
+      // REVIEW_COMMENT: should use transform instead of match,
+      // so that it is not just matching the root node in the plan
       val carbonTable = plan match {
         // matching the plan based on supported plan
         // if plan is matches with any case it will validate and get all
