@@ -59,6 +59,7 @@ import org.apache.carbondata.processing.loading.csvinput.{CSVInputFormat, String
 import org.apache.carbondata.processing.loading.exception.NoRetryException
 import org.apache.carbondata.processing.loading.model.CarbonLoadModel
 import org.apache.carbondata.processing.util.CarbonLoaderUtil
+import org.apache.carbondata.segment.DataLoadingUtil
 import org.apache.carbondata.spark.CarbonSparkFactory
 import org.apache.carbondata.spark.rdd._
 import org.apache.carbondata.spark.tasks.{DictionaryWriterTask, SortIndexWriterTask}
@@ -321,7 +322,7 @@ object GlobalDictionaryUtil {
       carbonLoadModel.getSerializationNullFormat.split(CarbonCommonConstants.COMMA, 2)(1)
     // get load count
     if (null == carbonLoadModel.getLoadMetadataDetails) {
-      CommonUtil.readLoadMetadataDetails(carbonLoadModel)
+      DataLoadingUtil.readLoadMetadataDetails(carbonLoadModel)
     }
     val absoluteTableIdentifier = AbsoluteTableIdentifier.from(carbonLoadModel.getTablePath, table)
     DictionaryLoadModel(

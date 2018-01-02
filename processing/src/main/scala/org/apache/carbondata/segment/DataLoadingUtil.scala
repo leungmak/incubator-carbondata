@@ -15,28 +15,27 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.spark.util
+package org.apache.carbondata.segment
 
-import scala.collection.immutable
 import scala.collection.JavaConverters._
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 
 import org.apache.commons.lang3.StringUtils
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.sql.util.CarbonException
 
 import org.apache.carbondata.common.constants.LoggerAction
 import org.apache.carbondata.common.logging.{LogService, LogServiceFactory}
 import org.apache.carbondata.core.constants.{CarbonCommonConstants, CarbonLoadOptionConstants}
 import org.apache.carbondata.core.locks.{CarbonLockFactory, CarbonLockUtil, LockUsage}
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable
-import org.apache.carbondata.core.statusmanager.{SegmentStatus, SegmentStatusManager}
+import org.apache.carbondata.core.statusmanager.{LoadMetadataDetails, SegmentStatus, SegmentStatusManager}
 import org.apache.carbondata.core.util.{CarbonProperties, CarbonUtil}
+import org.apache.carbondata.processing.exception.MalformedCarbonCommandException
 import org.apache.carbondata.processing.loading.constants.DataLoadProcessorConstants
+import org.apache.carbondata.processing.loading.csvinput.CSVInputFormat
+import org.apache.carbondata.processing.loading.exception.CarbonDataLoadingException
 import org.apache.carbondata.processing.loading.model.{CarbonDataLoadSchema, CarbonLoadModel}
-import org.apache.carbondata.processing.util.{CarbonLoaderUtil, DeleteLoadFolders, TableOptionConstant}
-import org.apache.carbondata.spark.exception.MalformedCarbonCommandException
-import org.apache.carbondata.spark.load.ValidateUtil
+import org.apache.carbondata.processing.util.{CarbonDataProcessorUtil, CarbonLoaderUtil, DeleteLoadFolders, TableOptionConstant}
 
 /**
  * the util object of data loading
@@ -193,9 +192,54 @@ object DataLoadingUtil {
       value
     }
   }
+  
+  /**
+   * build CarbonLoadModel for data loading
+   * @param table CarbonTable object containing all metadata information for the table
+   *              like table name, table path, schema, etc
+   * @param options Load options from user input
+   * @return a new CarbonLoadModel instance
+   */
+  def buildCarbonLoadModelJava(
+      table: CarbonTable,
+      options: java.util.Map[String, String]
+  ): CarbonLoadModel = {
+    val carbonProperty: CarbonProperties = CarbonProperties.getInstance
+    val optionsFinal = getDataLoadingOptions(carbonProperty, options.asScala.toMap)
+    optionsFinal.put("sort_scope", "no_sort")
+    if (!options.containsKey("fileheader")) {
+      val csvHeader = table.getCreateOrderColumn(table.getTableName).asScala.map(_.getColName).mkString(",")
+      optionsFinal.put("fileheader", csvHeader)
+    }
+    val model = new CarbonLoadModel()
+    buildCarbonLoadModel(
+      table = table,
+      carbonProperty = carbonProperty,
+      options = options.asScala.toMap,
+      optionsFinal = optionsFinal,
+      carbonLoadModel = model,
+      hadoopConf = null)  // we have provided 'fileheader', so it can be null
+
+    // set default values
+    model.setTimestampformat(CarbonCommonConstants.CARBON_TIMESTAMP_DEFAULT_FORMAT)
+    model.setDateFormat(CarbonCommonConstants.CARBON_DATE_DEFAULT_FORMAT)
+    model.setPartitionId("0")
+    model.setUseOnePass(options.asScala.getOrElse("onepass", "false").toBoolean)
+    model.setDictionaryServerHost(options.asScala.getOrElse("dicthost", null))
+    model.setDictionaryServerPort(options.asScala.getOrElse("dictport", "-1").toInt)
+    model
+  }
 
   /**
    * build CarbonLoadModel for data loading
+   * @param table CarbonTable object containing all metadata information for the table
+   *              like table name, table path, schema, etc
+   * @param carbonProperty Carbon property instance
+   * @param options Load options from user input
+   * @param optionsFinal Load options that populated with default values for optional options
+   * @param carbonLoadModel The output load model
+   * @param hadoopConf hadoopConf is needed to read CSV header if there 'fileheader' is not set in
+   *                   user provided load options
    */
   def buildCarbonLoadModel(
       table: CarbonTable,
@@ -232,7 +276,7 @@ object DataLoadingUtil {
         LoggerAction.REDIRECT.name().equalsIgnoreCase(bad_records_action)) {
       bad_record_path = CarbonUtil.checkAndAppendHDFSUrl(bad_record_path)
       if (!CarbonUtil.isValidBadStorePath(bad_record_path)) {
-        CarbonException.analysisException("Invalid bad records location.")
+        throw new MalformedCarbonCommandException("Invalid bad records location.")
       }
     }
     carbonLoadModel.setBadRecordsLocation(bad_record_path)
@@ -280,18 +324,18 @@ object DataLoadingUtil {
       CarbonCommonConstants.CARBON_DATE_DEFAULT_FORMAT))
 
     carbonLoadModel.setSerializationNullFormat(
-        TableOptionConstant.SERIALIZATION_NULL_FORMAT.getName + "," +
-        optionsFinal("serialization_null_format"))
+      TableOptionConstant.SERIALIZATION_NULL_FORMAT.getName + "," +
+      optionsFinal("serialization_null_format"))
 
     carbonLoadModel.setBadRecordsLoggerEnable(
-        TableOptionConstant.BAD_RECORDS_LOGGER_ENABLE.getName + "," + bad_records_logger_enable)
+      TableOptionConstant.BAD_RECORDS_LOGGER_ENABLE.getName + "," + bad_records_logger_enable)
 
     carbonLoadModel.setBadRecordsAction(
-        TableOptionConstant.BAD_RECORDS_ACTION.getName + "," + bad_records_action)
+      TableOptionConstant.BAD_RECORDS_ACTION.getName + "," + bad_records_action)
 
     carbonLoadModel.setIsEmptyDataBadRecord(
-        DataLoadProcessorConstants.IS_EMPTY_DATA_BAD_RECORD + "," +
-        optionsFinal("is_empty_data_bad_record"))
+      DataLoadProcessorConstants.IS_EMPTY_DATA_BAD_RECORD + "," +
+      optionsFinal("is_empty_data_bad_record"))
 
     carbonLoadModel.setSkipEmptyLine(optionsFinal("skip_empty_line"))
 
@@ -303,7 +347,8 @@ object DataLoadingUtil {
     if (delimeter.equalsIgnoreCase(complex_delimeter_level1) ||
         complex_delimeter_level1.equalsIgnoreCase(complex_delimeter_level2) ||
         delimeter.equalsIgnoreCase(complex_delimeter_level2)) {
-      CarbonException.analysisException(s"Field Delimiter and Complex types delimiter are same")
+      throw new MalformedCarbonCommandException(
+        "Field Delimiter and Complex types delimiter are same")
     } else {
       carbonLoadModel.setComplexDelimiterLevel1(
         CarbonUtil.delimiterConverter(complex_delimeter_level1))
@@ -315,17 +360,116 @@ object DataLoadingUtil {
     carbonLoadModel.setCsvDelimiter(CarbonUtil.unescapeChar(delimeter))
     carbonLoadModel.setCsvHeader(fileHeader)
     carbonLoadModel.setColDictFilePath(column_dict)
-    carbonLoadModel.setCsvHeaderColumns(
-      CommonUtil.getCsvHeaderColumns(carbonLoadModel, hadoopConf))
+    carbonLoadModel.setCsvHeaderColumns(getCsvHeaderColumns(carbonLoadModel, hadoopConf))
 
-    val validatedMaxColumns = CommonUtil.validateMaxColumns(
+    val validatedMaxColumns = validateMaxColumns(
       carbonLoadModel.getCsvHeaderColumns,
       optionsFinal("maxcolumns"))
 
     carbonLoadModel.setMaxColumns(validatedMaxColumns.toString)
     if (null == carbonLoadModel.getLoadMetadataDetails) {
-      CommonUtil.readLoadMetadataDetails(carbonLoadModel)
+      readLoadMetadataDetails(carbonLoadModel)
     }
+  }
+
+  def readLoadMetadataDetails(model: CarbonLoadModel): Unit = {
+    val metadataPath = model.getCarbonDataLoadSchema.getCarbonTable.getMetaDataFilepath
+    val details = SegmentStatusManager.readLoadMetadata(metadataPath).toList.asJava
+    model.setLoadMetadataDetails(new java.util.ArrayList[LoadMetadataDetails](details))
+  }
+
+  private def validateMaxColumns(csvHeaders: Array[String], maxColumns: String): Int = {
+    /*
+    User configures both csvheadercolumns, maxcolumns,
+      if csvheadercolumns >= maxcolumns, give error
+      if maxcolumns > threashold, give error
+    User configures csvheadercolumns
+      if csvheadercolumns >= maxcolumns(default) then maxcolumns = csvheadercolumns+1
+      if csvheadercolumns >= threashold, give error
+    User configures nothing
+      if csvheadercolumns >= maxcolumns(default) then maxcolumns = csvheadercolumns+1
+      if csvheadercolumns >= threashold, give error
+     */
+    val columnCountInSchema = csvHeaders.length
+    var maxNumberOfColumnsForParsing = 0
+    val maxColumnsInt = getMaxColumnValue(maxColumns)
+    if (maxColumnsInt != null) {
+      if (columnCountInSchema >= maxColumnsInt) {
+        throw new MalformedCarbonCommandException(
+          s"csv headers should be less than the max columns: $maxColumnsInt")
+      } else if (maxColumnsInt > CSVInputFormat.THRESHOLD_MAX_NUMBER_OF_COLUMNS_FOR_PARSING) {
+        throw new MalformedCarbonCommandException(
+          "max columns cannot be greater than the threshold value: " +
+          s"${CSVInputFormat.THRESHOLD_MAX_NUMBER_OF_COLUMNS_FOR_PARSING}")
+      } else {
+        maxNumberOfColumnsForParsing = maxColumnsInt
+      }
+    } else if (columnCountInSchema >= CSVInputFormat.THRESHOLD_MAX_NUMBER_OF_COLUMNS_FOR_PARSING) {
+      throw new MalformedCarbonCommandException(
+        "csv header columns should be less than max threashold: " +
+        s"${CSVInputFormat.THRESHOLD_MAX_NUMBER_OF_COLUMNS_FOR_PARSING}")
+    } else if (columnCountInSchema >= CSVInputFormat.DEFAULT_MAX_NUMBER_OF_COLUMNS_FOR_PARSING) {
+      maxNumberOfColumnsForParsing = columnCountInSchema + 1
+    } else {
+      maxNumberOfColumnsForParsing = CSVInputFormat.DEFAULT_MAX_NUMBER_OF_COLUMNS_FOR_PARSING
+    }
+    maxNumberOfColumnsForParsing
+  }
+
+  private def getMaxColumnValue(maxColumn: String): Integer = {
+    if (maxColumn != null) {
+      try {
+        maxColumn.toInt
+      } catch {
+        case e: Exception =>
+          LOGGER.error(s"Invalid value for max column in load options ${ e.getMessage }")
+          null
+      }
+    } else {
+      null
+    }
+  }
+
+  def getCsvHeaderColumns(
+      carbonLoadModel: CarbonLoadModel,
+      hadoopConf: Configuration): Array[String] = {
+    val delimiter = if (StringUtils.isEmpty(carbonLoadModel.getCsvDelimiter)) {
+      CarbonCommonConstants.COMMA
+    } else {
+      CarbonUtil.delimiterConverter(carbonLoadModel.getCsvDelimiter)
+    }
+    var csvFile: String = null
+    var csvHeader: String = carbonLoadModel.getCsvHeader
+    val csvColumns = if (StringUtils.isBlank(csvHeader)) {
+      // read header from csv file
+      csvFile = carbonLoadModel.getFactFilePath.split(",")(0)
+      csvHeader = CarbonUtil.readHeader(csvFile, hadoopConf)
+      if (StringUtils.isBlank(csvHeader)) {
+        throw new CarbonDataLoadingException("First line of the csv is not valid.")
+      }
+      csvHeader.toLowerCase().split(delimiter).map(_.replaceAll("\"", "").trim)
+    } else {
+      csvHeader.toLowerCase.split(CarbonCommonConstants.COMMA).map(_.trim)
+    }
+
+    if (!CarbonDataProcessorUtil.isHeaderValid(carbonLoadModel.getTableName, csvColumns,
+      carbonLoadModel.getCarbonDataLoadSchema)) {
+      if (csvFile == null) {
+        LOGGER.error("CSV header in DDL is not proper."
+                     + " Column names in schema and CSV header are not the same.")
+        throw new CarbonDataLoadingException(
+          "CSV header in DDL is not proper. Column names in schema and CSV header are "
+          + "not the same.")
+      } else {
+        LOGGER.error(
+          "CSV header in input file is not proper. Column names in schema and csv header are not "
+          + "the same. Input file : " + CarbonUtil.removeAKSK(csvFile))
+        throw new CarbonDataLoadingException(
+          "CSV header in input file is not proper. Column names in schema and csv header are not "
+          + "the same. Input file : " + CarbonUtil.removeAKSK(csvFile))
+      }
+    }
+    csvColumns
   }
 
   private def isLoadDeletionRequired(metaDataLocation: String): Boolean = {

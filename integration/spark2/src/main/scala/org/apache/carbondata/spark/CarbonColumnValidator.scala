@@ -17,9 +17,9 @@
 package org.apache.carbondata.spark
 
 import org.apache.carbondata.core.metadata.schema.table.column.ColumnSchema
-import org.apache.carbondata.spark.exception.MalformedCarbonCommandException
+import org.apache.carbondata.processing.exception.MalformedCarbonCommandException
 
- /**
+/**
   * Carbon column validator
   */
 class CarbonColumnValidator extends ColumnValidator {

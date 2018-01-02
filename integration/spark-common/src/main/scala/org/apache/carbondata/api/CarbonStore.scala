@@ -34,8 +34,8 @@ import org.apache.carbondata.core.metadata.{AbsoluteTableIdentifier, PartitionMa
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable
 import org.apache.carbondata.core.mutate.CarbonUpdateUtil
 import org.apache.carbondata.core.statusmanager.SegmentStatusManager
-import org.apache.carbondata.spark.exception.MalformedCarbonCommandException
-import org.apache.carbondata.spark.util.DataLoadingUtil
+import org.apache.carbondata.processing.exception.MalformedCarbonCommandException
+import org.apache.carbondata.segment.DataLoadingUtil
 
 object CarbonStore {
   private val LOGGER = LogServiceFactory.getLogService(this.getClass.getCanonicalName)

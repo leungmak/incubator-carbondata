@@ -46,7 +46,7 @@ import org.apache.spark.util.CarbonReflectionUtils
 import org.apache.carbondata.core.datamap.DataMapStoreManager
 import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier
 import org.apache.carbondata.core.util.CarbonProperties
-import org.apache.carbondata.spark.exception.MalformedCarbonCommandException
+import org.apache.carbondata.processing.exception.MalformedCarbonCommandException
 
 /**
  * This class will have carbon catalog and refresh the relation from cache if the carbontable in

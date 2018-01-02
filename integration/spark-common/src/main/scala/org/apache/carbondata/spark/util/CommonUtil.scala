@@ -33,7 +33,6 @@ import org.apache.spark.sql.{Row, RowFactory}
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
 import org.apache.spark.sql.execution.command.{ColumnProperty, Field, PartitionerField}
 import org.apache.spark.sql.types.{MetadataBuilder, StringType}
-import org.apache.spark.sql.util.CarbonException
 import org.apache.spark.util.FileUtils
 
 import org.apache.carbondata.common.logging.LogServiceFactory
@@ -52,11 +51,11 @@ import org.apache.carbondata.core.statusmanager.{LoadMetadataDetails, SegmentSta
 import org.apache.carbondata.core.util.{ByteUtil, CarbonProperties, CarbonUtil}
 import org.apache.carbondata.core.util.comparator.Comparator
 import org.apache.carbondata.core.util.path.CarbonStorePath
+import org.apache.carbondata.processing.exception.MalformedCarbonCommandException
 import org.apache.carbondata.processing.loading.csvinput.CSVInputFormat
 import org.apache.carbondata.processing.loading.exception.CarbonDataLoadingException
 import org.apache.carbondata.processing.loading.model.CarbonLoadModel
 import org.apache.carbondata.processing.util.{CarbonDataProcessorUtil, CarbonLoaderUtil}
-import org.apache.carbondata.spark.exception.MalformedCarbonCommandException
 import org.apache.carbondata.spark.rdd.CarbonMergeFilesRDD
 
 object CommonUtil {
@@ -635,13 +634,6 @@ object CommonUtil {
     parsedPropertyValueString
   }
 
-
-  def readLoadMetadataDetails(model: CarbonLoadModel): Unit = {
-    val metadataPath = model.getCarbonDataLoadSchema.getCarbonTable.getMetaDataFilepath
-    val details = SegmentStatusManager.readLoadMetadata(metadataPath)
-    model.setLoadMetadataDetails(new util.ArrayList[LoadMetadataDetails](details.toList.asJava))
-  }
-
   def configureCSVInputFormat(configuration: Configuration,
       carbonLoadModel: CarbonLoadModel): Unit = {
     CSVInputFormat.setCommentCharacter(configuration, carbonLoadModel.getCommentChar)
@@ -680,100 +672,6 @@ object CommonUtil {
       LOGGER.info(s"totalInputSpaceConsumed: $spaceConsumed , " +
                   s"defaultParallelism: $defaultParallelism")
       LOGGER.info(s"mapreduce.input.fileinputformat.split.maxsize: ${ newSplitSize.toString }")
-    }
-  }
-
-  def getCsvHeaderColumns(
-      carbonLoadModel: CarbonLoadModel,
-      hadoopConf: Configuration): Array[String] = {
-    val delimiter = if (StringUtils.isEmpty(carbonLoadModel.getCsvDelimiter)) {
-      CarbonCommonConstants.COMMA
-    } else {
-      CarbonUtil.delimiterConverter(carbonLoadModel.getCsvDelimiter)
-    }
-    var csvFile: String = null
-    var csvHeader: String = carbonLoadModel.getCsvHeader
-    val csvColumns = if (StringUtils.isBlank(csvHeader)) {
-      // read header from csv file
-      csvFile = carbonLoadModel.getFactFilePath.split(",")(0)
-      csvHeader = CarbonUtil.readHeader(csvFile, hadoopConf)
-      if (StringUtils.isBlank(csvHeader)) {
-        throw new CarbonDataLoadingException("First line of the csv is not valid.")
-      }
-      csvHeader.toLowerCase().split(delimiter).map(_.replaceAll("\"", "").trim)
-    } else {
-      csvHeader.toLowerCase.split(CarbonCommonConstants.COMMA).map(_.trim)
-    }
-
-    if (!CarbonDataProcessorUtil.isHeaderValid(carbonLoadModel.getTableName, csvColumns,
-        carbonLoadModel.getCarbonDataLoadSchema)) {
-      if (csvFile == null) {
-        LOGGER.error("CSV header in DDL is not proper."
-                     + " Column names in schema and CSV header are not the same.")
-        throw new CarbonDataLoadingException(
-          "CSV header in DDL is not proper. Column names in schema and CSV header are "
-          + "not the same.")
-      } else {
-        LOGGER.error(
-          "CSV header in input file is not proper. Column names in schema and csv header are not "
-          + "the same. Input file : " + CarbonUtil.removeAKSK(csvFile))
-        throw new CarbonDataLoadingException(
-          "CSV header in input file is not proper. Column names in schema and csv header are not "
-          + "the same. Input file : " + CarbonUtil.removeAKSK(csvFile))
-      }
-    }
-    csvColumns
-  }
-
-  def validateMaxColumns(csvHeaders: Array[String], maxColumns: String): Int = {
-    /*
-    User configures both csvheadercolumns, maxcolumns,
-      if csvheadercolumns >= maxcolumns, give error
-      if maxcolumns > threashold, give error
-    User configures csvheadercolumns
-      if csvheadercolumns >= maxcolumns(default) then maxcolumns = csvheadercolumns+1
-      if csvheadercolumns >= threashold, give error
-    User configures nothing
-      if csvheadercolumns >= maxcolumns(default) then maxcolumns = csvheadercolumns+1
-      if csvheadercolumns >= threashold, give error
-     */
-    val columnCountInSchema = csvHeaders.length
-    var maxNumberOfColumnsForParsing = 0
-    val maxColumnsInt = getMaxColumnValue(maxColumns)
-    if (maxColumnsInt != null) {
-      if (columnCountInSchema >= maxColumnsInt) {
-        CarbonException.analysisException(
-          s"csv headers should be less than the max columns: $maxColumnsInt")
-      } else if (maxColumnsInt > CSVInputFormat.THRESHOLD_MAX_NUMBER_OF_COLUMNS_FOR_PARSING) {
-        CarbonException.analysisException(
-          s"max columns cannot be greater than the threshold value: " +
-            s"${CSVInputFormat.THRESHOLD_MAX_NUMBER_OF_COLUMNS_FOR_PARSING}")
-      } else {
-        maxNumberOfColumnsForParsing = maxColumnsInt
-      }
-    } else if (columnCountInSchema >= CSVInputFormat.THRESHOLD_MAX_NUMBER_OF_COLUMNS_FOR_PARSING) {
-      CarbonException.analysisException(
-        s"csv header columns should be less than max threashold: " +
-          s"${CSVInputFormat.THRESHOLD_MAX_NUMBER_OF_COLUMNS_FOR_PARSING}")
-    } else if (columnCountInSchema >= CSVInputFormat.DEFAULT_MAX_NUMBER_OF_COLUMNS_FOR_PARSING) {
-      maxNumberOfColumnsForParsing = columnCountInSchema + 1
-    } else {
-      maxNumberOfColumnsForParsing = CSVInputFormat.DEFAULT_MAX_NUMBER_OF_COLUMNS_FOR_PARSING
-    }
-    maxNumberOfColumnsForParsing
-  }
-
-  private def getMaxColumnValue(maxColumn: String): Integer = {
-    if (maxColumn != null) {
-      try {
-        maxColumn.toInt
-      } catch {
-        case e: Exception =>
-          LOGGER.error(s"Invalid value for max column in load options ${ e.getMessage }")
-          null
-      }
-    } else {
-      null
     }
   }
 

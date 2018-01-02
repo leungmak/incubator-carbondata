@@ -15,13 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.spark.load
+package org.apache.carbondata.segment
 
 import java.text.SimpleDateFormat
 
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable
+import org.apache.carbondata.processing.exception.MalformedCarbonCommandException
 import org.apache.carbondata.processing.loading.sort.SortScopeOptions
-import org.apache.carbondata.spark.exception.MalformedCarbonCommandException
 
 object ValidateUtil {
 

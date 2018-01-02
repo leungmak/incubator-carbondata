@@ -16,6 +16,8 @@
  */
 package org.apache.spark.sql.parser
 
+import java.util.UUID
+
 import scala.collection.mutable
 
 import org.antlr.v4.runtime.tree.TerminalNode
@@ -32,8 +34,12 @@ import org.apache.spark.sql.types.StructField
 import org.apache.spark.sql.util.CarbonException
 import org.apache.spark.util.CarbonReflectionUtils
 
+import org.apache.carbondata.core.metadata.{CarbonMetadata, CarbonTableIdentifier}
+import org.apache.carbondata.core.metadata.converter.ThriftWrapperSchemaConverterImpl
+import org.apache.carbondata.core.util.path.CarbonTablePath
+import org.apache.carbondata.format.TableInfo
+import org.apache.carbondata.processing.exception.MalformedCarbonCommandException
 import org.apache.carbondata.spark.CarbonOption
-import org.apache.carbondata.spark.exception.MalformedCarbonCommandException
 import org.apache.carbondata.spark.util.CommonUtil
 
 /**
@@ -139,7 +145,8 @@ class CarbonHelperSqlAstBuilder(conf: SQLConf,
       .getOrElse(Map.empty)
   }
 
-  def createCarbonTable(tableHeader: CreateTableHeaderContext,
+  def createCarbonTable(
+      tableHeader: CreateTableHeaderContext,
       skewSpecContext: SkewSpecContext,
       bucketSpecContext: BucketSpecContext,
       partitionColumns: ColTypeListContext,
@@ -163,9 +170,6 @@ class CarbonHelperSqlAstBuilder(conf: SQLConf,
     }
     if (bucketSpecContext != null) {
       operationNotAllowed("CREATE TABLE ... CLUSTERED BY", bucketSpecContext)
-    }
-    if (external) {
-      operationNotAllowed("CREATE EXTERNAL TABLE", tableHeader)
     }
 
     val cols = Option(columns).toSeq.flatMap(visitColTypeList)
@@ -238,29 +242,45 @@ class CarbonHelperSqlAstBuilder(conf: SQLConf,
     }
     // validate tblProperties
     val bucketFields = parser.getBucketFields(tableProperties, fields, options)
-    // prepare table model of the collected tokens
-    val tableModel: TableModel = parser.prepareTableModel(
-      ifNotExists,
-      convertDbNameToLowerCase(tableIdentifier.database),
-      tableIdentifier.table.toLowerCase,
-      fields,
-      partitionFields,
-      tableProperties,
-      bucketFields,
-      isAlterFlow = false,
-      tableComment)
 
+    val tableInfo = if (external) {
+      val identifier = new CarbonTableIdentifier(CarbonEnv.getDatabaseName(tableIdentifier.database)(sparkSession),
+        tableIdentifier.table, UUID.randomUUID().toString)
+      val path = new CarbonTablePath(identifier, tablePath.get)
+      val thriftTableInfo: TableInfo = CarbonEnv.getInstance(sparkSession).carbonMetastore
+        .getThriftTableInfo(path)(sparkSession)
+      val schemaConverter = new ThriftWrapperSchemaConverterImpl()
+      schemaConverter.fromExternalToWrapperTableInfo(
+          thriftTableInfo,
+          identifier.getDatabaseName,
+          identifier.getTableName,
+          tablePath.get)
+    } else {
+      // prepare table model of the collected tokens
+      val tableModel: TableModel = parser.prepareTableModel(
+        ifNotExists,
+        convertDbNameToLowerCase(tableIdentifier.database),
+        tableIdentifier.table.toLowerCase,
+        fields,
+        partitionFields,
+        tableProperties,
+        bucketFields,
+        isAlterFlow = false,
+        tableComment)
+      TableNewProcessor(tableModel)
+    }
     selectQuery match {
       case query@Some(q) =>
         CarbonCreateTableAsSelectCommand(
-          TableNewProcessor(tableModel),
-          query.get,
-          tableModel.ifNotExistsSet,
-          tablePath)
+          tableInfo = tableInfo,
+          query = query.get,
+          ifNotExistsSet = ifNotExists,
+          tableLocation = tablePath)
       case _ =>
-        CarbonCreateTableCommand(TableNewProcessor(tableModel),
-          tableModel.ifNotExistsSet,
-          tablePath)
+        CarbonCreateTableCommand(
+          tableInfo = tableInfo,
+          ifNotExistsSet = ifNotExists,
+          tableLocation = tablePath)
     }
   }
 
