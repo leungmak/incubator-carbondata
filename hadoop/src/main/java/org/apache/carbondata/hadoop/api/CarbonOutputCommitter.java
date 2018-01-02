@@ -81,7 +81,14 @@ public class CarbonOutputCommitter extends FileOutputCommitter {
   @Override public void commitJob(JobContext context) throws IOException {
     super.commitJob(context);
     boolean overwriteSet = CarbonTableOutputFormat.isOverwriteSet(context.getConfiguration());
+    String updateTime =
+        context.getConfiguration().get(CarbonTableOutputFormat.UPADTE_TIMESTAMP, null);
     CarbonLoadModel loadModel = CarbonTableOutputFormat.getLoadModel(context.getConfiguration());
+    commitSegment(loadModel, overwriteSet, updateTime);
+  }
+
+  public static void commitSegment(CarbonLoadModel loadModel, boolean overwriteSet, String updateTime)
+      throws IOException {
     LoadMetadataDetails newMetaEntry = loadModel.getCurrentLoadMetadataDetail();
     String segmentPath =
         CarbonTablePath.getSegmentPath(loadModel.getTablePath(), loadModel.getSegmentId());
@@ -96,8 +103,6 @@ public class CarbonOutputCommitter extends FileOutputCommitter {
     if (segmentSize > 0) {
       CarbonLoaderUtil.recordNewLoadMetadata(newMetaEntry, loadModel, false, overwriteSet);
       new CarbonIndexFileMergeWriter().mergeCarbonIndexFilesOfSegment(segmentPath);
-      String updateTime =
-          context.getConfiguration().get(CarbonTableOutputFormat.UPADTE_TIMESTAMP, null);
       if (updateTime != null) {
         Set<String> segmentSet = new HashSet<>(
             new SegmentStatusManager(carbonTable.getAbsoluteTableIdentifier())

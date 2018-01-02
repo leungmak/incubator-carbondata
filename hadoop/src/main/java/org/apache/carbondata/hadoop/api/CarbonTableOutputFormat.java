@@ -392,7 +392,11 @@ public class CarbonTableOutputFormat extends FileOutputFormat<NullWritable, Stri
         executorService.shutdownNow();
         dataLoadExecutor.close();
       }
-      LOG.info("Closed partition writer task " + taskAttemptContext.getTaskAttemptID());
+      if (taskAttemptContext != null) {
+        LOG.info("Closed record writer task " + taskAttemptContext.getTaskAttemptID());
+      } else {
+        LOG.info("Closed record writer");
+      }
     }
 
     public CarbonLoadModel getLoadModel() {
