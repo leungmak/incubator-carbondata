@@ -25,7 +25,7 @@ import org.apache.carbondata.core.metadata.encoder.Encoding;
 import org.apache.carbondata.core.scan.executor.infos.BlockExecutionInfo;
 import org.apache.carbondata.core.scan.model.QueryDimension;
 import org.apache.carbondata.core.scan.model.QueryMeasure;
-import org.apache.carbondata.core.scan.result.AbstractScannedResult;
+import org.apache.carbondata.core.scan.result.BlockletScannedResult;
 import org.apache.carbondata.core.scan.result.vector.CarbonColumnarBatch;
 import org.apache.carbondata.core.scan.result.vector.ColumnVectorInfo;
 import org.apache.carbondata.core.scan.result.vector.MeasureDataVectorProcessor;
@@ -39,17 +39,17 @@ public class DictionaryBasedVectorResultCollector extends AbstractScannedResultC
 
   protected QueryMeasure[] queryMeasures;
 
-  protected ColumnVectorInfo[] dictionaryInfo;
+  private ColumnVectorInfo[] dictionaryInfo;
 
-  protected ColumnVectorInfo[] noDictionaryInfo;
+  private ColumnVectorInfo[] noDictionaryInfo;
 
-  protected ColumnVectorInfo[] complexInfo;
+  private ColumnVectorInfo[] complexInfo;
 
-  protected ColumnVectorInfo[] measureColumnInfo;
+  private ColumnVectorInfo[] measureColumnInfo;
 
-  protected ColumnVectorInfo[] allColumnInfo;
+  ColumnVectorInfo[] allColumnInfo;
 
-  protected ColumnVectorInfo[] implictColumnInfo;
+  private ColumnVectorInfo[] implictColumnInfo;
 
   public DictionaryBasedVectorResultCollector(BlockExecutionInfo blockExecutionInfos) {
     super(blockExecutionInfos);
@@ -63,7 +63,7 @@ public class DictionaryBasedVectorResultCollector extends AbstractScannedResultC
     }
   }
 
-  protected void prepareDimensionAndMeasureColumnVectors() {
+  void prepareDimensionAndMeasureColumnVectors() {
     measureColumnInfo = new ColumnVectorInfo[queryMeasures.length];
     List<ColumnVectorInfo> dictInfoList = new ArrayList<>();
     List<ColumnVectorInfo> noDictInfoList = new ArrayList<>();
@@ -126,11 +126,13 @@ public class DictionaryBasedVectorResultCollector extends AbstractScannedResultC
     Arrays.sort(complexInfo);
   }
 
-  @Override public List<Object[]> collectData(AbstractScannedResult scannedResult, int batchSize) {
-    throw new UnsupportedOperationException("collectData is not supported here");
+  @Override
+  public List<Object[]> collectResultInRow(BlockletScannedResult scannedResult, int batchSize) {
+    throw new UnsupportedOperationException("collectResultInRow is not supported here");
   }
 
-  @Override public void collectVectorBatch(AbstractScannedResult scannedResult,
+  @Override
+  public void collectResultInColumnarBatch(BlockletScannedResult scannedResult,
       CarbonColumnarBatch columnarBatch) {
     int numberOfPages = scannedResult.numberOfpages();
     int filteredRows = 0;
@@ -152,12 +154,12 @@ public class DictionaryBasedVectorResultCollector extends AbstractScannedResultC
       fillColumnVectorDetails(columnarBatch, rowCounter, requiredRows);
       filteredRows = scannedResult
           .markFilteredRows(columnarBatch, rowCounter, requiredRows, columnarBatch.getRowCounter());
-      scanAndFillResult(scannedResult, columnarBatch, rowCounter, availableRows, requiredRows);
+      fillResultToColumnarBatch(scannedResult, columnarBatch, rowCounter, availableRows, requiredRows);
       columnarBatch.setActualSize(columnarBatch.getActualSize() + requiredRows - filteredRows);
     }
   }
 
-  protected void scanAndFillResult(AbstractScannedResult scannedResult,
+  void fillResultToColumnarBatch(BlockletScannedResult scannedResult,
       CarbonColumnarBatch columnarBatch, int rowCounter, int availableRows, int requiredRows) {
     scannedResult.fillColumnarDictionaryBatch(dictionaryInfo);
     scannedResult.fillColumnarNoDictionaryBatch(noDictionaryInfo);
@@ -174,8 +176,7 @@ public class DictionaryBasedVectorResultCollector extends AbstractScannedResultC
     columnarBatch.setRowCounter(columnarBatch.getRowCounter() + requiredRows);
   }
 
-  protected void fillColumnVectorDetails(CarbonColumnarBatch columnarBatch, int rowCounter,
-      int requiredRows) {
+  void fillColumnVectorDetails(CarbonColumnarBatch columnarBatch, int rowCounter, int requiredRows) {
     for (int i = 0; i < allColumnInfo.length; i++) {
       allColumnInfo[i].size = requiredRows;
       allColumnInfo[i].offset = rowCounter;

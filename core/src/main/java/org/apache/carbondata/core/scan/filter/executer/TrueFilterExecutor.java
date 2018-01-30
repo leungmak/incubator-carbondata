@@ -22,7 +22,7 @@ import java.util.BitSet;
 
 import org.apache.carbondata.core.scan.expression.exception.FilterUnsupportedException;
 import org.apache.carbondata.core.scan.filter.intf.RowIntf;
-import org.apache.carbondata.core.scan.processor.BlocksChunkHolder;
+import org.apache.carbondata.core.scan.processor.RawBlockletColumnChunks;
 import org.apache.carbondata.core.util.BitSetGroup;
 
 public class TrueFilterExecutor implements FilterExecuter {
@@ -33,13 +33,13 @@ public class TrueFilterExecutor implements FilterExecuter {
    * @return
    * @throws FilterUnsupportedException
    */
-  public BitSetGroup applyFilter(BlocksChunkHolder blockChunkHolder, boolean useBitsetPipeLine)
+  public BitSetGroup applyFilter(RawBlockletColumnChunks rawBlockletColumnChunks, boolean useBitsetPipeLine)
       throws FilterUnsupportedException, IOException {
-    int numberOfPages = blockChunkHolder.getDataBlock().numberOfPages();
+    int numberOfPages = rawBlockletColumnChunks.getDataBlock().numberOfPages();
     BitSetGroup group = new BitSetGroup(numberOfPages);
     for (int i = 0; i < numberOfPages; i++) {
       BitSet set = new BitSet();
-      set.flip(0, blockChunkHolder.getDataBlock().nodeSize());
+      set.flip(0, rawBlockletColumnChunks.getDataBlock().numRows());
       group.setBitSet(set, i);
     }
     return group;
@@ -66,9 +66,9 @@ public class TrueFilterExecutor implements FilterExecuter {
   /**
    * It just reads necessary block for filter executor, it does not uncompress the data.
    *
-   * @param blockChunkHolder
+   * @param rawBlockletColumnChunks
    */
-  public void readBlocks(BlocksChunkHolder blockChunkHolder) throws IOException {
+  public void readBlocks(RawBlockletColumnChunks rawBlockletColumnChunks) throws IOException {
     // do nothing
   }
 }

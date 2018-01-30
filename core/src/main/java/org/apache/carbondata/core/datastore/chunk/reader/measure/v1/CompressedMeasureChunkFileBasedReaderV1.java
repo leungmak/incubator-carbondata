@@ -56,14 +56,14 @@ public class CompressedMeasureChunkFileBasedReaderV1 extends AbstractMeasureChun
    * Method to read the blocks data based on block indexes
    *
    * @param fileReader   file reader to read the blocks
-   * @param blockIndexes blocks to be read
+   * @param columnIndexRange blocks to be read
    * @return measure data chunks
    */
   @Override public MeasureRawColumnChunk[] readRawMeasureChunks(FileHolder fileReader,
-      int[][] blockIndexes) throws IOException {
+      int[][] columnIndexRange) throws IOException {
     MeasureRawColumnChunk[] datChunk = new MeasureRawColumnChunk[measureColumnChunks.size()];
-    for (int i = 0; i < blockIndexes.length; i++) {
-      for (int j = blockIndexes[i][0]; j <= blockIndexes[i][1]; j++) {
+    for (int i = 0; i < columnIndexRange.length; i++) {
+      for (int j = columnIndexRange[i][0]; j <= columnIndexRange[i][1]; j++) {
         datChunk[j] = readRawMeasureChunk(fileReader, j);
       }
     }
@@ -91,7 +91,7 @@ public class CompressedMeasureChunkFileBasedReaderV1 extends AbstractMeasureChun
   }
 
   @Override
-  public ColumnPage convertToColumnPage(MeasureRawColumnChunk measureRawColumnChunk,
+  public ColumnPage decodeColumnPage(MeasureRawColumnChunk measureRawColumnChunk,
       int pageNumber) throws IOException, MemoryException {
     int blockIndex = measureRawColumnChunk.getColumnIndex();
     DataChunk dataChunk = measureColumnChunks.get(blockIndex);

@@ -48,7 +48,6 @@ public class RangeExpressionEvaluator {
       LogServiceFactory.getLogService(RangeExpressionEvaluator.class.getName());
   private Expression expr;
   private Expression srcNode;
-  private Expression srcParentNode;
   private Expression tarNode;
   private Expression tarParentNode;
 
@@ -242,7 +241,7 @@ public class RangeExpressionEvaluator {
     ExpressionType expType = getExpressionType(currentNode);
 
     FilterModificationNode filterExpression =
-        new FilterModificationNode(currentNode, parentNode, expType, dataType, literalVal, colName);
+        new FilterModificationNode(currentNode, parentNode, expType);
 
     if (null == filterExpressionMap.get(colName)) {
       filterExpressionMap.put(colName, new ArrayList<FilterModificationNode>());

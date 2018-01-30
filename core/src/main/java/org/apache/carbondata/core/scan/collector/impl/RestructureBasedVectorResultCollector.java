@@ -26,7 +26,7 @@ import org.apache.carbondata.core.metadata.schema.table.column.CarbonDimension;
 import org.apache.carbondata.core.metadata.schema.table.column.CarbonMeasure;
 import org.apache.carbondata.core.scan.executor.infos.BlockExecutionInfo;
 import org.apache.carbondata.core.scan.executor.util.RestructureUtil;
-import org.apache.carbondata.core.scan.result.AbstractScannedResult;
+import org.apache.carbondata.core.scan.result.BlockletScannedResult;
 import org.apache.carbondata.core.scan.result.vector.CarbonColumnVector;
 import org.apache.carbondata.core.scan.result.vector.CarbonColumnarBatch;
 import org.apache.carbondata.core.scan.result.vector.ColumnVectorInfo;
@@ -98,11 +98,11 @@ public class RestructureBasedVectorResultCollector extends DictionaryBasedVector
 
 
 
-  @Override public List<Object[]> collectData(AbstractScannedResult scannedResult, int batchSize) {
-    throw new UnsupportedOperationException("collectData is not supported here");
+  @Override public List<Object[]> collectResultInRow(BlockletScannedResult scannedResult, int batchSize) {
+    throw new UnsupportedOperationException("collectResultInRow is not supported here");
   }
 
-  @Override public void collectVectorBatch(AbstractScannedResult scannedResult,
+  @Override public void collectResultInColumnarBatch(BlockletScannedResult scannedResult,
       CarbonColumnarBatch columnarBatch) {
     int numberOfPages = scannedResult.numberOfpages();
     while (scannedResult.getCurrentPageCounter() < numberOfPages) {
@@ -125,7 +125,7 @@ public class RestructureBasedVectorResultCollector extends DictionaryBasedVector
       fillDataForNonExistingDimensions();
       fillDataForNonExistingMeasures();
       // fill existing dimensions and measures data
-      scanAndFillResult(scannedResult, columnarBatch, rowCounter, availableRows, requiredRows);
+      fillResultToColumnarBatch(scannedResult, columnarBatch, rowCounter, availableRows, requiredRows);
       columnarBatch.setActualSize(columnarBatch.getActualSize() + requiredRows - filteredRows);
     }
   }

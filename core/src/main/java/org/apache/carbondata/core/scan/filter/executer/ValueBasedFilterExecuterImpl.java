@@ -21,13 +21,13 @@ import java.util.BitSet;
 
 import org.apache.carbondata.core.scan.expression.exception.FilterUnsupportedException;
 import org.apache.carbondata.core.scan.filter.intf.RowIntf;
-import org.apache.carbondata.core.scan.processor.BlocksChunkHolder;
+import org.apache.carbondata.core.scan.processor.RawBlockletColumnChunks;
 import org.apache.carbondata.core.util.BitSetGroup;
 
 public class ValueBasedFilterExecuterImpl implements FilterExecuter {
 
   @Override
-  public BitSetGroup applyFilter(BlocksChunkHolder blockChunkHolder, boolean useBitsetPipeLine)
+  public BitSetGroup applyFilter(RawBlockletColumnChunks rawBlockletColumnChunks, boolean useBitsetPipeLine)
       throws FilterUnsupportedException, IOException {
 
     return new BitSetGroup(0);
@@ -42,6 +42,6 @@ public class ValueBasedFilterExecuterImpl implements FilterExecuter {
     return new BitSet(1);
   }
 
-  @Override public void readBlocks(BlocksChunkHolder blockChunkHolder) throws IOException {
+  @Override public void readBlocks(RawBlockletColumnChunks rawBlockletColumnChunks) throws IOException {
   }
 }

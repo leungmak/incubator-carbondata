@@ -21,7 +21,7 @@ import java.util.BitSet;
 
 import org.apache.carbondata.core.scan.expression.exception.FilterUnsupportedException;
 import org.apache.carbondata.core.scan.filter.intf.RowIntf;
-import org.apache.carbondata.core.scan.processor.BlocksChunkHolder;
+import org.apache.carbondata.core.scan.processor.RawBlockletColumnChunks;
 import org.apache.carbondata.core.util.BitSetGroup;
 
 public class OrFilterExecuterImpl implements FilterExecuter {
@@ -35,12 +35,12 @@ public class OrFilterExecuterImpl implements FilterExecuter {
   }
 
   @Override
-  public BitSetGroup applyFilter(BlocksChunkHolder blockChunkHolder, boolean useBitsetPipeLine)
+  public BitSetGroup applyFilter(RawBlockletColumnChunks rawBlockletColumnChunks, boolean useBitsetPipeLine)
       throws FilterUnsupportedException, IOException {
-    BitSetGroup leftFilters = leftExecuter.applyFilter(blockChunkHolder, false);
-    BitSetGroup rightFilters = rightExecuter.applyFilter(blockChunkHolder, false);
+    BitSetGroup leftFilters = leftExecuter.applyFilter(rawBlockletColumnChunks, false);
+    BitSetGroup rightFilters = rightExecuter.applyFilter(rawBlockletColumnChunks, false);
     leftFilters.or(rightFilters);
-    blockChunkHolder.setBitSetGroup(leftFilters);
+    rawBlockletColumnChunks.setBitSetGroup(leftFilters);
     return leftFilters;
   }
 
@@ -57,8 +57,8 @@ public class OrFilterExecuterImpl implements FilterExecuter {
     return leftFilters;
   }
 
-  @Override public void readBlocks(BlocksChunkHolder blockChunkHolder) throws IOException {
-    leftExecuter.readBlocks(blockChunkHolder);
-    rightExecuter.readBlocks(blockChunkHolder);
+  @Override public void readBlocks(RawBlockletColumnChunks rawBlockletColumnChunks) throws IOException {
+    leftExecuter.readBlocks(rawBlockletColumnChunks);
+    rightExecuter.readBlocks(rawBlockletColumnChunks);
   }
 }

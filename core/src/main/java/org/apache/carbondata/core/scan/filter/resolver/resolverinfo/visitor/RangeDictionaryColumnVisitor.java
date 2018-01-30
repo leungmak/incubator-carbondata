@@ -47,7 +47,6 @@ public class RangeDictionaryColumnVisitor extends DictionaryColumnVisitor
     if (visitableObj instanceof DimColumnResolvedFilterInfo) {
       DimColumnResolvedFilterInfo resolveDimension = (DimColumnResolvedFilterInfo) visitableObj;
       ColumnFilterInfo resolvedFilterObject = null;
-      List<String> evaluateResultListFinal;
       resolvedFilterObject = FilterUtil
           .getFilterListForAllValues(metadata.getTableIdentifier(), metadata.getExpression(),
               metadata.getColumnExpression(), metadata.isIncludeFilter(),

@@ -24,7 +24,7 @@ import org.apache.carbondata.core.scan.filter.FilterUtil;
 import org.apache.carbondata.core.scan.filter.intf.RowIntf;
 import org.apache.carbondata.core.scan.filter.resolver.resolverinfo.DimColumnResolvedFilterInfo;
 import org.apache.carbondata.core.scan.filter.resolver.resolverinfo.MeasureColumnResolvedFilterInfo;
-import org.apache.carbondata.core.scan.processor.BlocksChunkHolder;
+import org.apache.carbondata.core.scan.processor.RawBlockletColumnChunks;
 import org.apache.carbondata.core.util.BitSetGroup;
 
 public class RestructureExcludeFilterExecutorImpl extends RestructureEvaluatorImpl {
@@ -48,11 +48,11 @@ public class RestructureExcludeFilterExecutorImpl extends RestructureEvaluatorIm
   }
 
   @Override
-  public BitSetGroup applyFilter(BlocksChunkHolder blockChunkHolder, boolean useBitsetPipeLine)
+  public BitSetGroup applyFilter(RawBlockletColumnChunks rawBlockletColumnChunks, boolean useBitsetPipeLine)
       throws IOException {
-    int numberOfRows = blockChunkHolder.getDataBlock().nodeSize();
+    int numberOfRows = rawBlockletColumnChunks.getDataBlock().numRows();
     return FilterUtil
-        .createBitSetGroupWithDefaultValue(blockChunkHolder.getDataBlock().numberOfPages(),
+        .createBitSetGroupWithDefaultValue(rawBlockletColumnChunks.getDataBlock().numberOfPages(),
             numberOfRows, !isDefaultValuePresentInFilterValues);
   }
 
@@ -67,7 +67,7 @@ public class RestructureExcludeFilterExecutorImpl extends RestructureEvaluatorIm
     return bitSet;
   }
 
-  @Override public void readBlocks(BlocksChunkHolder blockChunkHolder) throws IOException {
+  @Override public void readBlocks(RawBlockletColumnChunks rawBlockletColumnChunks) throws IOException {
 
   }
 }

@@ -115,10 +115,6 @@ public class CarbonQueryPlan implements Serializable {
     return expression;
   }
 
-  public void setFilterExpression(Expression expression) {
-    this.expression = expression;
-  }
-
   /**
    * @return the databaseName
    */
@@ -145,7 +141,4 @@ public class CarbonQueryPlan implements Serializable {
     return rawDetailQuery;
   }
 
-  public void setRawDetailQuery(boolean rawDetailQuery) {
-    this.rawDetailQuery = rawDetailQuery;
-  }
 }

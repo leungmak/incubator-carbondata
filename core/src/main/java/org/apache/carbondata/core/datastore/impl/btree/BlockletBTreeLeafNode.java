@@ -59,7 +59,7 @@ public class BlockletBTreeLeafNode extends AbstractBTreeLeafNode {
    *                     this will be used during query execution when we can
    *                     give some leaf node of a btree to one executor some to other
    */
-  public BlockletBTreeLeafNode(BTreeBuilderInfo builderInfos, int leafIndex, long nodeNumber) {
+  BlockletBTreeLeafNode(BTreeBuilderInfo builderInfos, int leafIndex, long nodeNumber) {
     // get a lead node min max
     BlockletMinMaxIndex minMaxIndex =
         builderInfos.getFooterList().get(0).getBlockletList().get(leafIndex).getBlockletIndex()
@@ -98,56 +98,56 @@ public class BlockletBTreeLeafNode extends AbstractBTreeLeafNode {
     }
   }
 
-  @Override public String blockletId() {
-    return "0";
+  @Override public short blockletIndex() {
+    return 0;
   }
 
   /**
    * Below method will be used to get the dimension chunks
    *
    * @param fileReader   file reader to read the chunks from file
-   * @param blockIndexes indexes of the blocks need to be read
+   * @param columnIndexRange indexes of the blocks need to be read
    * @return dimension data chunks
    */
-  @Override public DimensionRawColumnChunk[] getDimensionChunks(FileHolder fileReader,
-      int[][] blockIndexes) throws IOException {
-    return dimensionChunksReader.readRawDimensionChunks(fileReader, blockIndexes);
+  @Override public DimensionRawColumnChunk[] readDimensionChunks(FileHolder fileReader,
+      int[][] columnIndexRange) throws IOException {
+    return dimensionChunksReader.readRawDimensionChunks(fileReader, columnIndexRange);
   }
 
   /**
    * Below method will be used to get the dimension chunk
    *
    * @param fileReader file reader to read the chunk from file
-   * @param blockIndex block index to be read
+   * @param columnIndex block index to be read
    * @return dimension data chunk
    */
-  @Override public DimensionRawColumnChunk getDimensionChunk(FileHolder fileReader, int blockIndex)
+  @Override public DimensionRawColumnChunk readDimensionChunk(FileHolder fileReader, int columnIndex)
       throws IOException {
-    return dimensionChunksReader.readRawDimensionChunk(fileReader, blockIndex);
+    return dimensionChunksReader.readRawDimensionChunk(fileReader, columnIndex);
   }
 
   /**
    * Below method will be used to get the measure chunk
    *
    * @param fileReader   file reader to read the chunk from file
-   * @param blockIndexes block indexes to be read from file
+   * @param columnIndexRange block indexes to be read from file
    * @return measure column data chunk
    */
-  @Override public MeasureRawColumnChunk[] getMeasureChunks(FileHolder fileReader,
-      int[][] blockIndexes) throws IOException {
-    return measureColumnChunkReader.readRawMeasureChunks(fileReader, blockIndexes);
+  @Override public MeasureRawColumnChunk[] readMeasureChunks(FileHolder fileReader,
+      int[][] columnIndexRange) throws IOException {
+    return measureColumnChunkReader.readRawMeasureChunks(fileReader, columnIndexRange);
   }
 
   /**
    * Below method will be used to read the measure chunk
    *
    * @param fileReader file read to read the file chunk
-   * @param blockIndex block index to be read from file
+   * @param columnIndex block index to be read from file
    * @return measure data chunk
    */
-  @Override public MeasureRawColumnChunk getMeasureChunk(FileHolder fileReader, int blockIndex)
+  @Override public MeasureRawColumnChunk readMeasureChunk(FileHolder fileReader, int columnIndex)
       throws IOException {
-    return measureColumnChunkReader.readRawMeasureChunk(fileReader, blockIndex);
+    return measureColumnChunkReader.readRawMeasureChunk(fileReader, columnIndex);
   }
 
   /**

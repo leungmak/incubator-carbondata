@@ -99,7 +99,7 @@ public class RawBasedResultCollectorTest {
 //        return new byte[][] { { 1, 2 }, { 1, 2 } };
 //      }
 //
-//      @SuppressWarnings("unused") @Mock public ColumnPage getMeasureChunk(int ordinal) {
+//      @SuppressWarnings("unused") @Mock public ColumnPage readMeasureChunk(int ordinal) {
 //        ColumnPage ColumnPage = new ColumnPage();
 //        PresenceMeta presenceMeta = new PresenceMeta();
 //        BitSet bitSet = new BitSet();
@@ -120,10 +120,10 @@ public class RawBasedResultCollectorTest {
 //      }
 //    };
 //
-//    AbstractScannedResult abstractScannedResult =
+//    BlockletScannedResult abstractScannedResult =
 //        new NonFilterQueryScannedResult(blockExecutionInfo);
-//    abstractScannedResult.setNumberOfRows(2);
-//    List<Object[]> result = rawBasedResultCollector.collectData(abstractScannedResult, 2);
+//    abstractScannedResult.setPageFilteredRowCount(2);
+//    List<Object[]> result = rawBasedResultCollector.collectResultInRow(abstractScannedResult, 2);
 //    int expectedResult = 2;
 //    assertThat(result.size(), is(equalTo(expectedResult)));
 //  }

@@ -21,7 +21,7 @@ import java.util.BitSet;
 
 import org.apache.carbondata.core.scan.expression.exception.FilterUnsupportedException;
 import org.apache.carbondata.core.scan.filter.intf.RowIntf;
-import org.apache.carbondata.core.scan.processor.BlocksChunkHolder;
+import org.apache.carbondata.core.scan.processor.RawBlockletColumnChunks;
 import org.apache.carbondata.core.util.BitSetGroup;
 
 public interface FilterExecuter {
@@ -32,7 +32,7 @@ public interface FilterExecuter {
    * @return
    * @throws FilterUnsupportedException
    */
-  BitSetGroup applyFilter(BlocksChunkHolder blocksChunkHolder, boolean useBitsetPipeLine)
+  BitSetGroup applyFilter(RawBlockletColumnChunks rawBlockletColumnChunks, boolean useBitsetPipeLine)
       throws FilterUnsupportedException, IOException;
 
   boolean applyFilter(RowIntf value, int dimOrdinalMax)
@@ -50,7 +50,7 @@ public interface FilterExecuter {
 
   /**
    * It just reads necessary block for filter executor, it does not uncompress the data.
-   * @param blockChunkHolder
+   * @param rawBlockletColumnChunks
    */
-  void readBlocks(BlocksChunkHolder blockChunkHolder)throws IOException;
+  void readBlocks(RawBlockletColumnChunks rawBlockletColumnChunks)throws IOException;
 }

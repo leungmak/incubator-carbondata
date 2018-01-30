@@ -76,24 +76,24 @@ public class CompressedMeasureChunkFileBasedReaderV2 extends AbstractMeasureChun
    * data from
    *
    * @param fileReader               file reader to read the data
-   * @param startColumnBlockletIndex first column blocklet index to be read
-   * @param endColumnBlockletIndex   end column blocklet index to be read
+   * @param startColumnIndex first column blocklet index to be read
+   * @param endColumnIndex   end column blocklet index to be read
    * @return measure raw chunkArray
    * @throws IOException
    */
   protected MeasureRawColumnChunk[] readRawMeasureChunksInGroup(FileHolder fileReader,
-      int startColumnBlockletIndex, int endColumnBlockletIndex) throws IOException {
-    long currentMeasureOffset = measureColumnChunkOffsets.get(startColumnBlockletIndex);
+      int startColumnIndex, int endColumnIndex) throws IOException {
+    long currentMeasureOffset = measureColumnChunkOffsets.get(startColumnIndex);
     ByteBuffer buffer = null;
     synchronized (fileReader) {
       buffer = fileReader.readByteBuffer(filePath, currentMeasureOffset,
-          (int) (measureColumnChunkOffsets.get(endColumnBlockletIndex + 1) - currentMeasureOffset));
+          (int) (measureColumnChunkOffsets.get(endColumnIndex + 1) - currentMeasureOffset));
     }
     MeasureRawColumnChunk[] dataChunks =
-        new MeasureRawColumnChunk[endColumnBlockletIndex - startColumnBlockletIndex + 1];
+        new MeasureRawColumnChunk[endColumnIndex - startColumnIndex + 1];
     int runningLength = 0;
     int index = 0;
-    for (int i = startColumnBlockletIndex; i <= endColumnBlockletIndex; i++) {
+    for (int i = startColumnIndex; i <= endColumnIndex; i++) {
       int currentLength =
           (int) (measureColumnChunkOffsets.get(i + 1) - measureColumnChunkOffsets.get(i));
       MeasureRawColumnChunk measureRawColumnChunk =
@@ -108,7 +108,7 @@ public class CompressedMeasureChunkFileBasedReaderV2 extends AbstractMeasureChun
     return dataChunks;
   }
 
-  public ColumnPage convertToColumnPage(MeasureRawColumnChunk measureRawColumnChunk,
+  public ColumnPage decodeColumnPage(MeasureRawColumnChunk measureRawColumnChunk,
       int pageNumber) throws IOException, MemoryException {
     int copyPoint = measureRawColumnChunk.getOffSet();
     int blockIndex = measureRawColumnChunk.getColumnIndex();

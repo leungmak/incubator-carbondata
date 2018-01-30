@@ -43,10 +43,9 @@ import org.apache.carbondata.core.datastore.block.SegmentProperties;
 import org.apache.carbondata.core.datastore.block.TableBlockInfo;
 import org.apache.carbondata.core.datastore.block.TableBlockUniqueIdentifier;
 import org.apache.carbondata.core.indexstore.BlockletDetailInfo;
-import org.apache.carbondata.core.indexstore.blockletindex.BlockletDataRefNodeWrapper;
+import org.apache.carbondata.core.indexstore.blockletindex.BlockletDataRefNode;
 import org.apache.carbondata.core.indexstore.blockletindex.IndexWrapper;
 import org.apache.carbondata.core.keygenerator.KeyGenException;
-import org.apache.carbondata.core.keygenerator.KeyGenerator;
 import org.apache.carbondata.core.memory.UnsafeMemoryManager;
 import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier;
 import org.apache.carbondata.core.metadata.blocklet.BlockletInfo;
@@ -253,8 +252,8 @@ public abstract class AbstractQueryExecutor<E> implements QueryExecutor<E> {
     // and query will be executed based on that infos
     for (int i = 0; i < queryProperties.dataBlocks.size(); i++) {
       AbstractIndex abstractIndex = queryProperties.dataBlocks.get(i);
-      BlockletDataRefNodeWrapper dataRefNode =
-          (BlockletDataRefNodeWrapper) abstractIndex.getDataRefNode();
+      BlockletDataRefNode dataRefNode =
+          (BlockletDataRefNode) abstractIndex.getDataRefNode();
       blockExecutionInfoList.add(getBlockExecutionInfoForBlock(queryModel, abstractIndex,
           dataRefNode.getBlockInfos().get(0).getBlockletInfos().getStartBlockletNumber(),
           dataRefNode.numberOfNodes(), dataRefNode.getBlockInfos().get(0).getFilePath(),
@@ -285,7 +284,6 @@ public abstract class AbstractQueryExecutor<E> implements QueryExecutor<E> {
     BlockExecutionInfo blockExecutionInfo = new BlockExecutionInfo();
     SegmentProperties segmentProperties = blockIndex.getSegmentProperties();
     List<CarbonDimension> tableBlockDimensions = segmentProperties.getDimensions();
-    KeyGenerator blockKeyGenerator = segmentProperties.getDimensionKeyGenerator();
 
     // below is to get only those dimension in query which is present in the
     // table block
@@ -309,15 +307,13 @@ public abstract class AbstractQueryExecutor<E> implements QueryExecutor<E> {
     blockExecutionInfo.setQueryMeasures(
         currentBlockQueryMeasures.toArray(new QueryMeasure[currentBlockQueryMeasures.size()]));
     blockExecutionInfo.setDataBlock(blockIndex);
-    blockExecutionInfo.setBlockKeyGenerator(blockKeyGenerator);
     // setting whether raw record query or not
     blockExecutionInfo.setRawRecordDetailQuery(queryModel.isForcedDetailRawQuery());
     // total number dimension
     blockExecutionInfo
-        .setTotalNumberDimensionBlock(segmentProperties.getDimensionOrdinalToBlockMapping().size());
+        .setTotalNumberDimensionToRead(segmentProperties.getDimensionOrdinalToBlockMapping().size());
     blockExecutionInfo
-        .setTotalNumberOfMeasureBlock(segmentProperties.getMeasuresOrdinalToBlockMapping().size());
-    blockExecutionInfo.setAbsoluteTableIdentifier(queryModel.getAbsoluteTableIdentifier());
+        .setTotalNumberOfMeasureToRead(segmentProperties.getMeasuresOrdinalToBlockMapping().size());
     blockExecutionInfo.setComplexDimensionInfoMap(QueryUtil
         .getComplexDimensionsMap(currentBlockQueryDimensions,
             segmentProperties.getDimensionOrdinalToBlockMapping(),
@@ -366,11 +362,11 @@ public abstract class AbstractQueryExecutor<E> implements QueryExecutor<E> {
           == segmentProperties.getBlockTodimensionOrdinalMapping().size() - 1 ?
           dimensionsBlockIndexes.length - 1 :
           dimensionsBlockIndexes.length;
-      blockExecutionInfo.setAllSelectedDimensionBlocksIndexes(CarbonUtil
+      blockExecutionInfo.setAllSelectedDimensionColumnIndexRange(CarbonUtil
           .getRangeIndex(dimensionsBlockIndexes, numberOfElementToConsider,
               numberOfColumnToBeReadInOneIO));
     } else {
-      blockExecutionInfo.setAllSelectedDimensionBlocksIndexes(new int[0][0]);
+      blockExecutionInfo.setAllSelectedDimensionColumnIndexRange(new int[0][0]);
     }
     // get the list of updated filter measures present in the current block
     Set<CarbonMeasure> currentBlockFilterMeasures =
@@ -388,11 +384,11 @@ public abstract class AbstractQueryExecutor<E> implements QueryExecutor<E> {
           measureBlockIndexes.length - 1 :
           measureBlockIndexes.length;
       // setting all the measure chunk indexes to be read from file
-      blockExecutionInfo.setAllSelectedMeasureBlocksIndexes(CarbonUtil
+      blockExecutionInfo.setAllSelectedMeasureIndexRange(CarbonUtil
           .getRangeIndex(measureBlockIndexes, numberOfElementToConsider,
               numberOfColumnToBeReadInOneIO));
     } else {
-      blockExecutionInfo.setAllSelectedMeasureBlocksIndexes(new int[0][0]);
+      blockExecutionInfo.setAllSelectedMeasureIndexRange(new int[0][0]);
     }
     // setting the indexes of list of dimension in projection list
     blockExecutionInfo.setProjectionListDimensionIndexes(ArrayUtils.toPrimitive(
@@ -417,9 +413,9 @@ public abstract class AbstractQueryExecutor<E> implements QueryExecutor<E> {
     // need to sort the dictionary column as for all dimension
     // column key will be filled based on key order
     Arrays.sort(queryDictionaryColumnBlockIndexes);
-    blockExecutionInfo.setDictionaryColumnBlockIndex(queryDictionaryColumnBlockIndexes);
+    blockExecutionInfo.setDictionaryColumnChunkIndex(queryDictionaryColumnBlockIndexes);
     // setting the no dictionary column block indexes
-    blockExecutionInfo.setNoDictionaryBlockIndexes(ArrayUtils.toPrimitive(
+    blockExecutionInfo.setNoDictionaryColumnChunkIndexes(ArrayUtils.toPrimitive(
         noDictionaryColumnBlockIndex.toArray(new Integer[noDictionaryColumnBlockIndex.size()])));
     // setting each column value size
     blockExecutionInfo.setEachColumnValueSize(segmentProperties.getEachDimColumnValueSize());

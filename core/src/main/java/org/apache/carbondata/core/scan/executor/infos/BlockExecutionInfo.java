@@ -41,14 +41,6 @@ public class BlockExecutionInfo {
   private AbstractIndex blockIndex;
 
   /**
-   * each segment key size can be different and in that case we need to update
-   * the fixed key with latest segment key generator. so this property will
-   * tell whether this is required or not if key size is same then it is not
-   * required
-   */
-  private boolean isFixedKeyUpdateRequired;
-
-  /**
    * below to store all the information required for measures during query
    * execution
    */
@@ -73,22 +65,22 @@ public class BlockExecutionInfo {
   /**
    * total number of dimension in block
    */
-  private int totalNumberDimensionBlock;
+  private int totalNumberDimensionToRead;
 
   /**
    * total number of measure in block
    */
-  private int totalNumberOfMeasureBlock;
+  private int totalNumberOfMeasureToRead;
 
   /**
    * will be used to read the dimension block from file
    */
-  private int[][] allSelectedDimensionBlocksIndexes;
+  private int[][] allSelectedDimensionColumnIndexRange;
 
   /**
    * will be used to read the measure block from file
    */
-  private int[][] allSelectedMeasureBlocksIndexes;
+  private int[][] allSelectedMeasureIndexRange;
 
   /**
    * list of dimension present in the projection
@@ -118,16 +110,11 @@ public class BlockExecutionInfo {
   /**
    * dictionary column block indexes based on query
    */
-  private int[] dictionaryColumnBlockIndex;
+  private int[] dictionaryColumnChunkIndex;
   /**
    * no dictionary column block indexes in based on the query order
    */
-  private int[] noDictionaryBlockIndexes;
-
-  /**
-   * key generator used for generating the table block fixed length key
-   */
-  private KeyGenerator blockKeyGenerator;
+  private int[] noDictionaryColumnChunkIndexes;
 
   /**
    * each column value size
@@ -214,43 +201,17 @@ public class BlockExecutionInfo {
   private boolean isRestructuredBlock;
 
   /**
-   * absolute table identifier
-   */
-  private AbsoluteTableIdentifier absoluteTableIdentifier;
-
-  /**
    * delete delta file path
    */
   private String[] deleteDeltaFilePath;
 
   private Map<String, DeleteDeltaVo> deletedRecordsMap;
-  public AbsoluteTableIdentifier getAbsoluteTableIdentifier() {
-    return absoluteTableIdentifier;
-  }
-
-  public void setAbsoluteTableIdentifier(AbsoluteTableIdentifier absoluteTableIdentifier) {
-    this.absoluteTableIdentifier = absoluteTableIdentifier;
-  }
 
   /**
    * @param blockIndex the tableBlock to set
    */
   public void setDataBlock(AbstractIndex blockIndex) {
     this.blockIndex = blockIndex;
-  }
-
-  /**
-   * @return the isFixedKeyUpdateRequired
-   */
-  public boolean isFixedKeyUpdateRequired() {
-    return isFixedKeyUpdateRequired;
-  }
-
-  /**
-   * @param isFixedKeyUpdateRequired the isFixedKeyUpdateRequired to set
-   */
-  public void setFixedKeyUpdateRequired(boolean isFixedKeyUpdateRequired) {
-    this.isFixedKeyUpdateRequired = isFixedKeyUpdateRequired;
   }
 
   /**
@@ -296,59 +257,59 @@ public class BlockExecutionInfo {
   }
 
   /**
-   * @return the totalNumberDimensionBlock
+   * @return the totalNumberDimensionToRead
    */
-  public int getTotalNumberDimensionBlock() {
-    return totalNumberDimensionBlock;
+  public int getTotalNumberDimensionToRead() {
+    return totalNumberDimensionToRead;
   }
 
   /**
-   * @param totalNumberDimensionBlock the totalNumberDimensionBlock to set
+   * @param totalNumberDimensionToRead the totalNumberDimensionToRead to set
    */
-  public void setTotalNumberDimensionBlock(int totalNumberDimensionBlock) {
-    this.totalNumberDimensionBlock = totalNumberDimensionBlock;
+  public void setTotalNumberDimensionToRead(int totalNumberDimensionToRead) {
+    this.totalNumberDimensionToRead = totalNumberDimensionToRead;
   }
 
   /**
-   * @return the totalNumberOfMeasureBlock
+   * @return the totalNumberOfMeasureToRead
    */
-  public int getTotalNumberOfMeasureBlock() {
-    return totalNumberOfMeasureBlock;
+  public int getTotalNumberOfMeasureToRead() {
+    return totalNumberOfMeasureToRead;
   }
 
   /**
-   * @param totalNumberOfMeasureBlock the totalNumberOfMeasureBlock to set
+   * @param totalNumberOfMeasureToRead the totalNumberOfMeasureToRead to set
    */
-  public void setTotalNumberOfMeasureBlock(int totalNumberOfMeasureBlock) {
-    this.totalNumberOfMeasureBlock = totalNumberOfMeasureBlock;
+  public void setTotalNumberOfMeasureToRead(int totalNumberOfMeasureToRead) {
+    this.totalNumberOfMeasureToRead = totalNumberOfMeasureToRead;
   }
 
   /**
-   * @return the allSelectedDimensionBlocksIndexes
+   * @return the allSelectedDimensionColumnIndexRange
    */
-  public int[][] getAllSelectedDimensionBlocksIndexes() {
-    return allSelectedDimensionBlocksIndexes;
+  public int[][] getAllSelectedDimensionColumnIndexRange() {
+    return allSelectedDimensionColumnIndexRange;
   }
 
   /**
-   * @param allSelectedDimensionBlocksIndexes the allSelectedDimensionBlocksIndexes to set
+   * @param allSelectedDimensionColumnIndexRange the allSelectedDimensionColumnIndexRange to set
    */
-  public void setAllSelectedDimensionBlocksIndexes(int[][] allSelectedDimensionBlocksIndexes) {
-    this.allSelectedDimensionBlocksIndexes = allSelectedDimensionBlocksIndexes;
+  public void setAllSelectedDimensionColumnIndexRange(int[][] allSelectedDimensionColumnIndexRange) {
+    this.allSelectedDimensionColumnIndexRange = allSelectedDimensionColumnIndexRange;
   }
 
   /**
-   * @return the allSelectedMeasureBlocksIndexes
+   * @return the allSelectedMeasureIndexRange
    */
-  public int[][] getAllSelectedMeasureBlocksIndexes() {
-    return allSelectedMeasureBlocksIndexes;
+  public int[][] getAllSelectedMeasureIndexRange() {
+    return allSelectedMeasureIndexRange;
   }
 
   /**
-   * @param allSelectedMeasureBlocksIndexes the allSelectedMeasureBlocksIndexes to set
+   * @param allSelectedMeasureIndexRange the allSelectedMeasureIndexRange to set
    */
-  public void setAllSelectedMeasureBlocksIndexes(int[][] allSelectedMeasureBlocksIndexes) {
-    this.allSelectedMeasureBlocksIndexes = allSelectedMeasureBlocksIndexes;
+  public void setAllSelectedMeasureIndexRange(int[][] allSelectedMeasureIndexRange) {
+    this.allSelectedMeasureIndexRange = allSelectedMeasureIndexRange;
   }
 
   /**
@@ -408,20 +369,6 @@ public class BlockExecutionInfo {
   }
 
   /**
-   * @return the tableBlockKeyGenerator
-   */
-  public KeyGenerator getBlockKeyGenerator() {
-    return blockKeyGenerator;
-  }
-
-  /**
-   * @param tableBlockKeyGenerator the tableBlockKeyGenerator to set
-   */
-  public void setBlockKeyGenerator(KeyGenerator tableBlockKeyGenerator) {
-    this.blockKeyGenerator = tableBlockKeyGenerator;
-  }
-
-  /**
    * @return the eachColumnValueSize
    */
   public int[] getEachColumnValueSize() {
@@ -436,31 +383,31 @@ public class BlockExecutionInfo {
   }
 
   /**
-   * @return the dictionaryColumnBlockIndex
+   * @return the dictionaryColumnChunkIndex
    */
-  public int[] getDictionaryColumnBlockIndex() {
-    return dictionaryColumnBlockIndex;
+  public int[] getDictionaryColumnChunkIndex() {
+    return dictionaryColumnChunkIndex;
   }
 
   /**
-   * @param dictionaryColumnBlockIndex the dictionaryColumnBlockIndex to set
+   * @param dictionaryColumnChunkIndex the dictionaryColumnChunkIndex to set
    */
-  public void setDictionaryColumnBlockIndex(int[] dictionaryColumnBlockIndex) {
-    this.dictionaryColumnBlockIndex = dictionaryColumnBlockIndex;
+  public void setDictionaryColumnChunkIndex(int[] dictionaryColumnChunkIndex) {
+    this.dictionaryColumnChunkIndex = dictionaryColumnChunkIndex;
   }
 
   /**
-   * @return the noDictionaryBlockIndexes
+   * @return the noDictionaryColumnChunkIndexes
    */
-  public int[] getNoDictionaryBlockIndexes() {
-    return noDictionaryBlockIndexes;
+  public int[] getNoDictionaryColumnChunkIndexes() {
+    return noDictionaryColumnChunkIndexes;
   }
 
   /**
-   * @param noDictionaryBlockIndexes the noDictionaryBlockIndexes to set
+   * @param noDictionaryColumnChunkIndexes the noDictionaryColumnChunkIndexes to set
    */
-  public void setNoDictionaryBlockIndexes(int[] noDictionaryBlockIndexes) {
-    this.noDictionaryBlockIndexes = noDictionaryBlockIndexes;
+  public void setNoDictionaryColumnChunkIndexes(int[] noDictionaryColumnChunkIndexes) {
+    this.noDictionaryColumnChunkIndexes = noDictionaryColumnChunkIndexes;
   }
 
   /**
@@ -574,7 +521,8 @@ public class BlockExecutionInfo {
     this.vectorBatchCollector = vectorBatchCollector;
   }
 
-  public String getBlockId() {
+  // Return file name and path, like Part0/Segment_0/part-0-0_batchno0-0-1517155583332.carbondata
+  public String getBlockIdString() {
     return blockId;
   }
 

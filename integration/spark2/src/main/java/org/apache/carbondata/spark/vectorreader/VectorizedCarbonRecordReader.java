@@ -168,7 +168,9 @@ class VectorizedCarbonRecordReader extends AbstractRecordReader<Object> {
   @Override public boolean nextKeyValue() throws IOException, InterruptedException {
     resultBatch();
 
-    if (returnColumnarBatch) return nextBatch();
+    if (returnColumnarBatch) {
+      return nextBatch();
+    }
 
     if (batchIdx >= numBatched) {
       if (!nextBatch()) return false;

@@ -30,7 +30,7 @@ import org.apache.carbondata.core.scan.executor.infos.BlockExecutionInfo;
 import org.apache.carbondata.core.scan.executor.infos.DimensionInfo;
 import org.apache.carbondata.core.scan.executor.infos.MeasureInfo;
 import org.apache.carbondata.core.scan.model.QueryMeasure;
-import org.apache.carbondata.core.scan.result.AbstractScannedResult;
+import org.apache.carbondata.core.scan.result.BlockletScannedResult;
 import org.apache.carbondata.core.scan.result.vector.CarbonColumnarBatch;
 import org.apache.carbondata.core.util.DataTypeUtil;
 
@@ -39,32 +39,29 @@ import org.apache.carbondata.core.util.DataTypeUtil;
  */
 public abstract class AbstractScannedResultCollector implements ScannedResultCollector {
 
-  private static final LogService LOGGER =
-      LogServiceFactory.getLogService(AbstractScannedResultCollector.class.getName());
-
   /**
    * table block execution infos
    */
-  protected BlockExecutionInfo tableBlockExecutionInfos;
+  BlockExecutionInfo tableBlockExecutionInfos;
 
   /**
    * maintains the measure information like datatype, ordinal, measure existence
    */
-  protected MeasureInfo measureInfo;
+  MeasureInfo measureInfo;
 
   /**
    * maintains the dimension information like datatype, ordinal, measure existence
    */
-  protected DimensionInfo dimensionInfo;
+  DimensionInfo dimensionInfo;
 
-  public AbstractScannedResultCollector(BlockExecutionInfo blockExecutionInfos) {
+  AbstractScannedResultCollector(BlockExecutionInfo blockExecutionInfos) {
     this.tableBlockExecutionInfos = blockExecutionInfos;
     measureInfo = blockExecutionInfos.getMeasureInfo();
     dimensionInfo = blockExecutionInfos.getDimensionInfo();
   }
 
   protected void fillMeasureData(Object[] msrValues, int offset,
-      AbstractScannedResult scannedResult) {
+      BlockletScannedResult scannedResult) {
     int measureExistIndex = 0;
     for (short i = 0; i < measureInfo.getMeasureDataTypes().length; i++) {
       // if measure exists is block then pass measure column
@@ -87,8 +84,7 @@ public abstract class AbstractScannedResultCollector implements ScannedResultCol
     }
   }
 
-  protected Object getMeasureData(ColumnPage dataChunk, int index,
-      CarbonMeasure carbonMeasure) {
+  Object getMeasureData(ColumnPage dataChunk, int index, CarbonMeasure carbonMeasure) {
     if (!dataChunk.getNullBits().get(index)) {
       DataType dataType = carbonMeasure.getDataType();
       if (dataType == DataTypes.BOOLEAN) {
@@ -114,7 +110,8 @@ public abstract class AbstractScannedResultCollector implements ScannedResultCol
     return null;
   }
 
-  @Override public void collectVectorBatch(AbstractScannedResult scannedResult,
+  @Override
+  public void collectResultInColumnarBatch(BlockletScannedResult scannedResult,
       CarbonColumnarBatch columnarBatch) {
     throw new UnsupportedOperationException("Works only for batch collectors");
   }

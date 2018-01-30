@@ -51,7 +51,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
  * A specialized RecordReader that reads into InternalRows or ColumnarBatches directly using the
  * carbondata column APIs and fills the data directly into columns.
  */
-class CarbonVectorizedRecordReader extends AbstractRecordReader<Object> {
+class PrestoCarbonVectorizedRecordReader extends AbstractRecordReader<Object> {
 
   private int batchIdx = 0;
 
@@ -72,7 +72,7 @@ class CarbonVectorizedRecordReader extends AbstractRecordReader<Object> {
 
   private QueryExecutor queryExecutor;
 
-  public CarbonVectorizedRecordReader(QueryExecutor queryExecutor, QueryModel queryModel, AbstractDetailQueryResultIterator iterator) {
+  public PrestoCarbonVectorizedRecordReader(QueryExecutor queryExecutor, QueryModel queryModel, AbstractDetailQueryResultIterator iterator) {
     this.queryModel = queryModel;
     this.iterator = iterator;
     this.queryExecutor = queryExecutor;

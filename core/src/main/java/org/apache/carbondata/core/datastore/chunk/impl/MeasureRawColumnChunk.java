@@ -28,7 +28,7 @@ import org.apache.carbondata.core.memory.MemoryException;
 /**
  * Contains raw measure data
  * 1. The read uncompressed raw data of column chunk with all pages is stored in this instance.
- * 2. The raw data can be converted to processed chunk using convertToColumnPage method
+ * 2. The raw data can be converted to processed chunk using decodeColumnPage method
  *  by specifying page number.
  */
 public class MeasureRawColumnChunk extends AbstractRawColumnChunk {
@@ -48,14 +48,14 @@ public class MeasureRawColumnChunk extends AbstractRawColumnChunk {
   /**
    * Convert all raw data with all pages to processed ColumnPage
    */
-  public ColumnPage[] convertToColumnPage() {
+  public ColumnPage[] decodeAllColumnPages() {
     if (columnPages == null) {
       columnPages = new ColumnPage[pagesCount];
     }
     for (int i = 0; i < pagesCount; i++) {
       try {
         if (columnPages[i] == null) {
-          columnPages[i] = chunkReader.convertToColumnPage(this, i);
+          columnPages[i] = chunkReader.decodeColumnPage(this, i);
         }
       } catch (Exception e) {
         throw new RuntimeException(e);
@@ -68,21 +68,21 @@ public class MeasureRawColumnChunk extends AbstractRawColumnChunk {
   /**
    * Convert raw data with specified `columnIndex` processed to ColumnPage
    */
-  public ColumnPage convertToColumnPage(int columnIndex) {
-    assert columnIndex < pagesCount;
+  public ColumnPage decodeColumnPage(int pageNumber) {
+    assert pageNumber < pagesCount;
     if (columnPages == null) {
       columnPages = new ColumnPage[pagesCount];
     }
 
     try {
-      if (columnPages[columnIndex] == null) {
-        columnPages[columnIndex] = chunkReader.convertToColumnPage(this, columnIndex);
+      if (columnPages[pageNumber] == null) {
+        columnPages[pageNumber] = chunkReader.decodeColumnPage(this, pageNumber);
       }
     } catch (IOException | MemoryException e) {
       throw new RuntimeException(e);
     }
 
-    return columnPages[columnIndex];
+    return columnPages[pageNumber];
   }
 
   @Override public void freeMemory() {

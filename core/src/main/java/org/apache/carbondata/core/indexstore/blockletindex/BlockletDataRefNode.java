@@ -36,7 +36,7 @@ import org.apache.carbondata.core.metadata.blocklet.index.BlockletIndex;
 /**
  * wrapper for blocklet data map data
  */
-public class BlockletDataRefNodeWrapper implements DataRefNode {
+public class BlockletDataRefNode implements DataRefNode {
 
   private List<TableBlockInfo> blockInfos;
 
@@ -44,10 +44,7 @@ public class BlockletDataRefNodeWrapper implements DataRefNode {
 
   private int[] dimensionLens;
 
-  private BlockletLevelDeleteDeltaDataCache deleteDeltaDataCache;
-
-  public BlockletDataRefNodeWrapper(List<TableBlockInfo> blockInfos, int index,
-      int[] dimensionLens) {
+  BlockletDataRefNode(List<TableBlockInfo> blockInfos, int index, int[] dimensionLens) {
     this.blockInfos = blockInfos;
     // Update row count and page count to blocklet info
     for (TableBlockInfo blockInfo : blockInfos) {
@@ -75,21 +72,21 @@ public class BlockletDataRefNodeWrapper implements DataRefNode {
 
   @Override public DataRefNode getNextDataRefNode() {
     if (index + 1 < blockInfos.size()) {
-      return new BlockletDataRefNodeWrapper(blockInfos, index + 1, dimensionLens);
+      return new BlockletDataRefNode(blockInfos, index + 1, dimensionLens);
     }
     return null;
   }
 
-  @Override public int nodeSize() {
+  @Override public int numRows() {
     return blockInfos.get(index).getDetailInfo().getRowCount();
   }
 
-  @Override public long nodeNumber() {
+  @Override public long nodeIndex() {
     return index;
   }
 
-  @Override public String blockletId() {
-    return blockInfos.get(index).getDetailInfo().getBlockletId().toString();
+  @Override public short blockletIndex() {
+    return blockInfos.get(index).getDetailInfo().getBlockletId();
   }
 
   @Override
@@ -115,33 +112,33 @@ public class BlockletDataRefNodeWrapper implements DataRefNode {
   }
 
   @Override
-  public DimensionRawColumnChunk[] getDimensionChunks(FileHolder fileReader, int[][] blockIndexes)
+  public DimensionRawColumnChunk[] readDimensionChunks(FileHolder fileReader, int[][] columnIndexRange)
       throws IOException {
     DimensionColumnChunkReader dimensionChunksReader = getDimensionColumnChunkReader();
-    return dimensionChunksReader.readRawDimensionChunks(fileReader, blockIndexes);
+    return dimensionChunksReader.readRawDimensionChunks(fileReader, columnIndexRange);
   }
 
   @Override
-  public DimensionRawColumnChunk getDimensionChunk(FileHolder fileReader, int blockIndexes)
+  public DimensionRawColumnChunk readDimensionChunk(FileHolder fileReader, int columnIndex)
       throws IOException {
     DimensionColumnChunkReader dimensionChunksReader = getDimensionColumnChunkReader();
-    return dimensionChunksReader.readRawDimensionChunk(fileReader, blockIndexes);
+    return dimensionChunksReader.readRawDimensionChunk(fileReader, columnIndex);
   }
 
   @Override
-  public MeasureRawColumnChunk[] getMeasureChunks(FileHolder fileReader, int[][] blockIndexes)
+  public MeasureRawColumnChunk[] readMeasureChunks(FileHolder fileReader, int[][] columnIndexRange)
       throws IOException {
     MeasureColumnChunkReader measureColumnChunkReader = getMeasureColumnChunkReader();
-    return measureColumnChunkReader.readRawMeasureChunks(fileReader, blockIndexes);
+    return measureColumnChunkReader.readRawMeasureChunks(fileReader, columnIndexRange);
   }
 
-  @Override public MeasureRawColumnChunk getMeasureChunk(FileHolder fileReader, int blockIndex)
+  @Override public MeasureRawColumnChunk readMeasureChunk(FileHolder fileReader, int columnIndex)
       throws IOException {
     MeasureColumnChunkReader measureColumnChunkReader = getMeasureColumnChunkReader();
-    return measureColumnChunkReader.readRawMeasureChunk(fileReader, blockIndex);
+    return measureColumnChunkReader.readRawMeasureChunk(fileReader, columnIndex);
   }
 
-  private DimensionColumnChunkReader getDimensionColumnChunkReader() throws IOException {
+  private DimensionColumnChunkReader getDimensionColumnChunkReader() {
     ColumnarFormatVersion version =
         ColumnarFormatVersion.valueOf(blockInfos.get(index).getDetailInfo().getVersionNumber());
     return CarbonDataReaderFactory.getInstance().getDimensionColumnChunkReader(
@@ -151,21 +148,12 @@ public class BlockletDataRefNodeWrapper implements DataRefNode {
         blockInfos.get(index).getFilePath());
   }
 
-  private MeasureColumnChunkReader getMeasureColumnChunkReader() throws IOException {
+  private MeasureColumnChunkReader getMeasureColumnChunkReader() {
     ColumnarFormatVersion version =
         ColumnarFormatVersion.valueOf(blockInfos.get(index).getDetailInfo().getVersionNumber());
     return CarbonDataReaderFactory.getInstance().getMeasureColumnChunkReader(version,
         blockInfos.get(index).getDetailInfo().getBlockletInfo(),
         blockInfos.get(index).getFilePath());
-  }
-
-  @Override
-  public void setDeleteDeltaDataCache(BlockletLevelDeleteDeltaDataCache deleteDeltaDataCache) {
-    this.deleteDeltaDataCache = deleteDeltaDataCache;
-  }
-
-  @Override public BlockletLevelDeleteDeltaDataCache getDeleteDeltaDataCache() {
-    return deleteDeltaDataCache;
   }
 
   @Override public int numberOfPages() {

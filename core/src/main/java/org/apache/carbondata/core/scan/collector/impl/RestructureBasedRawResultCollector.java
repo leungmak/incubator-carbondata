@@ -32,7 +32,7 @@ import org.apache.carbondata.core.metadata.schema.table.column.CarbonDimension;
 import org.apache.carbondata.core.scan.executor.infos.BlockExecutionInfo;
 import org.apache.carbondata.core.scan.model.QueryDimension;
 import org.apache.carbondata.core.scan.model.QueryMeasure;
-import org.apache.carbondata.core.scan.result.AbstractScannedResult;
+import org.apache.carbondata.core.scan.result.BlockletScannedResult;
 import org.apache.carbondata.core.util.CarbonUtil;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -74,7 +74,7 @@ public class RestructureBasedRawResultCollector extends RawBasedResultCollector 
     QueryDimension[] queryDimensions = tableBlockExecutionInfos.getActualQueryDimensions();
     List<Integer> updatedColumnCardinality = new ArrayList<>(queryDimensions.length);
     List<Integer> updatedDimensionPartitioner = new ArrayList<>(queryDimensions.length);
-    int[] dictionaryColumnBlockIndex = tableBlockExecutionInfos.getDictionaryColumnBlockIndex();
+    int[] dictionaryColumnBlockIndex = tableBlockExecutionInfos.getDictionaryColumnChunkIndex();
     int dimCounterInCurrentBlock = 0;
     for (int i = 0; i < queryDimensions.length; i++) {
       if (queryDimensions[i].getDimension().hasEncoding(Encoding.DICTIONARY)) {
@@ -125,7 +125,7 @@ public class RestructureBasedRawResultCollector extends RawBasedResultCollector 
   private void initCurrentBlockKeyGenerator() {
     SegmentProperties segmentProperties =
         tableBlockExecutionInfos.getDataBlock().getSegmentProperties();
-    int[] dictionaryColumnBlockIndex = tableBlockExecutionInfos.getDictionaryColumnBlockIndex();
+    int[] dictionaryColumnBlockIndex = tableBlockExecutionInfos.getDictionaryColumnChunkIndex();
     int[] updatedColumnCardinality = new int[dictionaryColumnBlockIndex.length];
     int[] updatedDimensionPartitioner = new int[dictionaryColumnBlockIndex.length];
     for (int i = 0; i < dictionaryColumnBlockIndex.length; i++) {
@@ -149,7 +149,7 @@ public class RestructureBasedRawResultCollector extends RawBasedResultCollector 
    * This method will add a record both key and value to list object
    * it will keep track of how many record is processed, to handle limit scenario
    */
-  @Override public List<Object[]> collectData(AbstractScannedResult scannedResult, int batchSize) {
+  @Override public List<Object[]> collectResultInRow(BlockletScannedResult scannedResult, int batchSize) {
     List<Object[]> listBasedResult = new ArrayList<>(batchSize);
     QueryMeasure[] queryMeasures = tableBlockExecutionInfos.getActualQueryMeasures();
     // scan the record and add to list

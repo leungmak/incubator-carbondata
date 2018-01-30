@@ -23,20 +23,19 @@ import org.apache.carbondata.core.datastore.chunk.impl.MeasureRawColumnChunk;
 import org.apache.carbondata.core.util.BitSetGroup;
 
 /**
- * Block chunk holder which will hold the dimension and
- * measure chunk
+ * Contains dimension and measure raw column chunks of one blocklet
  */
-public class BlocksChunkHolder {
+public class RawBlockletColumnChunks {
 
   /**
    * dimension column data chunk
    */
-  private DimensionRawColumnChunk[] dimensionRawDataChunk;
+  private DimensionRawColumnChunk[] dimensionRawColumnChunks;
 
   /**
    * measure column data chunk
    */
-  private MeasureRawColumnChunk[] measureRawDataChunk;
+  private MeasureRawColumnChunk[] measureRawColumnChunks;
 
   /**
    * file reader which will use to read the block from file
@@ -50,44 +49,44 @@ public class BlocksChunkHolder {
 
   private BitSetGroup bitSetGroup;
 
-  public BlocksChunkHolder(int numberOfDimensionBlock, int numberOfMeasureBlock) {
-    dimensionRawDataChunk = new DimensionRawColumnChunk[numberOfDimensionBlock];
-    measureRawDataChunk = new MeasureRawColumnChunk[numberOfMeasureBlock];
-  }
+  private RawBlockletColumnChunks() { }
 
-  public BlocksChunkHolder(int numberOfDimensionBlock, int numberOfMeasureBlock,
-      FileHolder fileReader) {
-    dimensionRawDataChunk = new DimensionRawColumnChunk[numberOfDimensionBlock];
-    measureRawDataChunk = new MeasureRawColumnChunk[numberOfMeasureBlock];
-    this.fileReader = fileReader;
-  }
-
-  /**
-   * @return the dimensionRawDataChunk
-   */
-  public DimensionRawColumnChunk[] getDimensionRawDataChunk() {
-    return dimensionRawDataChunk;
+  public static RawBlockletColumnChunks newInstance(int numberOfDimensionBlock,
+      int numberOfMeasureBlock, FileHolder fileReader, DataRefNode dataBlock) {
+    RawBlockletColumnChunks instance = new RawBlockletColumnChunks();
+    instance.dimensionRawColumnChunks = new DimensionRawColumnChunk[numberOfDimensionBlock];
+    instance.measureRawColumnChunks = new MeasureRawColumnChunk[numberOfMeasureBlock];
+    instance.fileReader = fileReader;
+    instance.dataBlock = dataBlock;
+    return instance;
   }
 
   /**
-   * @param dimensionRawDataChunk the dimensionRawDataChunk to set
+   * @return the dimensionRawColumnChunks
    */
-  public void setDimensionRawDataChunk(DimensionRawColumnChunk[] dimensionRawDataChunk) {
-    this.dimensionRawDataChunk = dimensionRawDataChunk;
+  public DimensionRawColumnChunk[] getDimensionRawColumnChunks() {
+    return dimensionRawColumnChunks;
   }
 
   /**
-   * @return the measureRawDataChunk
+   * @param dimensionRawColumnChunks the dimensionRawColumnChunks to set
    */
-  public MeasureRawColumnChunk[] getMeasureRawDataChunk() {
-    return measureRawDataChunk;
+  public void setDimensionRawColumnChunks(DimensionRawColumnChunk[] dimensionRawColumnChunks) {
+    this.dimensionRawColumnChunks = dimensionRawColumnChunks;
   }
 
   /**
-   * @param measureRawDataChunk the measureRawDataChunk to set
+   * @return the measureRawColumnChunks
    */
-  public void setMeasureRawDataChunk(MeasureRawColumnChunk[] measureRawDataChunk) {
-    this.measureRawDataChunk = measureRawDataChunk;
+  public MeasureRawColumnChunk[] getMeasureRawColumnChunks() {
+    return measureRawColumnChunks;
+  }
+
+  /**
+   * @param measureRawColumnChunks the measureRawColumnChunks to set
+   */
+  public void setMeasureRawColumnChunks(MeasureRawColumnChunk[] measureRawColumnChunks) {
+    this.measureRawColumnChunks = measureRawColumnChunks;
   }
 
   /**
@@ -98,24 +97,10 @@ public class BlocksChunkHolder {
   }
 
   /**
-   * @param fileReader the fileReader to set
-   */
-  public void setFileReader(FileHolder fileReader) {
-    this.fileReader = fileReader;
-  }
-
-  /**
    * @return the dataBlock
    */
   public DataRefNode getDataBlock() {
     return dataBlock;
-  }
-
-  /**
-   * @param dataBlock the dataBlock to set
-   */
-  public void setDataBlock(DataRefNode dataBlock) {
-    this.dataBlock = dataBlock;
   }
 
   /***
@@ -123,11 +108,11 @@ public class BlocksChunkHolder {
    * array
    */
   public void reset() {
-    for (int i = 0; i < measureRawDataChunk.length; i++) {
-      this.measureRawDataChunk[i] = null;
+    for (int i = 0; i < measureRawColumnChunks.length; i++) {
+      this.measureRawColumnChunks[i] = null;
     }
-    for (int i = 0; i < dimensionRawDataChunk.length; i++) {
-      this.dimensionRawDataChunk[i] = null;
+    for (int i = 0; i < dimensionRawColumnChunks.length; i++) {
+      this.dimensionRawColumnChunks[i] = null;
     }
   }
 
