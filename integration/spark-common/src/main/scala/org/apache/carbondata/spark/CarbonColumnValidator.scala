@@ -16,10 +16,10 @@
  */
 package org.apache.carbondata.spark
 
+import org.apache.carbondata.common.exceptions.sql.MalformedCarbonCommandException
 import org.apache.carbondata.core.metadata.schema.table.column.ColumnSchema
-import org.apache.carbondata.spark.exception.MalformedCarbonCommandException
 
- /**
+/**
   * Carbon column validator
   */
 class CarbonColumnValidator extends ColumnValidator {

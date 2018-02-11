@@ -15,11 +15,16 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.spark.exception;
+package org.apache.carbondata.common.exceptions.sql;
+
+import org.apache.carbondata.common.annotations.InterfaceAudience;
+import org.apache.carbondata.common.annotations.InterfaceStability;
 
 /**
- * Throw exception when using illegal argument
+ * This exception will be thrown when Datamap related SQL statement is invalid
  */
+@InterfaceAudience.User
+@InterfaceStability.Stable
 public class MalformedDataMapCommandException extends MalformedCarbonCommandException {
   /**
    * default serial version ID.

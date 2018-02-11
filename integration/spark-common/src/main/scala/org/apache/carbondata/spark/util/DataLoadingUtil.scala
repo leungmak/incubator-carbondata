@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.spark.sql.util.CarbonException
 
 import org.apache.carbondata.common.constants.LoggerAction
+import org.apache.carbondata.common.exceptions.sql.MalformedCarbonCommandException
 import org.apache.carbondata.common.logging.{LogService, LogServiceFactory}
 import org.apache.carbondata.core.constants.{CarbonCommonConstants, CarbonLoadOptionConstants}
 import org.apache.carbondata.core.locks.{CarbonLockFactory, CarbonLockUtil, LockUsage}
@@ -34,7 +35,6 @@ import org.apache.carbondata.core.util.{CarbonProperties, CarbonUtil}
 import org.apache.carbondata.processing.loading.constants.DataLoadProcessorConstants
 import org.apache.carbondata.processing.loading.model.{CarbonDataLoadSchema, CarbonLoadModel}
 import org.apache.carbondata.processing.util.{CarbonLoaderUtil, DeleteLoadFolders, TableOptionConstant}
-import org.apache.carbondata.spark.exception.MalformedCarbonCommandException
 import org.apache.carbondata.spark.load.ValidateUtil
 
 /**
@@ -43,144 +43,6 @@ import org.apache.carbondata.spark.load.ValidateUtil
 object DataLoadingUtil {
 
   val LOGGER: LogService = LogServiceFactory.getLogService(this.getClass.getCanonicalName)
-
-  /**
-   * get data loading options and initialise default value
-   */
-  def getDataLoadingOptions(
-      carbonProperty: CarbonProperties,
-      options: immutable.Map[String, String]): mutable.Map[String, String] = {
-    val optionsFinal = scala.collection.mutable.Map[String, String]()
-    optionsFinal.put("delimiter", options.getOrElse("delimiter", ","))
-    optionsFinal.put("quotechar", options.getOrElse("quotechar", "\""))
-    optionsFinal.put("fileheader", options.getOrElse("fileheader", ""))
-    optionsFinal.put("commentchar", options.getOrElse("commentchar", "#"))
-    optionsFinal.put("columndict", options.getOrElse("columndict", null))
-
-    optionsFinal.put("escapechar",
-      CarbonLoaderUtil.getEscapeChar(options.getOrElse("escapechar", "\\")))
-
-    optionsFinal.put(
-      "serialization_null_format",
-      options.getOrElse("serialization_null_format", "\\N"))
-
-    optionsFinal.put(
-      "bad_records_logger_enable",
-      options.getOrElse(
-        "bad_records_logger_enable",
-        carbonProperty.getProperty(
-          CarbonLoadOptionConstants.CARBON_OPTIONS_BAD_RECORDS_LOGGER_ENABLE,
-          CarbonLoadOptionConstants.CARBON_OPTIONS_BAD_RECORDS_LOGGER_ENABLE_DEFAULT)))
-
-    val badRecordActionValue = carbonProperty.getProperty(
-      CarbonCommonConstants.CARBON_BAD_RECORDS_ACTION,
-      CarbonCommonConstants.CARBON_BAD_RECORDS_ACTION_DEFAULT)
-
-    optionsFinal.put(
-      "bad_records_action",
-      options.getOrElse(
-        "bad_records_action",
-        carbonProperty.getProperty(
-          CarbonLoadOptionConstants.CARBON_OPTIONS_BAD_RECORDS_ACTION,
-          badRecordActionValue)))
-
-    optionsFinal.put(
-      "is_empty_data_bad_record",
-      options.getOrElse(
-        "is_empty_data_bad_record",
-        carbonProperty.getProperty(
-          CarbonLoadOptionConstants.CARBON_OPTIONS_IS_EMPTY_DATA_BAD_RECORD,
-          CarbonLoadOptionConstants.CARBON_OPTIONS_IS_EMPTY_DATA_BAD_RECORD_DEFAULT)))
-
-    optionsFinal.put(
-      "skip_empty_line",
-      options.getOrElse(
-        "skip_empty_line",
-        carbonProperty.getProperty(
-          CarbonLoadOptionConstants.CARBON_OPTIONS_SKIP_EMPTY_LINE)))
-
-    optionsFinal.put("all_dictionary_path", options.getOrElse("all_dictionary_path", ""))
-
-    optionsFinal.put(
-      "complex_delimiter_level_1",
-      options.getOrElse("complex_delimiter_level_1", "\\$"))
-
-    optionsFinal.put(
-      "complex_delimiter_level_2",
-      options.getOrElse("complex_delimiter_level_2", "\\:"))
-
-    optionsFinal.put(
-      "dateformat",
-      options.getOrElse(
-        "dateformat",
-        carbonProperty.getProperty(
-          CarbonLoadOptionConstants.CARBON_OPTIONS_DATEFORMAT,
-          CarbonLoadOptionConstants.CARBON_OPTIONS_DATEFORMAT_DEFAULT)))
-
-    optionsFinal.put(
-      "timestampformat",
-      options.getOrElse(
-        "timestampformat",
-        carbonProperty.getProperty(
-          CarbonLoadOptionConstants.CARBON_OPTIONS_TIMESTAMPFORMAT,
-          CarbonLoadOptionConstants.CARBON_OPTIONS_TIMESTAMPFORMAT_DEFAULT)))
-
-    optionsFinal.put(
-      "global_sort_partitions",
-      options.getOrElse(
-        "global_sort_partitions",
-        carbonProperty.getProperty(
-          CarbonLoadOptionConstants.CARBON_OPTIONS_GLOBAL_SORT_PARTITIONS,
-          null)))
-
-    optionsFinal.put("maxcolumns", options.getOrElse("maxcolumns", null))
-
-    optionsFinal.put(
-      "batch_sort_size_inmb",
-      options.getOrElse(
-        "batch_sort_size_inmb",
-        carbonProperty.getProperty(
-          CarbonLoadOptionConstants.CARBON_OPTIONS_BATCH_SORT_SIZE_INMB,
-          carbonProperty.getProperty(
-            CarbonCommonConstants.LOAD_BATCH_SORT_SIZE_INMB,
-            CarbonCommonConstants.LOAD_BATCH_SORT_SIZE_INMB_DEFAULT))))
-
-    optionsFinal.put(
-      "bad_record_path",
-      options.getOrElse(
-        "bad_record_path",
-        carbonProperty.getProperty(
-          CarbonLoadOptionConstants.CARBON_OPTIONS_BAD_RECORD_PATH,
-          carbonProperty.getProperty(
-            CarbonCommonConstants.CARBON_BADRECORDS_LOC,
-            CarbonCommonConstants.CARBON_BADRECORDS_LOC_DEFAULT_VAL))))
-
-    val useOnePass = options.getOrElse(
-      "single_pass",
-      carbonProperty.getProperty(
-        CarbonLoadOptionConstants.CARBON_OPTIONS_SINGLE_PASS,
-        CarbonLoadOptionConstants.CARBON_OPTIONS_SINGLE_PASS_DEFAULT)).trim.toLowerCase match {
-      case "true" =>
-        true
-      case "false" =>
-        // when single_pass = false  and if either alldictionarypath
-        // or columnDict is configured the do not allow load
-        if (StringUtils.isNotEmpty(optionsFinal("all_dictionary_path")) ||
-            StringUtils.isNotEmpty(optionsFinal("columndict"))) {
-          throw new MalformedCarbonCommandException(
-            "Can not use all_dictionary_path or columndict without single_pass.")
-        } else {
-          false
-        }
-      case illegal =>
-        val LOGGER = LogServiceFactory.getLogService(this.getClass.getCanonicalName)
-        LOGGER.error(s"Can't use single_pass, because illegal syntax found: [$illegal] " +
-                     "Please set it as 'true' or 'false'")
-        false
-    }
-    optionsFinal.put("single_pass", useOnePass.toString)
-    optionsFinal
-  }
 
   /**
    * check whether using default value or not

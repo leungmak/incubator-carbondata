@@ -15,11 +15,17 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.spark.exception;
+package org.apache.carbondata.common.exceptions.sql;
+
+import org.apache.carbondata.common.annotations.InterfaceAudience;
+import org.apache.carbondata.common.annotations.InterfaceStability;
 
 /**
- * if the dataMap does not exist, carbon should throw NoSuchDataMapException
+ * This exception will be thrown if datamap is not found when executing datamap
+ * related SQL statement
  */
+@InterfaceAudience.User
+@InterfaceStability.Stable
 public class NoSuchDataMapException extends MalformedCarbonCommandException {
 
   /**

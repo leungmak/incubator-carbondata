@@ -15,30 +15,19 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.spark.exception;
+package org.apache.carbondata.common.exceptions.sql;
 
-public class ConcurrentOperationException extends Exception {
+import org.apache.carbondata.common.annotations.InterfaceAudience;
+import org.apache.carbondata.common.annotations.InterfaceStability;
 
-  /**
-   * The Error message.
-   */
-  private String msg = "";
-
-  /**
-   * Constructor
-   *
-   * @param msg The error message for this exception.
-   */
-  public ConcurrentOperationException(String msg) {
+/**
+ * This exception will be thrown when loading option is invalid for SQL
+ * loading statement (LOAD DATA, INSERT INTO)
+ */
+@InterfaceAudience.User
+@InterfaceStability.Stable
+public class InvalidLoadOptionException extends MalformedCarbonCommandException {
+  public InvalidLoadOptionException(String msg) {
     super(msg);
-    this.msg = msg;
   }
-
-  /**
-   * getMessage
-   */
-  public String getMessage() {
-    return this.msg;
-  }
-
 }
