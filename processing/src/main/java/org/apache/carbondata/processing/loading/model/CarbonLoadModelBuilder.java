@@ -234,12 +234,12 @@ public class CarbonLoadModelBuilder {
    * @param hadoopConf hadoopConf is needed to read CSV header if there 'fileheader' is not set in
    *                   user provided load options
    */
-  def buildCarbonLoadModel(
+  private void buildCarbonLoadModel(
       CarbonProperties carbonProperty,
       Map<String, String> options,
       Map<String, String> optionsFinal,
       CarbonLoadModel carbonLoadModel,
-      Configuration hadoopConf) throws MalformedCarbonCommandException {
+      Configuration hadoopConf) throws InvalidLoadOptionException {
     carbonLoadModel.setTableName(table.getTableName());
     carbonLoadModel.setDatabaseName(table.getDatabaseName());
     carbonLoadModel.setTablePath(table.getTablePath());
@@ -264,103 +264,107 @@ public class CarbonLoadModelBuilder {
     validateDateTimeFormat(dateFormat);
     validateSortScope(sort_scope);
 
-    if (bad_records_logger_enable.toBoolean ||
+    if (Boolean.valueOf(bad_records_logger_enable) ||
         LoggerAction.REDIRECT.name().equalsIgnoreCase(bad_records_action)) {
-      bad_record_path = CarbonUtil.checkAndAppendHDFSUrl(bad_record_path)
+      bad_record_path = CarbonUtil.checkAndAppendHDFSUrl(bad_record_path);
       if (!CarbonUtil.isValidBadStorePath(bad_record_path)) {
-        CarbonException.analysisException("Invalid bad records location.")
+        CarbonException.analysisException("Invalid bad records location.");
       }
     }
     carbonLoadModel.setBadRecordsLocation(bad_record_path);
 
     validateGlobalSortPartitions(global_sort_partitions);
-    carbonLoadModel.setEscapeChar(checkDefaultValue(optionsFinal.get("escapechar"), "\\"))
-    carbonLoadModel.setQuoteChar(checkDefaultValue(optionsFinal.get("quotechar"), "\""))
-    carbonLoadModel.setCommentChar(checkDefaultValue(optionsFinal.get("commentchar"), "#"))
+    carbonLoadModel.setEscapeChar(checkDefaultValue(optionsFinal.get("escapechar"), "\\"));
+    carbonLoadModel.setQuoteChar(checkDefaultValue(optionsFinal.get("quotechar"), "\""));
+    carbonLoadModel.setCommentChar(checkDefaultValue(optionsFinal.get("commentchar"), "#"));
 
     // if there isn't file header in csv file and load sql doesn't provide FILEHEADER option,
     // we should use table schema to generate file header.
-    var fileHeader = optionsFinal("fileheader")
-    val headerOption = options.get("header")
-    if (headerOption.isDefined) {
+    String fileHeader = optionsFinal.get("fileheader");
+    String headerOption = options.get("header");
+    if (headerOption != null) {
       // whether the csv file has file header
       // the default value is true
-      val header = try {
-        headerOption.get.toBoolean
-      } catch {
-        case ex: IllegalArgumentException =>
-          throw new MalformedCarbonCommandException(
-              "'header' option should be either 'true' or 'false'. " + ex.getMessage)
+      boolean header = false;
+      try {
+        header = Boolean.valueOf(headerOption);
+      } catch (IllegalArgumentException e) {
+          throw new InvalidLoadOptionException(
+              "'header' option should be either 'true' or 'false'. " + e.getMessage());
       }
       if (header) {
-        if (fileHeader.nonEmpty) {
-          throw new MalformedCarbonCommandException(
-              "When 'header' option is true, 'fileheader' option is not required.")
+        if (!StringUtils.isEmpty(fileHeader)) {
+          throw new InvalidLoadOptionException(
+              "When 'header' option is true, 'fileheader' option is not required.");
         }
       } else {
-        if (fileHeader.isEmpty) {
-          fileHeader = table.getCreateOrderColumn(table.getTableName)
-              .asScala.map(_.getColName).mkString(",")
+        if (StringUtils.isEmpty(fileHeader)) {
+          List<CarbonColumn> columns = table.getCreateOrderColumn(table.getTableName());
+          String[] columnNames = new String[columns.size()];
+          for (int i = 0; i < columnNames.length; i++) {
+            columnNames[i] = columns.get(i).getColName();
+          }
+          fileHeader = Strings.mkString(columnNames, ",");
         }
       }
     }
 
-    carbonLoadModel.setTimestampformat(timestampformat)
-    carbonLoadModel.setDateFormat(dateFormat)
+    carbonLoadModel.setTimestampformat(timestampformat);
+    carbonLoadModel.setDateFormat(dateFormat);
     carbonLoadModel.setDefaultTimestampFormat(carbonProperty.getProperty(
         CarbonCommonConstants.CARBON_TIMESTAMP_FORMAT,
-        CarbonCommonConstants.CARBON_TIMESTAMP_DEFAULT_FORMAT))
+        CarbonCommonConstants.CARBON_TIMESTAMP_DEFAULT_FORMAT));
 
     carbonLoadModel.setDefaultDateFormat(carbonProperty.getProperty(
         CarbonCommonConstants.CARBON_DATE_FORMAT,
-        CarbonCommonConstants.CARBON_DATE_DEFAULT_FORMAT))
+        CarbonCommonConstants.CARBON_DATE_DEFAULT_FORMAT));
 
     carbonLoadModel.setSerializationNullFormat(
-        TableOptionConstant.SERIALIZATION_NULL_FORMAT.getName + "," +
-            optionsFinal("serialization_null_format"))
+        TableOptionConstant.SERIALIZATION_NULL_FORMAT.getName() + "," +
+            optionsFinal.get("serialization_null_format"));
 
     carbonLoadModel.setBadRecordsLoggerEnable(
-        TableOptionConstant.BAD_RECORDS_LOGGER_ENABLE.getName + "," + bad_records_logger_enable)
+        TableOptionConstant.BAD_RECORDS_LOGGER_ENABLE.getName() + "," + bad_records_logger_enable);
 
     carbonLoadModel.setBadRecordsAction(
-        TableOptionConstant.BAD_RECORDS_ACTION.getName + "," + bad_records_action.toUpperCase)
+        TableOptionConstant.BAD_RECORDS_ACTION.getName() + "," + bad_records_action.toUpperCase());
 
     carbonLoadModel.setIsEmptyDataBadRecord(
         DataLoadProcessorConstants.IS_EMPTY_DATA_BAD_RECORD + "," +
-            optionsFinal("is_empty_data_bad_record"))
+            optionsFinal.get("is_empty_data_bad_record"));
 
-    carbonLoadModel.setSkipEmptyLine(optionsFinal("skip_empty_line"))
+    carbonLoadModel.setSkipEmptyLine(optionsFinal.get("skip_empty_line"));
 
-    carbonLoadModel.setSortScope(sort_scope)
-    carbonLoadModel.setBatchSortSizeInMb(optionsFinal("batch_sort_size_inmb"))
-    carbonLoadModel.setGlobalSortPartitions(global_sort_partitions)
-    carbonLoadModel.setUseOnePass(single_pass.toBoolean)
+    carbonLoadModel.setSortScope(sort_scope);
+    carbonLoadModel.setBatchSortSizeInMb(optionsFinal.get("batch_sort_size_inmb"));
+    carbonLoadModel.setGlobalSortPartitions(global_sort_partitions);
+    carbonLoadModel.setUseOnePass(Boolean.valueOf(single_pass));
 
     if (delimeter.equalsIgnoreCase(complex_delimeter_level1) ||
         complex_delimeter_level1.equalsIgnoreCase(complex_delimeter_level2) ||
         delimeter.equalsIgnoreCase(complex_delimeter_level2)) {
-      CarbonException.analysisException(s"Field Delimiter and Complex types delimiter are same")
+      CarbonException.analysisException("Field Delimiter and Complex types delimiter are same");
     } else {
       carbonLoadModel.setComplexDelimiterLevel1(
-          CarbonUtil.delimiterConverter(complex_delimeter_level1))
+          CarbonUtil.delimiterConverter(complex_delimeter_level1));
       carbonLoadModel.setComplexDelimiterLevel2(
-          CarbonUtil.delimiterConverter(complex_delimeter_level2))
+          CarbonUtil.delimiterConverter(complex_delimeter_level2));
     }
     // set local dictionary path, and dictionary file extension
-    carbonLoadModel.setAllDictPath(all_dictionary_path)
-    carbonLoadModel.setCsvDelimiter(CarbonUtil.unescapeChar(delimeter))
-    carbonLoadModel.setCsvHeader(fileHeader)
-    carbonLoadModel.setColDictFilePath(column_dict)
+    carbonLoadModel.setAllDictPath(all_dictionary_path);
+    carbonLoadModel.setCsvDelimiter(CarbonUtil.unescapeChar(delimeter));
+    carbonLoadModel.setCsvHeader(fileHeader);
+    carbonLoadModel.setColDictFilePath(column_dict);
     carbonLoadModel.setCsvHeaderColumns(
-        CommonUtil.getCsvHeaderColumns(carbonLoadModel, hadoopConf))
+        CommonUtil.getCsvHeaderColumns(carbonLoadModel, hadoopConf));
 
-    val validatedMaxColumns = CommonUtil.validateMaxColumns(
-        carbonLoadModel.getCsvHeaderColumns,
-        optionsFinal("maxcolumns"))
+    int validatedMaxColumns = CommonUtil.validateMaxColumns(
+        carbonLoadModel.getCsvHeaderColumns(),
+        optionsFinal.get("maxcolumns"));
 
-    carbonLoadModel.setMaxColumns(validatedMaxColumns.toString)
-    if (null == carbonLoadModel.getLoadMetadataDetails) {
-      CommonUtil.readLoadMetadataDetails(carbonLoadModel)
+    carbonLoadModel.setMaxColumns(String.valueOf(validatedMaxColumns));
+    if (null == carbonLoadModel.getLoadMetadataDetails()) {
+      CommonUtil.readLoadMetadataDetails(carbonLoadModel);
     }
   }
 
