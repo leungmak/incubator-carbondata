@@ -37,8 +37,6 @@ public class DimensionRawColumnChunk extends AbstractRawColumnChunk {
 
   private DimensionColumnChunkReader chunkReader;
 
-  private FileReader fileReader;
-
   public DimensionRawColumnChunk(int columnIndex, ByteBuffer rawData, long offSet, int length,
       DimensionColumnChunkReader columnChunkReader) {
     super(columnIndex, rawData, offSet, length);

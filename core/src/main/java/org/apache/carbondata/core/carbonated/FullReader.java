@@ -12,7 +12,7 @@ public class FullReader<T> implements BlockReader<T> {
   @Override
   public void init(
       SplitInfo splitInfo,
-      String[] fieldNames,
+      String[] projectionFields,
       Expression filterExpression) {
     switch (splitInfo.format) {
       case COLUMNAR_V3:

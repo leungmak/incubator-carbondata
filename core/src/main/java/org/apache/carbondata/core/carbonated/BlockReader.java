@@ -8,7 +8,7 @@ public interface BlockReader<T> {
 
   void init(
       SplitInfo splitInfo,
-      String[] fieldNames,
+      String[] projectionFields,
       Expression filterExpression);
 
   boolean hasNext();

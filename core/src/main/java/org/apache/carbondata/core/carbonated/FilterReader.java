@@ -5,11 +5,12 @@ import org.apache.carbondata.core.scan.scanner.impl.BlockletFilterScanner;
 
 public class FilterReader<T> implements BlockReader<T> {
 
-  BlockletFilterScanner scanner;
-  SplitReader reader;
+  private BlockletFilterScanner scanner;
+  private SplitReader reader;
+  private String[] projectionFields;
 
   @Override
-  public void init(SplitInfo splitInfo, String[] fieldNames, Expression filterExpression) {
+  public void init(SplitInfo splitInfo, String[] projectionFields, Expression filterExpression) {
 
   }
 
@@ -24,7 +25,7 @@ public class FilterReader<T> implements BlockReader<T> {
     logic of SplitReader.scan()
     1. read raw data into a raw column page, with configured size
       if (columnar) {
-        for columnar format, read filter column first into raw page in memory
+        for columnar format, read filter column first into raw page in memory (RawBlockletColumnChunks)
       } else {
         for raw format, read projection and filter column in one shot
       }
@@ -41,7 +42,14 @@ public class FilterReader<T> implements BlockReader<T> {
       }
     3. loop step 1-2 until split is finished
 
-     */
+    */
+
+    boolean columnar = reader instanceof ColumnarSplitReader;
+
+    if (columnar) {
+      reader.readPage();
+    }
+
     return null;
   }
 

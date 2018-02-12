@@ -18,6 +18,7 @@ package org.apache.carbondata.core.datastore.chunk;
 
 import java.nio.ByteBuffer;
 
+import org.apache.carbondata.core.datastore.FileReader;
 import org.apache.carbondata.format.DataChunk3;
 
 /**
@@ -44,6 +45,8 @@ public abstract class AbstractRawColumnChunk {
   protected int length;
 
   private DataChunk3 dataChunkV3;
+
+  protected FileReader fileReader;
 
   public AbstractRawColumnChunk(int columnIndex, ByteBuffer rawData, long offSet, int length) {
     this.columnIndex = columnIndex;
