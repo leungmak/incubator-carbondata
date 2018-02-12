@@ -161,14 +161,19 @@ public class BlockletFullScanner implements BlockletScanner {
       throws IOException {
     long startTime = System.currentTimeMillis();
 
-    readRawDimension(rawBlockletColumnChunks);
-    readRawMeasure(rawBlockletColumnChunks);
+    readColumnChunks(rawBlockletColumnChunks);
 
     // adding statistics for carbon read time
     QueryStatistic readTime = queryStatisticsModel.getStatisticsTypeAndObjMap()
         .get(QueryStatisticsConstants.READ_BLOCKlET_TIME);
     readTime.addCountStatistic(QueryStatisticsConstants.READ_BLOCKlET_TIME,
         readTime.getCount() + (System.currentTimeMillis() - startTime));
+  }
+
+  private void readColumnChunks(RawBlockletColumnChunks rawBlockletColumnChunks)
+      throws IOException {
+    readRawDimension(rawBlockletColumnChunks);
+    readRawMeasure(rawBlockletColumnChunks);
   }
 
   private void readRawMeasure(RawBlockletColumnChunks rawBlockletColumnChunks) throws IOException {
