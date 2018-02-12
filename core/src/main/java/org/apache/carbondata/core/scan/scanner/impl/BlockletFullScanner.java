@@ -160,19 +160,32 @@ public class BlockletFullScanner implements BlockletScanner {
   public void readBlocklet(RawBlockletColumnChunks rawBlockletColumnChunks)
       throws IOException {
     long startTime = System.currentTimeMillis();
-    DimensionRawColumnChunk[] dimensionRawColumnChunks = rawBlockletColumnChunks.getDataBlock()
-        .readDimensionChunks(rawBlockletColumnChunks.getFileReader(),
-            blockExecutionInfo.getAllSelectedDimensionColumnIndexRange());
-    rawBlockletColumnChunks.setDimensionRawColumnChunks(dimensionRawColumnChunks);
-    MeasureRawColumnChunk[] measureRawColumnChunks = rawBlockletColumnChunks.getDataBlock()
-        .readMeasureChunks(rawBlockletColumnChunks.getFileReader(),
-            blockExecutionInfo.getAllSelectedMeasureIndexRange());
-    rawBlockletColumnChunks.setMeasureRawColumnChunks(measureRawColumnChunks);
+
+    readRawDimension(rawBlockletColumnChunks);
+    readRawMeasure(rawBlockletColumnChunks);
+
     // adding statistics for carbon read time
     QueryStatistic readTime = queryStatisticsModel.getStatisticsTypeAndObjMap()
         .get(QueryStatisticsConstants.READ_BLOCKlET_TIME);
     readTime.addCountStatistic(QueryStatisticsConstants.READ_BLOCKlET_TIME,
         readTime.getCount() + (System.currentTimeMillis() - startTime));
+  }
+
+  private void readRawMeasure(RawBlockletColumnChunks rawBlockletColumnChunks) throws IOException {
+    MeasureRawColumnChunk[] measureRawColumnChunks =
+        rawBlockletColumnChunks.getDataBlock().readMeasureChunks(
+            rawBlockletColumnChunks.getFileReader(),
+            blockExecutionInfo.getAllSelectedMeasureIndexRange());
+    rawBlockletColumnChunks.setMeasureRawColumnChunks(measureRawColumnChunks);
+  }
+
+  private void readRawDimension(RawBlockletColumnChunks rawBlockletColumnChunks)
+      throws IOException {
+    DimensionRawColumnChunk[] dimensionRawColumnChunks =
+        rawBlockletColumnChunks.getDataBlock().readDimensionChunks(
+            rawBlockletColumnChunks.getFileReader(),
+            blockExecutionInfo.getAllSelectedDimensionColumnIndexRange());
+    rawBlockletColumnChunks.setDimensionRawColumnChunks(dimensionRawColumnChunks);
   }
 
   BlockletScannedResult createEmptyResult() {
