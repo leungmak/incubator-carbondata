@@ -33,8 +33,10 @@ import org.apache.carbondata.core.memory.MemoryException;
  */
 public class DimensionRawColumnChunk extends AbstractRawColumnChunk {
 
+  /* decoded page */
   private DimensionColumnPage[] dataChunks;
 
+  /* decoder for page */
   private DimensionColumnChunkReader chunkReader;
 
   public DimensionRawColumnChunk(int columnIndex, ByteBuffer rawData, long offSet, int length,
