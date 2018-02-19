@@ -32,9 +32,11 @@ public class DataMapSchema implements Serializable, Writable {
 
   protected String dataMapName;
 
-  private String className;
+  // providerName can be class name of the DataMapProvider implementation or short name of it
+  private String providerName;
 
-  protected RelationIdentifier relationIdentifier;
+  private RelationIdentifier relationIdentifier;
+
   /**
    * child table schema
    */
@@ -48,13 +50,13 @@ public class DataMapSchema implements Serializable, Writable {
   public DataMapSchema() {
   }
 
-  public DataMapSchema(String dataMapName, String className) {
+  public DataMapSchema(String dataMapName, String providerName) {
     this.dataMapName = dataMapName;
-    this.className = className;
+    this.providerName = providerName;
   }
 
-  public String getClassName() {
-    return className;
+  public String getProviderName() {
+    return providerName;
   }
 
   public TableSchema getChildSchema() {
@@ -87,7 +89,7 @@ public class DataMapSchema implements Serializable, Writable {
 
   @Override public void write(DataOutput out) throws IOException {
     out.writeUTF(dataMapName);
-    out.writeUTF(className);
+    out.writeUTF(providerName);
     boolean isRelationIdentifierExists = null != relationIdentifier;
     out.writeBoolean(isRelationIdentifierExists);
     if (isRelationIdentifierExists) {
@@ -111,7 +113,7 @@ public class DataMapSchema implements Serializable, Writable {
 
   @Override public void readFields(DataInput in) throws IOException {
     this.dataMapName = in.readUTF();
-    this.className = in.readUTF();
+    this.providerName = in.readUTF();
     boolean isRelationIdnentifierExists = in.readBoolean();
     if (isRelationIdnentifierExists) {
       this.relationIdentifier = new RelationIdentifier(null, null, null);
