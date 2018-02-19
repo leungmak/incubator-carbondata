@@ -14,11 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.carbondata.core.datamap.dev.cgdatamap;
 
-import org.apache.carbondata.core.datamap.dev.DataMap;
-import org.apache.carbondata.core.indexstore.Blocklet;
+package org.apache.carbondata.datamap;
 
-public abstract class AbstractCoarseGrainDataMap implements DataMap<Blocklet> {
+import org.apache.carbondata.common.exceptions.sql.MalformedDataMapCommandException;
+import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
+import org.apache.carbondata.core.metadata.schema.table.DataMapSchema;
+import org.apache.carbondata.processing.exception.DataLoadingException;
 
+import org.apache.spark.sql.SparkSession;
+
+public interface DataMapProvider {
+  void init(CarbonTable mainTable, DataMapSchema dataMapSchema, String ctasSqlStatement,
+      SparkSession sparkSession) throws MalformedDataMapCommandException;
+  void deinit(CarbonTable mainTable, DataMapSchema dataMapSchema, SparkSession sparkSession);
+  void rebuild(SparkSession sparkSession) throws DataLoadingException;
 }

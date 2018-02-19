@@ -14,28 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.carbondata.core.datamap.dev.cgdatamap;
 
-package org.apache.carbondata.common.exceptions.sql;
+import org.apache.carbondata.core.datamap.dev.IndexDataMap;
+import org.apache.carbondata.core.indexstore.Blocklet;
 
-import org.apache.carbondata.common.annotations.InterfaceAudience;
-import org.apache.carbondata.common.annotations.InterfaceStability;
+public abstract class AbstractCoarseGrainIndexDataMap implements IndexDataMap<Blocklet> {
 
-/**
- * This exception will be thrown when Datamap related SQL statement is invalid
- */
-@InterfaceAudience.User
-@InterfaceStability.Stable
-public class MalformedDataMapCommandException extends MalformedCarbonCommandException {
-  /**
-   * default serial version ID.
-   */
-  private static final long serialVersionUID = 1L;
-
-  public MalformedDataMapCommandException(String msg) {
-    super(msg);
-  }
-
-  public MalformedDataMapCommandException(String msg, Throwable e) {
-    super(msg, e);
-  }
 }

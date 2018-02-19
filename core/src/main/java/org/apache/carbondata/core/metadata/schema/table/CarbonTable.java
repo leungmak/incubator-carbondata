@@ -151,7 +151,7 @@ public class CarbonTable implements Serializable {
     List<DataMapSchema> dataMapSchemas = new ArrayList<>();
     for (DataMapSchema dataMapSchema : tableInfo.getDataMapSchemaList()) {
       DataMapSchema newDataMapSchema = DataMapSchemaFactory.INSTANCE
-          .getDataMapSchema(dataMapSchema.getDataMapName(), dataMapSchema.getClassName());
+          .getDataMapSchema(dataMapSchema.getDataMapName(), dataMapSchema.getProviderName());
       newDataMapSchema.setChildSchema(dataMapSchema.getChildSchema());
       newDataMapSchema.setProperties(dataMapSchema.getProperties());
       newDataMapSchema.setRelationIdentifier(dataMapSchema.getRelationIdentifier());
@@ -768,7 +768,15 @@ public class CarbonTable implements Serializable {
   }
 
   /**
-   * whether this table has aggregation DataMap or not
+   * Return true if 'autoRefreshDataMap' is enabled, by default it is enabled
+   */
+  public boolean isAutoRefreshDataMap() {
+    String refresh = getTableInfo().getFactTable().getTableProperties().get("autoRefreshDataMap");
+    return refresh == null || refresh.equalsIgnoreCase("true");
+  }
+
+  /**
+   * whether this table has aggregation IndexDataMap or not
    */
   public boolean hasAggregationDataMap() {
     List<DataMapSchema> dataMapSchemaList = tableInfo.getDataMapSchemaList();
