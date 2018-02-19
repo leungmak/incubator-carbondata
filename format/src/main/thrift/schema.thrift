@@ -191,7 +191,7 @@ struct DataMapSchema  {
     // DataMap name
     1: required string dataMapName;
     // class name
-    2: required string className;
+    2: required string providerName;
     // relation indentifier
     3: optional RelationIdentifier relationIdentifire;
     // in case of preaggregate it will be used to maintain the child schema
