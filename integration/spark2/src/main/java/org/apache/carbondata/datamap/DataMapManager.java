@@ -17,10 +17,11 @@
 
 package org.apache.carbondata.datamap;
 
-import org.apache.carbondata.common.exceptions.sql.MalformedDataMapCommandException;
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
 import org.apache.carbondata.core.metadata.schema.table.DataMapSchema;
-import org.apache.carbondata.processing.exception.DataLoadingException;
+
+import static org.apache.carbondata.core.metadata.schema.datamap.DataMapProvider.PREAGGREGATE;
+import static org.apache.carbondata.core.metadata.schema.datamap.DataMapProvider.TIMESERIES;
 
 import org.apache.spark.sql.SparkSession;
 
@@ -41,26 +42,18 @@ public class DataMapManager {
    * Create a new DataMap for specified mainTable. The metadata of mainTable will
    * be updated and datamap will be loaded based on mainTable's 'datamapAutoRefresh'
    * table property is set to true.
+   *  @param dataMapSchema schema of the datamap
    *
-   * @param mainTable main table object
-   * @param dataMapSchema schema of the datamap
-   * @param sparkSession spark session
    */
-  public DataMapProvider createDataMap(CarbonTable mainTable, DataMapSchema dataMapSchema,
-      String ctasSqlStatement, SparkSession sparkSession)
-      throws MalformedDataMapCommandException {
+  public DataMapProvider createDataMap(DataMapSchema dataMapSchema) {
     DataMapProvider provider;
-    if (dataMapSchema.getProviderName().equalsIgnoreCase(
-        org.apache.carbondata.core.metadata.schema.datamap.DataMapProvider.PREAGGREGATE.toString()))
-    {
+    if (dataMapSchema.getProviderName().equalsIgnoreCase(PREAGGREGATE.toString())) {
       provider = new PreAggregateDataMapProvider();
-    } else if (dataMapSchema.getProviderName().equalsIgnoreCase(
-        org.apache.carbondata.core.metadata.schema.datamap.DataMapProvider.TIMESERIES.toString())) {
+    } else if (dataMapSchema.getProviderName().equalsIgnoreCase(TIMESERIES.toString())) {
       provider = new TimeseriesDataMapProvider();
     } else {
       provider = new IndexDataMapProvider();
     }
-    provider.create(mainTable, dataMapSchema, ctasSqlStatement, sparkSession);
     return provider;
   }
 
@@ -68,9 +61,12 @@ public class DataMapManager {
 
   }
 
-  public void rebuildDataMap(CarbonTable table, DataMapProvider provider,
-      SparkSession sparkSession) throws DataLoadingException {
-    provider.rebuild(, sparkSession);
+  public void dropDataMapMeta(CarbonTable mainTable, DataMapSchema dataMapSchema,
+      SparkSession sparkSession) {
+
   }
 
+  public void cleanDataMapData() {
+
+  }
 }

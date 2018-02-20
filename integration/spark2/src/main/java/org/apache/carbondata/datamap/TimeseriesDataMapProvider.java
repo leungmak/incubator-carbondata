@@ -30,7 +30,7 @@ import scala.Tuple2;
 public class TimeseriesDataMapProvider extends PreAggregateDataMapProvider {
 
   @Override
-  public void create(CarbonTable mainTable, DataMapSchema dataMapSchema, String ctasSqlStatement,
+  public void initMeta(CarbonTable mainTable, DataMapSchema dataMapSchema, String ctasSqlStatement,
       SparkSession sparkSession) {
     Map<String, String> dmProperties = dataMapSchema.getProperties();
     String dmProviderName = dataMapSchema.getProviderName();
@@ -38,9 +38,10 @@ public class TimeseriesDataMapProvider extends PreAggregateDataMapProvider {
     Tuple2<String, String> details =
         TimeSeriesUtil.getTimeSeriesGranularityDetails(dmProperties, dmProviderName);
     dmProperties.remove(details._1());
-    command = new CarbonCreatePreAggregateTableCommand(mainTable, dataMapSchema.getDataMapName(),
-        dataMapSchema.getProviderName(), dmProperties, ctasSqlStatement, details._1());
-    command.processMetadata(sparkSession);
+    createCommand = new CarbonCreatePreAggregateTableCommand(
+        mainTable, dataMapSchema.getDataMapName(), dataMapSchema.getProviderName(),
+        dmProperties, ctasSqlStatement, details._1());
+    createCommand.processMetadata(sparkSession);
   }
 
 }

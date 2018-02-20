@@ -54,8 +54,9 @@ case class CarbonCreateDataMapCommand(
     validateDataMapName(mainTable)
     dataMapSchema = new DataMapSchema(dataMapName, dmClassName)
     dataMapSchema.setProperties(new java.util.HashMap[String, String](dmproperties.asJava))
-    dataMapProvider =
-      DataMapManager.get().createDataMap(mainTable, dataMapSchema, queryString.get, sparkSession)
+    dataMapProvider = DataMapManager.get().createDataMap(dataMapSchema)
+    dataMapProvider.initMeta(mainTable, dataMapSchema, queryString.orNull, sparkSession)
+
     val LOGGER = LogServiceFactory.getLogService(this.getClass.getCanonicalName)
     LOGGER.audit(s"DataMap $dataMapName successfully added to Table ${tableIdentifier.table}")
     Seq.empty
@@ -71,15 +72,18 @@ case class CarbonCreateDataMapCommand(
   }
 
   override def processData(sparkSession: SparkSession): Seq[Row] = {
-    if (dataMapProvider != null && mainTable.isAutoRefreshDataMap) {
-      DataMapManager.get().rebuildDataMap(mainTable, dataMapProvider, sparkSession)
+    if (dataMapProvider != null) {
+      dataMapProvider.initData(mainTable, sparkSession)
+      if (mainTable.isAutoRefreshDataMap) {
+        dataMapProvider.rebuild(mainTable, sparkSession)
+      }
     }
     Seq.empty
   }
 
   override def undoMetadata(sparkSession: SparkSession, exception: Exception): Seq[Row] = {
     if (dataMapProvider != null) {
-      dataMapProvider.shutdown(mainTable, dataMapSchema, sparkSession)
+      dataMapProvider.freeMeta(mainTable, dataMapSchema, sparkSession)
       Seq.empty
     } else {
       throw new MalformedDataMapCommandException("Unknown data map type " + dmClassName)

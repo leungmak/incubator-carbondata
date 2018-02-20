@@ -31,7 +31,8 @@ import org.apache.spark.sql.parser.CarbonSpark2SqlParser
 
 import org.apache.carbondata.common.exceptions.sql.MalformedDataMapCommandException
 import org.apache.carbondata.core.constants.CarbonCommonConstants
-import org.apache.carbondata.core.metadata.schema.table.{AggregationDataMapSchema, CarbonTable, TableInfo}
+import org.apache.carbondata.core.metadata.schema.datamap.DataMapProvider
+import org.apache.carbondata.core.metadata.schema.table.{AggregationDataMapSchema, CarbonTable}
 import org.apache.carbondata.core.statusmanager.{SegmentStatus, SegmentStatusManager}
 
 /**
@@ -124,7 +125,7 @@ case class CarbonCreatePreAggregateTableCommand(
     // child schema object which will be updated on parent table about the
     val childSchema = tableInfo.getFactTable.buildChildSchema(
       dataMapName,
-      CarbonCommonConstants.AGGREGATIONDATAMAPSCHEMA,
+      DataMapProvider.PREAGGREGATE.toString,
       tableInfo.getDatabaseName,
       queryString,
       "AGGREGATION")

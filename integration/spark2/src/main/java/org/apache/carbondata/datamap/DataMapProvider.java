@@ -40,18 +40,33 @@ import org.apache.spark.sql.SparkSession;
 public interface DataMapProvider {
 
   /**
-   * Create and initialize a datamap for specified table.
+   * Initialize a datamap's metadata.
    * This is called when user creates datamap, for example "CREATE DATAMAP dm ON TABLE mainTable"
+   * Implementation should initialize metadata for datamap, like creating table
    */
-  void create(CarbonTable mainTable, DataMapSchema dataMapSchema, String ctasSqlStatement,
+  void initMeta(CarbonTable mainTable, DataMapSchema dataMapSchema, String ctasSqlStatement,
       SparkSession sparkSession) throws MalformedDataMapCommandException;
 
   /**
-   * Destroy a datamap.
-   * This is called when user drops datamap, for example "DROP DATAMAP dm ON TABLE mainTable"
-   * Implementation should reclaim all resources for the datamap
+   * Initialize a datamap's data.
+   * This is called when user creates datamap, for example "CREATE DATAMAP dm ON TABLE mainTable"
+   * Implementation should initialize data for datamap, like creating data folders
    */
-  void shutdown(CarbonTable mainTable, DataMapSchema dataMapSchema, SparkSession sparkSession);
+  void initData(CarbonTable mainTable, SparkSession sparkSession);
+
+  /**
+   * Opposite operation of {@link #initMeta(CarbonTable, DataMapSchema, String, SparkSession)}.
+   * This is called when user drops datamap, for example "DROP DATAMAP dm ON TABLE mainTable"
+   * Implementation should clean all meta for the datamap
+   */
+  void freeMeta(CarbonTable mainTable, DataMapSchema dataMapSchema, SparkSession sparkSession);
+
+  /**
+   * Opposite operation of {@link #initData(CarbonTable, SparkSession)}.
+   * This is called when user drops datamap, for example "DROP DATAMAP dm ON TABLE mainTable"
+   * Implementation should clean all data for the datamap
+   */
+  void freeData(CarbonTable mainTable, DataMapSchema dataMapSchema, SparkSession sparkSession);
 
   /**
    * Rebuild the datamap by loading all data from mainTable
@@ -67,4 +82,5 @@ public interface DataMapProvider {
    */
   void incrementalBuild(CarbonTable mainTable, String[] segmentIds, SparkSession sparkSession)
     throws DataLoadingException;
+
 }

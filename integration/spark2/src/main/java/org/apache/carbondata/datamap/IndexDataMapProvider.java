@@ -34,7 +34,7 @@ public class IndexDataMapProvider implements DataMapProvider {
   private TableInfo originalTableInfo;
 
   @Override
-  public void create(CarbonTable mainTable, DataMapSchema dataMapSchema, String ctasSqlStatement,
+  public void initMeta(CarbonTable mainTable, DataMapSchema dataMapSchema, String ctasSqlStatement,
       SparkSession sparkSession) throws MalformedDataMapCommandException {
     IndexDataMapFactory dataMapFactory = createIndexDataMapFactory(dataMapSchema);
     DataMapStoreManager.getInstance().registerDataMap(
@@ -43,15 +43,26 @@ public class IndexDataMapProvider implements DataMapProvider {
   }
 
   @Override
-  public void shutdown(CarbonTable mainTable, DataMapSchema dataMapSchema,
+  public void initData(CarbonTable mainTable, SparkSession sparkSession) {
+    // Nothing is needed to do by default
+  }
+
+  @Override
+  public void freeMeta(CarbonTable mainTable, DataMapSchema dataMapSchema,
       SparkSession sparkSession) {
     PreAggregateUtil.updateSchemaInfo(mainTable, originalTableInfo, sparkSession);
+  }
+
+  @Override
+  public void freeData(CarbonTable mainTable, DataMapSchema dataMapSchema,
+      SparkSession sparkSession) {
     DataMapStoreManager.getInstance().clearDataMap(
         mainTable.getAbsoluteTableIdentifier(), dataMapSchema.getDataMapName());
   }
 
   @Override
   public void rebuild(CarbonTable mainTable, SparkSession sparkSession) {
+    // Nothing is needed to do by default
   }
 
   @Override

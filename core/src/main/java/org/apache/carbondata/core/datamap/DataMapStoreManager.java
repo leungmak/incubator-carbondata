@@ -26,12 +26,12 @@ import org.apache.carbondata.common.exceptions.MetadataProcessException;
 import org.apache.carbondata.common.exceptions.sql.MalformedDataMapCommandException;
 import org.apache.carbondata.common.logging.LogService;
 import org.apache.carbondata.common.logging.LogServiceFactory;
-import org.apache.carbondata.core.constants.CarbonCommonConstants;
 import org.apache.carbondata.core.datamap.dev.IndexDataMapFactory;
 import org.apache.carbondata.core.indexstore.BlockletDetailsFetcher;
 import org.apache.carbondata.core.indexstore.SegmentPropertiesFetcher;
 import org.apache.carbondata.core.indexstore.blockletindex.BlockletIndexDataMapFactory;
 import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier;
+import org.apache.carbondata.core.metadata.schema.datamap.DataMapProvider;
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
 import org.apache.carbondata.core.metadata.schema.table.DataMapSchema;
 import org.apache.carbondata.core.mutate.SegmentUpdateDetails;
@@ -86,8 +86,8 @@ public final class DataMapStoreManager {
     List<TableDataMap> dataMaps = new ArrayList<>();
     if (dataMapSchemaList != null) {
       for (DataMapSchema dataMapSchema : dataMapSchemaList) {
-        if (!dataMapSchema.getProviderName()
-            .equalsIgnoreCase(CarbonCommonConstants.AGGREGATIONDATAMAPSCHEMA)) {
+        if (!dataMapSchema.getProviderName().equalsIgnoreCase(
+            DataMapProvider.PREAGGREGATE.toString())) {
           dataMaps.add(getDataMap(carbonTable.getAbsoluteTableIdentifier(), dataMapSchema));
         }
       }

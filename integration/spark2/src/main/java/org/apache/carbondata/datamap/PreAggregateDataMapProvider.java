@@ -22,28 +22,50 @@ import org.apache.carbondata.core.metadata.schema.table.DataMapSchema;
 
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.execution.command.preaaggregate.CarbonCreatePreAggregateTableCommand;
+import org.apache.spark.sql.execution.command.table.CarbonDropTableCommand;
+import scala.Some;
 
 public class PreAggregateDataMapProvider implements DataMapProvider {
-  protected CarbonCreatePreAggregateTableCommand command;
+  protected CarbonCreatePreAggregateTableCommand createCommand;
+  protected CarbonDropTableCommand dropTableCommand;
 
   @Override
-  public void create(CarbonTable mainTable, DataMapSchema dataMapSchema, String ctasSqlStatement,
+  public void initMeta(CarbonTable mainTable, DataMapSchema dataMapSchema, String ctasSqlStatement,
       SparkSession sparkSession) {
-    command = new CarbonCreatePreAggregateTableCommand(mainTable, dataMapSchema.getDataMapName(),
-        dataMapSchema.getProviderName(), dataMapSchema.getProperties(), ctasSqlStatement, null);
-    command.processMetadata(sparkSession);
+    createCommand = new CarbonCreatePreAggregateTableCommand(
+        mainTable, dataMapSchema.getDataMapName(), dataMapSchema.getProviderName(),
+        dataMapSchema.getProperties(), ctasSqlStatement, null);
+    createCommand.processMetadata(sparkSession);
   }
 
   @Override
-  public void shutdown(CarbonTable mainTable, DataMapSchema dataMapSchema,
+  public void initData(CarbonTable mainTable, SparkSession sparkSession) {
+    // Nothing is needed to do by default
+  }
+
+  @Override
+  public void freeMeta(CarbonTable mainTable, DataMapSchema dataMapSchema,
       SparkSession sparkSession) {
-    command.undoMetadata(sparkSession, null);
+    dropTableCommand = new CarbonDropTableCommand(
+        true,
+        new Some<>(dataMapSchema.getRelationIdentifier().getDatabaseName()),
+        dataMapSchema.getRelationIdentifier().getTableName(),
+        true);
+    dropTableCommand.processMetadata(sparkSession);
+  }
+
+  @Override
+  public void freeData(CarbonTable mainTable, DataMapSchema dataMapSchema,
+      SparkSession sparkSession) {
+    if (dropTableCommand != null) {
+      dropTableCommand.processData(sparkSession);
+    }
   }
 
   @Override
   public void rebuild(CarbonTable mainTable, SparkSession sparkSession) {
-    if (command != null) {
-      command.processData(sparkSession);
+    if (createCommand != null) {
+      createCommand.processData(sparkSession);
     }
   }
 
