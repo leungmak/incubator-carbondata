@@ -119,55 +119,27 @@ trait SQLBuildDSL {
   }
 
   // Rewritten portion of query plan
-  private def fragmentExtract_Rewritten(plan: ModularPlan,
+  private def fragmentExtract_Rewritten(
+      plan: ModularPlan,
       alias: Option[String]): Fragment = {
     plan match {
-      case s1@modular.Select(
-      _,
-      _,
-      _,
-      _,
-      _,
-      Seq(g@modular.GroupBy(_, _, _, _, s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)),
-      _,
-      _,
-      _) if (!s1.skip && !g.skip && !s2.skip) =>
+      case s1@modular.Select(_, _, _, _, _,
+        Seq(g@modular.GroupBy(_, _, _, _, s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)),
+        _, _, _) if (!s1.skip && !g.skip && !s2.skip) =>
         extractRewrittenOrNonRewrittenSelectGroupBySelect(s1, g, s2, alias)
 
-      case s1@modular.Select(
-      _,
-      _,
-      _,
-      _,
-      _,
-      Seq(g@modular.GroupBy(_, _, _, _, s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)),
-      _,
-      _,
-      _) if (s1.skip && g.skip && s2.skip) =>
+      case s1@modular.Select(_, _, _, _, _,
+        Seq(g@modular.GroupBy(_, _, _, _, s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)),
+        _, _, _) if (s1.skip && g.skip && s2.skip) =>
         extractRewrittenOrNonRewrittenSelectGroupBySelect(s1, g, s2, alias)
 
-      case s1@modular.Select(
-      _,
-      _,
-      _,
-      _,
-      _,
-      Seq(g@modular.GroupBy(_, _, _, _, s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)),
-      _,
-      _,
-      _) if (!s1.skip && !g.skip && s2.skip) =>
+      case s1@modular.Select(_, _, _, _, _,
+        Seq(g@modular.GroupBy(_, _, _, _, s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)),
+        _, _, _) if (!s1.skip && !g.skip && s2.skip) =>
         extractRewrittenSelectGroupBy(s1, g, alias)
 
-      case s1@modular.Select(
-      _,
-      _,
-      _,
-      _,
-      _,
-      Seq(s2@modular.Select(_, _, _, _, _, _, _, _, _)),
-      _,
-      _,
-      _) if (!s1.skip && s2.skip) =>
+      case s1@modular.Select(_, _, _, _, _, Seq(s2@modular.Select(_, _, _, _, _, _, _, _, _)),
+        _, _, _) if (!s1.skip && s2.skip) =>
         extractRewrittenSelect(s1, alias)
 
       case other => extractSimpleOperator(other, alias)
@@ -175,19 +147,13 @@ trait SQLBuildDSL {
   }
 
   // Non-rewritten portion of query plan
-  private def fragmentExtract_NonRewritten(plan: ModularPlan,
+  private def fragmentExtract_NonRewritten(
+      plan: ModularPlan,
       alias: Option[String]): Fragment = {
     plan match {
-      case s1@modular.Select(
-      _,
-      _,
-      _,
-      _,
-      _,
-      Seq(g@modular.GroupBy(_, _, _, _, s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)),
-      _,
-      _,
-      _) if (s1.aliasMap.isEmpty && !g.rewritten) =>
+      case s1@modular.Select(_, _, _, _, _,
+        Seq(g@modular.GroupBy(_, _, _, _, s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)),
+        _, _, _) if (s1.aliasMap.isEmpty && !g.rewritten) =>
         extractRewrittenOrNonRewrittenSelectGroupBySelect(s1, g, s2, alias)
 
       case g@modular.GroupBy(_, _, _, _, s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)
@@ -203,9 +169,7 @@ trait SQLBuildDSL {
         val from = (0 to fragmentList.length - 1)
           .map(index => fList.get(index).getOrElse((fragmentList(index), None, Nil)))
         val excludesPredicate = from.flatMap(_._3).toSet
-
         val (select, (groupByExprs, groupingSet)) = addGroupingSetIfNeeded(g, s2)
-
         SPJGFragment(
           select,
           from,
@@ -214,9 +178,9 @@ trait SQLBuildDSL {
           Nil,
           alias,
           (g.flags, g.flagSpec))
+
       case g@modular.GroupBy(_, _, _, _, _, _, _) if (g.alias.nonEmpty) =>
         val from = Seq((fragmentExtract(g.child, g.alias), None, Nil))
-
         SPJGFragment(
           g.outputList,
           from,
@@ -225,13 +189,15 @@ trait SQLBuildDSL {
           Nil,
           alias,
           (g.flags, g.flagSpec))
+
       case other => extractSimpleOperator(other, alias)
     }
   }
 
   // used in both rewritten and non-rewritten cases
   // currently in rewritten cases we don't consider grouping set
-  private def extractRewrittenOrNonRewrittenSelectGroupBySelect(s1: modular.Select,
+  private def extractRewrittenOrNonRewrittenSelectGroupBySelect(
+      s1: modular.Select,
       g: modular.GroupBy,
       s2: modular.Select,
       alias: Option[String]): Fragment = {
@@ -284,7 +250,8 @@ trait SQLBuildDSL {
   }
 
   // used in rewritten cases only -- don't consider grouping set
-  private def extractRewrittenSelectGroupBy(s1: modular.Select,
+  private def extractRewrittenSelectGroupBy(
+      s1: modular.Select,
       g: modular.GroupBy,
       alias: Option[String]): Fragment = {
     val fragment = fragmentExtract(g.child, g.alias)
@@ -305,7 +272,6 @@ trait SQLBuildDSL {
     // TODO:  how to handle alias of attribute in MV
     val select = s1.outputList.map { attr => aliasMap.get(attr.toAttribute).getOrElse(attr) } ++
                  windowExprs
-
     SPJGFragment(
       select, // select
       from, // from
@@ -334,7 +300,8 @@ trait SQLBuildDSL {
       (s1.flags, s1.flagSpec))
   }
 
-  private def extractSimpleOperator(operator: ModularPlan,
+  private def extractSimpleOperator(
+      operator: ModularPlan,
       alias: Option[String]): Fragment = {
     operator match {
       case s@modular.Select(_, _, _, _, _, _, _, _, _) =>
@@ -387,10 +354,10 @@ trait SQLBuildDSL {
   private def addGroupingSetIfNeeded(g: modular.GroupBy, s: modular.Select) = {
     if (g.flags.hasFlag(EXPAND)) {
       assert(g.predicateList.length > 1)
-      val flagsNeedExprs = for {flag <- pickledListOrder
-                                if (g.flags.hasFlag(flag))} yield {
-        (flag)
-      }
+      val flagsNeedExprs =
+        for {flag <- pickledListOrder if (g.flags.hasFlag(flag))} yield {
+          flag
+        }
       flagsNeedExprs.zip(g.flagSpec).collect {
         case (EXPAND, Seq(projections_, output_, numOriginalOutput_)) => {
           val output = output_.asInstanceOf[Seq[Attribute]]
@@ -449,8 +416,7 @@ trait SQLBuildDSL {
           (aggExprs, (groupByExprs, groupingSet))
         }
       }.head
-    }
-    else {
+    } else {
       (g.outputList, (g.predicateList, Seq.empty))
     }
   }
