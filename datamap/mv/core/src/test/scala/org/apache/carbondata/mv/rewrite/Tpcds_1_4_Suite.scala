@@ -1,0 +1,76 @@
+/*
+ * Copyright (c) Huawei Futurewei Technologies, Inc. All Rights Reserved.
+ *
+ */
+
+package org.apache.carbondata.mv.rewrite
+
+import org.apache.carbondata.mv.MQOSession
+import org.apache.carbondata.mv.plans.PlanTest
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.catalyst.util._
+import org.scalatest.BeforeAndAfter
+import scala.util.{Failure, Success, Try}
+
+class Tpcds_1_4_Suite extends PlanTest with BeforeAndAfter {
+  import org.apache.carbondata.mv.Tpcds_1_4_Tables._
+  import org.apache.carbondata.mv.rewrite.matching.TestTPCDS_1_4_Batch._
+
+  val spark = SparkSession.builder().master("local").enableHiveSupport().getOrCreate()
+  val testHive = new org.apache.spark.sql.hive.test.TestHiveContext(spark.sparkContext, false)
+  val hiveClient = testHive.sparkSession.metadataHive
+
+  test("test using tpc-ds queries") {
+
+    tpcds1_4Tables.foreach { create_table =>
+      hiveClient.runSqlHive(create_table)
+    }
+    
+//    val dest = "case_30"
+//    val dest = "case_32"
+    val dest = "case_33"
+    
+    tpcds_1_4_testCases.foreach { testcase =>
+      if (testcase._1 == dest) {
+        val mqoSession = new MQOSession(testHive.sparkSession) 
+        val summaryDF = testHive.sparkSession.sql(testcase._2)
+        mqoSession.sharedState.registerSummaryDataset(summaryDF)
+//        val rewrittenPlan = mqoSession.rewrite(testcase._3).withSummaryData
+        
+        Try(mqoSession.rewrite(testcase._3).withSummaryData) match {
+          case Success(rewrittenPlan) => {
+            logInfo(s"""\n\n===== REWRITTEN MODULAR PLAN for ${testcase._1} =====\n\n$rewrittenPlan \n""")
+
+            Try(rewrittenPlan.asCompactSQL) match {
+              case Success(s) => {
+                logInfo(s"\n\n===== CONVERTED SQL for ${testcase._1} =====\n\n${s}\n")
+                if (!s.trim.equals(testcase._4)) {
+                  logError(
+                      s"""
+                      |=== FAIL: SQLs do not match ===
+                      |${sideBySide(s, testcase._4).mkString("\n")}
+                      """.stripMargin)
+                      }
+                }
+              case Failure(e) => logInfo(s"""\n\n===== CONVERTED SQL for ${testcase._1} failed =====\n\n${e.toString}""")
+            }                    
+          }
+          case Failure(e) => logInfo(s"""\n\n==== MODULARIZE the logical query plan for ${testcase._1} failed =====\n\n${e.toString}""")
+        }
+        
+//        val rewrittenSQL = rewrittenPlan.asCompactSQL
+//        val rewrittenSQL = mqoSession.rewrite(testcase._3).toCompactSQL
+
+//        if (!rewrittenSQL.equals(testcase._4)) {
+//          fail(
+//              s"""
+//              |=== FAIL: SQLs do not match ===
+//              |${sideBySide(rewrittenSQL, testcase._4).mkString("\n")}
+//              """.stripMargin)
+//              }
+        }
+    
+    }
+
+  }
+}
