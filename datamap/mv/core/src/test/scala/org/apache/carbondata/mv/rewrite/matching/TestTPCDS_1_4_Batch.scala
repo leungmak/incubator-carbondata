@@ -2086,7 +2086,7 @@ object TestTPCDS_1_4_Batch {
         |    INNER JOIN date_dim ON (date_dim.`d_year` = 2000) AND (date_dim.`d_moy` = 2) AND (web_sales.`ws_sold_date_sk` = date_dim.`d_date_sk`)) gen_subquery_4 
         |LIMIT 100
         """.stripMargin.trim),
-      // harmonization, huawei benchmark SEQ
+      // harmonization, benchmark SEQ
       ("case_31",
        """
         |SELECT CAST(((FLOOR(((CAST(sdr_dyn_seq_custer_iot_all_hour_60min.`STARTTIME` AS DOUBLE) + 28800.0D) / 3600.0D)) * 3600L) - 28800L) AS INT) AS `a3600`, dim_apn_iot.`a12575903189`, sdr_dyn_seq_custer_iot_all_hour_60min.`DIM_52`, sdr_dyn_seq_custer_iot_all_hour_60min.`DIM_1`, sum(1L) AS `CUSTER_IOT_GRP_USER_NUM_STREAM_C`, sdr_dyn_seq_custer_iot_all_hour_60min.`STARTTIME`, dim_apn_iot.`a12575847251`, dim_apn_iot.`a12575817396`, dim_apn_iot.`a12575873557` 
@@ -2230,7 +2230,7 @@ object TestTPCDS_1_4_Batch {
         |  GROUP BY gen_subquery_1.`a3600`, gen_subquery_1.`a12575873557`, gen_subquery_1.`a12575847251`, gen_subquery_1.`a12575903189`) gen_subquery_2 
         |ORDER BY gen_subquery_2.`START_TIME` ASC NULLS FIRST 
        """.stripMargin.trim),
-      // single table MV, Huawei latest benchmark 
+      // single table MV, latest benchmark
       ("case_32",
        """
         |SELECT tradeflow_all.`b_country`, tradeflow_all.`y_year`, substring(tradeflow_all.`hs_code`, 1, 2) AS `hs1`, sum(CASE WHEN (tradeflow_all.`y_year` = 2016) THEN tradeflow_all.`dollar_value` ELSE 0.0D END) AS `v2016`, sum(CASE WHEN (tradeflow_all.`y_year` = 2014) THEN tradeflow_all.`dollar_value` ELSE 0.0D END) AS `v2014`, sum(CASE WHEN (tradeflow_all.`y_year` = 2015) THEN tradeflow_all.`dollar_value` ELSE 0.0D END) AS `v2015`, tradeflow_all.`country`, tradeflow_all.`imex` 
@@ -2328,7 +2328,7 @@ object TestTPCDS_1_4_Batch {
          |    (((NOT isnan(w.`colunm_2014`)) OR (NOT isnan(w.`colunm_2015`))) OR (NOT isnan(w.`colunm_2016`))) AND (((NOT (w.`colunm_2014` = 0.0D)) OR (NOT (w.`colunm_2015` = 0.0D))) OR (NOT (w.`colunm_2016` = 0.0D)))) gen_subquery_1 
          |GROUP BY gen_subquery_1.`country_show_cn`, gen_subquery_1.`country`, gen_subquery_1.`colunm_2014`, gen_subquery_1.`colunm_2015`, gen_subquery_1.`colunm_2016`, gen_subquery_1.`tb`, gen_subquery_1.`dbupdate`
         """.stripMargin.trim),
-      // single table MV, huawei benchmark SEQ
+      // single table MV, benchmark SEQ
       ("case_33",
        """
         |SELECT sdr_dyn_seq_custer_iot_all_hour_60min.`starttime`, sdr_dyn_seq_custer_iot_all_hour_60min.`dim_51`, sdr_dyn_seq_custer_iot_all_hour_60min.`dim_52`, sdr_dyn_seq_custer_iot_all_hour_60min.`DIM_10`, sdr_dyn_seq_custer_iot_all_hour_60min.`dim_1`, sum(1L) AS `sum(1)` 

@@ -1,36 +1,35 @@
 /*
- * Copyright (c) Huawei Futurewei Technologies, Inc. All Rights Reserved.
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.apache.carbondata.mv.plans.modular
 
-import org.apache.carbondata.mv.plans._
-import org.apache.spark.sql.catalyst.plans.QueryPlan
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
-import org.apache.spark.sql.catalyst.plans.logical.Statistics
+import scala.collection._
+import scala.collection.mutable.{HashMap, MultiMap}
 
-import org.apache.carbondata.mv.plans.util.{Printers, SQLBuilder, Signature}
-//import com.huawei.mqo.csetool.subexpressions.Signature
-//import com.huawei.mqo.matching.Navigator
-import org.apache.spark.sql.catalyst.expressions.Expression
-import org.apache.spark.sql.catalyst.expressions.AttributeSet
-import org.apache.spark.sql.catalyst.expressions.PredicateHelper
-import org.apache.spark.sql.catalyst.plans.JoinType
-import org.apache.spark.sql.catalyst.plans.LeftOuter
-import org.apache.spark.sql.catalyst.plans.Inner
-import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
-import scala.collection.mutable.{ HashMap, MultiMap }
-import org.apache.carbondata.mv.plans.util._
-import org.apache.carbondata.mv.plans.modular.Flags._
-import org.apache.carbondata.mv.plans.modular._
-import scala.collection._
-import scala.util.{Try,Success,Failure}
+import org.apache.spark.sql.catalyst.expressions.{Expression, PredicateHelper}
+import org.apache.spark.sql.catalyst.plans.{JoinType, QueryPlan}
+import org.apache.spark.sql.catalyst.plans.logical.Statistics
 import org.apache.spark.sql.catalyst.trees.TreeNode
-import org.apache.spark.sql.catalyst.expressions._
-import org.apache.spark.sql.catalyst.expressions.aggregate._
+import org.apache.spark.sql.internal.SQLConf
+
+import org.apache.carbondata.mv.plans._
+import org.apache.carbondata.mv.plans.util.{Printers, SQLBuilder, Signature}
 
 abstract class ModularPlan 
   extends QueryPlan[ModularPlan]
