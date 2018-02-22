@@ -96,8 +96,7 @@ private[mv] class SummaryDatasetCatalog(saprkContext: SparkContext) {
     } else {
       val modularPlan = modularizer.modularize(optimizer.execute(planToRegister)).next().harmonized
       val signature = modularPlan.signature
-      summaryDatasets +=
-        SummaryDataset(signature,planToRegister)
+      summaryDatasets += SummaryDataset(signature,planToRegister)
     }
   }
 

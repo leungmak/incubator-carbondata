@@ -44,8 +44,7 @@ object ExtractSelectModule extends PredicateHelper {
 
   def unapply(plan: LogicalPlan): Option[ReturnType] = {
     val (outputs, inputs, predicates, joinedges, children, isSelect, _, flags, fspecs, wspecs) =
-      collectProjectsFiltersJoinsAndSort(
-      plan)
+      collectProjectsFiltersJoinsAndSort(plan)
     if (!isSelect) {
       None
     } else {
@@ -53,7 +52,7 @@ object ExtractSelectModule extends PredicateHelper {
         outputs,
         inputs,
         predicates,
-        collectChildAliasMappings((AttributeSet(outputs) ++ AttributeSet(predicates)), children),
+        collectChildAliasMappings(AttributeSet(outputs) ++ AttributeSet(predicates), children),
         joinedges,
         children,
         flags,

@@ -77,37 +77,24 @@ class SQLBuilder private(
     object CleanupQualifier extends Rule[ModularPlan] {
       override def apply(tree: ModularPlan): ModularPlan = {
         tree transformDown {
-          case s@modular.Select(
-          _,
-          _,
-          _,
-          _,
-          _,
-          Seq(g@modular.GroupBy(_, _, _, _, s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)),
-          _,
-          _,
-          _) if (!s.rewritten && s2.children.forall { _.isInstanceOf[modular.LeafNode] }) =>
+          case s@modular.Select(_, _, _, _, _,
+            Seq(g@modular.GroupBy(_, _, _, _, s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)),
+            _, _, _) if !s.rewritten && s2.children.forall { _.isInstanceOf[modular.LeafNode] } =>
             val attrMap = AttributeMap(s2.outputList
-              .collect { case a: Alias if (a.child.isInstanceOf[Attribute]) => (a.toAttribute, a) })
+              .collect { case a: Alias if a.child.isInstanceOf[Attribute] => (a.toAttribute, a) })
             cleanupQualifier(s, s2.aliasMap, s2.children, attrMap)
 
-          case g@modular.GroupBy(
-          _,
-          _,
-          _,
-          _,
-          s2@modular.Select(_, _, _, _, _, _, _, _, _),
-          _,
-          _) if (
-            !g.rewritten && s2.children.forall { _.isInstanceOf[modular.LeafNode] }) =>
+          case g@modular.GroupBy(_, _, _, _,
+            s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)
+            if !g.rewritten && s2.children.forall { _.isInstanceOf[modular.LeafNode] } =>
             val attrMap = AttributeMap(s2.outputList
-              .collect { case a: Alias if (a.child.isInstanceOf[Attribute]) => (a.toAttribute, a) })
+              .collect { case a: Alias if a.child.isInstanceOf[Attribute] => (a.toAttribute, a) })
             cleanupQualifier(g, s2.aliasMap, s2.children, attrMap)
 
-          case s@modular.Select(_, _, _, _, _, _, _, _, _) if (!s.rewritten && s.children
-            .forall { _.isInstanceOf[modular.LeafNode] }) => {
+          case s@modular.Select(_, _, _, _, _, _, _, _, _)
+            if !s.rewritten && s.children.forall { _.isInstanceOf[modular.LeafNode] } =>
             cleanupQualifier(s, s.aliasMap, s.children, AttributeMap(Seq.empty[(Attribute, Alias)]))
-          }
+
         }
       }
 
@@ -116,7 +103,7 @@ class SQLBuilder private(
           children: Seq[ModularPlan],
           attrMap: AttributeMap[Alias]): ModularPlan = {
         node transform {
-          case plan if (!plan.rewritten && !plan.isInstanceOf[modular.LeafNode]) =>
+          case plan if !plan.rewritten && !plan.isInstanceOf[modular.LeafNode] =>
             plan.transformExpressions {
               case ref: Attribute =>
                 val i = children.indexWhere(_.outputSet.contains(ref))
@@ -129,8 +116,7 @@ class SQLBuilder private(
                   } else {
                     ref
                   }
-                }
-                else {
+                } else {
                   attrMap.get(ref) match {
                     case Some(alias) => Alias(alias.child, alias.name)(exprId = alias.exprId)
                     case None => ref
@@ -144,40 +130,26 @@ class SQLBuilder private(
     object AddSubquery extends Rule[ModularPlan] {
       override def apply(tree: ModularPlan): ModularPlan = {
         tree transformUp {
-          case s@modular.Select(
-          _,
-          _,
-          _,
-          _,
-          _,
-          Seq(g@modular.GroupBy(_, _, _, _, s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)),
-          _,
-          _,
-          _) if (s2.children.forall { _.isInstanceOf[modular.LeafNode] }) =>
-            s
-          case g@modular.GroupBy(
-          _,
-          _,
-          _,
-          _,
-          s2@modular.Select(_, _, _, _, _, _, _, _, _),
-          _,
-          _) if (s2.children.forall { _.isInstanceOf[modular.LeafNode] }) =>
-            g
-          case s@modular.Select(_, _, _, _, _, _, _, _, _) if (!s.rewritten && !s.children
-            .forall { _.isInstanceOf[modular.LeafNode] }) => {
+          case s@modular.Select(_, _, _, _, _,
+            Seq(g@modular.GroupBy(_, _, _, _, s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)),
+            _, _, _) if s2.children.forall { _.isInstanceOf[modular.LeafNode] } => s
+
+          case g@modular.GroupBy(_, _, _, _, s2@modular.Select(_, _, _, _, _, _, _, _, _), _, _)
+            if s2.children.forall { _.isInstanceOf[modular.LeafNode] } => g
+
+          case s@modular.Select(_, _, _, _, _, _, _, _, _)
+            if !s.rewritten && !s.children.forall { _.isInstanceOf[modular.LeafNode] } =>
             var list: List[(Int, String)] = List()
             var newS = s.copy()
             s.children.zipWithIndex.filterNot { _._1.isInstanceOf[modular.LeafNode] }.foreach {
-              case (child: ModularPlan, index) if (!s.aliasMap.contains(index)) => {
+              case (child: ModularPlan, index) if (!s.aliasMap.contains(index)) =>
                 val subqueryName = newSubqueryName()
                 val windowAttributeSet = if (child.isInstanceOf[Select]) {
                   val windowExprs = child.asInstanceOf[Select].windowSpec
                     .map { case Seq(expr) => expr.asInstanceOf[Seq[NamedExpression]] }
                     .foldLeft(Seq.empty.asInstanceOf[Seq[NamedExpression]])(_ ++ _)
                   SQLBuilder.collectAttributeSet(windowExprs)
-                }
-                else {
+                } else {
                   AttributeSet.empty
                 }
                 val subqueryAttributeSet = child.outputSet ++ windowAttributeSet
@@ -202,19 +174,17 @@ class SQLBuilder private(
                       exprId = alias.exprId,
                       qualifier = Some(subqueryName))
                 }
-              }
+
               case _ =>
             }
-            if (!list.isEmpty) {
+            if (list.nonEmpty) {
               list = list ++ s.aliasMap.toSeq
               newS.copy(aliasMap = list.toMap)
-            }
-            else {
+            } else {
               newS
             }
-          }
 
-          case g@modular.GroupBy(_, _, _, _, _, _, _) if (!g.rewritten && g.alias.isEmpty) => {
+          case g@modular.GroupBy(_, _, _, _, _, _, _) if (!g.rewritten && g.alias.isEmpty) =>
             val newG = if (g.outputList.isEmpty) {
               val ol = g.predicateList.map { case a: Attribute => a }
               g.copy(outputList = ol)
@@ -238,11 +208,9 @@ class SQLBuilder private(
                   exprId = alias.exprId,
                   qualifier = Some(subqueryName))
             }.copy(alias = Some(subqueryName))
-          }
         }
       }
     }
-
   }
 
 }
