@@ -40,7 +40,7 @@ class Tpcds_1_4_Suite extends PlanTest with BeforeAndAfter {
     
 //    val dest = "case_30"
 //    val dest = "case_32"
-    val dest = "case_1"
+    val dest = "case_3"
     
     tpcds_1_4_testCases.foreach { testcase =>
       if (testcase._1 == dest) {
@@ -50,11 +50,11 @@ class Tpcds_1_4_Suite extends PlanTest with BeforeAndAfter {
 //        val rewrittenPlan = mqoSession.rewrite(testcase._3).withSummaryData
         
         Try(mqoSession.rewrite(testcase._3).withSummaryData) match {
-          case Success(rewrittenPlan) => {
+          case Success(rewrittenPlan) =>
             logInfo(s"""\n\n===== REWRITTEN MODULAR PLAN for ${testcase._1} =====\n\n$rewrittenPlan \n""")
 
             Try(rewrittenPlan.asCompactSQL) match {
-              case Success(s) => {
+              case Success(s) =>
                 logInfo(s"\n\n===== CONVERTED SQL for ${testcase._1} =====\n\n${s}\n")
                 if (!s.trim.equals(testcase._4)) {
                   logError(
@@ -63,10 +63,10 @@ class Tpcds_1_4_Suite extends PlanTest with BeforeAndAfter {
                       |${sideBySide(s, testcase._4).mkString("\n")}
                       """.stripMargin)
                       }
-                }
+
               case Failure(e) => logInfo(s"""\n\n===== CONVERTED SQL for ${testcase._1} failed =====\n\n${e.toString}""")
             }                    
-          }
+
           case Failure(e) => logInfo(s"""\n\n==== MODULARIZE the logical query plan for ${testcase._1} failed =====\n\n${e.toString}""")
         }
         
