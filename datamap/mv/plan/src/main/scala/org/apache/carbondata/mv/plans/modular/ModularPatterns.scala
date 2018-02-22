@@ -102,118 +102,40 @@ abstract class ModularPatterns extends Modularizer[ModularPlan] {
 
     def apply(plan: LogicalPlan): Seq[ModularPlan] = {
       plan match {
-        case Distinct(ExtractSelectModule(
-        output,
-        input,
-        predicate,
-        aliasmap,
-        joinedge,
-        children,
-        flags1,
-        fspec1,
-        wspec)) =>
+        case Distinct(
+          ExtractSelectModule(output, input, predicate, aliasmap, joinedge, children, flags1,
+          fspec1, wspec)) =>
           val flags = flags1.setFlag(DISTINCT)
-          makeSelectModule(
-            output,
-            input,
-            predicate,
-            aliasmap,
-            joinedge,
-            flags,
-            children.map(modularizeLater),
-            fspec1,
-            wspec)
+          makeSelectModule(output, input, predicate, aliasmap, joinedge, flags,
+            children.map(modularizeLater), fspec1, wspec)
+
         case Limit(
-        limitExpr,
-        Distinct(ExtractSelectModule(
-        output,
-        input,
-        predicate,
-        aliasmap,
-        joinedge,
-        children,
-        flags1,
-        fspec1,
-        wspec))) => {
+          limitExpr,
+          Distinct(
+            ExtractSelectModule(output, input, predicate, aliasmap, joinedge, children,
+              flags1, fspec1, wspec))) =>
           val flags = flags1.setFlag(DISTINCT).setFlag(LIMIT)
-          makeSelectModule(
-            output,
-            input,
-            predicate,
-            aliasmap,
-            joinedge,
-            flags,
-            children.map(modularizeLater),
-            Seq(Seq(limitExpr)) ++ fspec1,
-            wspec)
-        }
+          makeSelectModule(output, input, predicate, aliasmap, joinedge, flags,
+            children.map(modularizeLater), Seq(Seq(limitExpr)) ++ fspec1, wspec)
+
         case Limit(
-        limitExpr,
-        ExtractSelectModule(
-        output,
-        input,
-        predicate,
-        aliasmap,
-        joinedge,
-        children,
-        flags1,
-        fspec1,
-        wspec)) =>
+          limitExpr,
+          ExtractSelectModule(output, input, predicate, aliasmap, joinedge, children, flags1,
+            fspec1, wspec)) =>
           val flags = flags1.setFlag(LIMIT)
-          makeSelectModule(
-            output,
-            input,
-            predicate,
-            aliasmap,
-            joinedge,
-            flags,
-            children.map(modularizeLater),
-            Seq(Seq(limitExpr)) ++ fspec1,
-            wspec)
-        case ExtractSelectModule(
-        output,
-        input,
-        predicate,
-        aliasmap,
-        joinedge,
-        children,
-        flags1,
-        fspec1,
-        wspec) =>
-          makeSelectModule(
-            output,
-            input,
-            predicate,
-            aliasmap,
-            joinedge,
-            flags1,
-            children.map(modularizeLater),
-            fspec1,
-            wspec)
-        case Window(
-        exprs,
-        _,
-        _,
-        ExtractSelectModuleForWindow(
-        output,
-        input,
-        predicate,
-        aliasmap,
-        joinedge,
-        children,
-        flags1,
-        fspec1,
-        wspec)) =>
-          val sel1 = makeSelectModule(
-            output,
-            input,
-            predicate,
-            aliasmap,
-            joinedge,
-            flags1,
-            children.map(modularizeLater),
-            fspec1,
-            wspec)
+          makeSelectModule(output, input, predicate, aliasmap, joinedge, flags,
+            children.map(modularizeLater), Seq(Seq(limitExpr)) ++ fspec1, wspec)
+
+        case ExtractSelectModule(output, input, predicate, aliasmap, joinedge, children, flags1,
+        fspec1, wspec) =>
+          makeSelectModule(output, input, predicate, aliasmap, joinedge, flags1,
+            children.map(modularizeLater), fspec1, wspec)
+
+        case Window(exprs, _, _,
+          ExtractSelectModuleForWindow(output, input, predicate, aliasmap, joinedge, children,
+            flags1, fspec1, wspec)) =>
+          val sel1 = makeSelectModule(output, input, predicate, aliasmap, joinedge, flags1,
+            children.map(modularizeLater), fspec1, wspec)
           makeSelectModule(
             output.map(_.toAttribute),
             output.map(_.toAttribute),
@@ -224,6 +146,7 @@ abstract class ModularPatterns extends Modularizer[ModularPlan] {
             sel1,
             Seq.empty,
             Seq(Seq(exprs)) ++ wspec)
+
         case _ => Nil
       }
     }

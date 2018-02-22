@@ -40,7 +40,7 @@ class Tpcds_1_4_Suite extends PlanTest with BeforeAndAfter {
     
 //    val dest = "case_30"
 //    val dest = "case_32"
-    val dest = "case_33"
+    val dest = "case_1"
     
     tpcds_1_4_testCases.foreach { testcase =>
       if (testcase._1 == dest) {
