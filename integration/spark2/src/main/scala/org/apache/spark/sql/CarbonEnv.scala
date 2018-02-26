@@ -32,6 +32,7 @@ import org.apache.carbondata.core.datastore.impl.FileFactory
 import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable
 import org.apache.carbondata.core.util._
+import org.apache.carbondata.datamap.MatchUDF
 import org.apache.carbondata.events._
 import org.apache.carbondata.processing.loading.events.LoadEvents.{LoadMetadataEvent, LoadTablePreExecutionEvent, LoadTablePreStatusUpdateEvent}
 import org.apache.carbondata.spark.rdd.SparkReadSupport
@@ -65,6 +66,8 @@ class CarbonEnv {
     // only then the CarbonPreAggregateDataLoadingRules would be applied to split the average
     // column to sum and count.
     sparkSession.udf.register("preAggLoad", () => "")
+
+    sparkSession.udf.register("match", new MatchUDF)
 
     // added for handling timeseries function like hour, minute, day , month , year
     sparkSession.udf.register("timeseries", new TimeSeriesFunction)

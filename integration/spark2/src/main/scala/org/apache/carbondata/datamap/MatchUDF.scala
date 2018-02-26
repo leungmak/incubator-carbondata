@@ -15,33 +15,20 @@
  * limitations under the License.
  */
 
-package org.apache.carbondata.core.scan.filter.intf;
+package org.apache.carbondata.datamap
 
-public enum ExpressionType {
+import org.apache.spark.sql.sources.Filter
 
-  AND,
-  OR,
-  NOT,
-  EQUALS,
-  NOT_EQUALS,
-  LESSTHAN,
-  LESSTHAN_EQUALTO,
-  GREATERTHAN,
-  GREATERTHAN_EQUALTO,
-  ADD,
-  SUBSTRACT,
-  DIVIDE,
-  MULTIPLY,
-  IN,
-  LIST,
-  NOT_IN,
-  UNKNOWN,
-  LITERAL,
-  RANGE,
-  FALSE,
-  TRUE,
-  STARTSWITH,
-  ENDSWITH,
-  CONTAINSWITH,
-  MATCH
+import org.apache.carbondata.common.annotations.InterfaceAudience
+
+@InterfaceAudience.Internal
+class MatchUDF extends ((String) => Boolean) with Serializable {
+  override def apply(v1: String): Boolean = {
+    v1.length > 0
+  }
+}
+
+@InterfaceAudience.Internal
+case class CarbonMatch(queryString: String) extends Filter {
+  override def references: Array[String] = null
 }
