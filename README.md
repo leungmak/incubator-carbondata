@@ -26,7 +26,6 @@ You can find the latest CarbonData document and learn more at:
 
 Visit count: [![HitCount](http://hits.dwyl.io/jackylk/apache/carbondata.svg)](http://hits.dwyl.io/jackylk/apache/carbondata)
 
-
 ## Status
 Spark2.2:
 [![Build Status](https://builds.apache.org/buildStatus/icon?job=carbondata-master-spark-2.2)](https://builds.apache.org/view/A-D/view/CarbonData/job/carbondata-master-spark-2.2/lastBuild/testReport)
