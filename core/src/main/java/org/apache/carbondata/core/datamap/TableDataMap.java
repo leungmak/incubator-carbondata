@@ -143,7 +143,7 @@ public final class TableDataMap extends OperationEventListener {
       blocklets.addAll(
           dataMap.prune(
               filterExp,
-              segmentPropertiesFetcher.getSegmentProperties(distributable.getSegmentId()),
+              segmentPropertiesFetcher.getSegmentProperties(distributable.getSegment()),
               partitions));
     }
     BlockletSerializer serializer = new BlockletSerializer();

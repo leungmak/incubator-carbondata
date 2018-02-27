@@ -432,7 +432,7 @@ public class SegmentFileStore {
       boolean forceDelete) throws IOException {
 
     LoadMetadataDetails[] details =
-        SegmentStatusManager.readLoadMetadata(table.getMetaDataFilepath());
+        SegmentStatusManager.readLoadMetadata(table.getMetadataPath());
     // scan through each segment.
     for (LoadMetadataDetails segment : details) {
       // if this segment is valid then only we will go for deletion of related

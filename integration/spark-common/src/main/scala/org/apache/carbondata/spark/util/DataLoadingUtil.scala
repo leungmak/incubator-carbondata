@@ -441,8 +441,8 @@ object DataLoadingUtil {
 
   private def isUpdationRequired(isForceDeletion: Boolean,
       carbonTable: CarbonTable,
-      absoluteTableIdentifier: AbsoluteTableIdentifier) = {
-    val details = SegmentStatusManager.readLoadMetadata(carbonTable.getMetaDataFilepath)
+      absoluteTableIdentifier: AbsoluteTableIdentifier): (Array[LoadMetadataDetails], Boolean) = {
+    val details = SegmentStatusManager.readLoadMetadata(carbonTable.getMetadataPath)
     // Delete marked loads
     val isUpdationRequired =
       DeleteLoadFolders.deleteLoadFoldersFromFileSystem(

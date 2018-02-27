@@ -2361,21 +2361,19 @@ public final class CarbonUtil {
   }
 
   // Get the total size of carbon data and the total size of carbon index
-  public static HashMap<String, Long> getDataSizeAndIndexSize(CarbonTablePath carbonTablePath,
+  public static HashMap<String, Long> getDataSizeAndIndexSize(String tablePath,
       Segment segment) throws IOException {
     if (segment.getSegmentFileName() != null) {
-      SegmentFileStore fileStore =
-          new SegmentFileStore(carbonTablePath.getPath(), segment.getSegmentFileName());
+      SegmentFileStore fileStore = new SegmentFileStore(tablePath, segment.getSegmentFileName());
       return getDataSizeAndIndexSize(fileStore);
     } else {
-      return getDataSizeAndIndexSize(carbonTablePath, segment.getSegmentNo());
+      return getDataSizeAndIndexSize(tablePath, segment.getSegmentNo());
     }
   }
 
   // Get the total size of segment.
-  public static long getSizeOfSegment(CarbonTablePath carbonTablePath,
-      Segment segment) throws IOException {
-    HashMap<String, Long> dataSizeAndIndexSize = getDataSizeAndIndexSize(carbonTablePath, segment);
+  public static long getSizeOfSegment(String tablePath, Segment segment) throws IOException {
+    HashMap<String, Long> dataSizeAndIndexSize = getDataSizeAndIndexSize(tablePath, segment);
     long size = 0;
     for (Long eachSize: dataSizeAndIndexSize.values()) {
       size += eachSize;
@@ -2585,9 +2583,7 @@ public final class CarbonUtil {
     String blockName = filePath.substring(filePath.lastIndexOf("/") + 1, filePath.length());
     String tablePath = identifier.getTablePath();
     if (filePath.startsWith(tablePath)) {
-      String factDir =
-          CarbonStorePath.getCarbonTablePath(tablePath, identifier.getCarbonTableIdentifier())
-              .getFactDir();
+      String factDir = CarbonTablePath.getFactDir(tablePath);
       if (filePath.startsWith(factDir)) {
         blockId = "Part0" + CarbonCommonConstants.FILE_SEPARATOR + "Segment_" + segmentId
             + CarbonCommonConstants.FILE_SEPARATOR + blockName;

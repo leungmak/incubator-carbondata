@@ -77,14 +77,12 @@ public class RowResultMergerProcessor extends AbstractResultProcessor {
               .getFactTimeStamp() + ".tmp";
     } else {
       carbonStoreLocation = CarbonDataProcessorUtil
-          .createCarbonStoreLocation(carbonTable.getTablePath(), loadModel.getDatabaseName(),
-              tableName, loadModel.getPartitionId(), loadModel.getSegmentId());
+          .createCarbonStoreLocation(loadModel.getDatabaseName(), tableName, loadModel.getSegmentId());
     }
     CarbonFactDataHandlerModel carbonFactDataHandlerModel = CarbonFactDataHandlerModel
         .getCarbonFactDataHandlerModel(loadModel, carbonTable, segProp, tableName,
             tempStoreLocation, carbonStoreLocation);
-    setDataFileAttributesInModel(loadModel, compactionType, carbonTable,
-        carbonFactDataHandlerModel);
+    setDataFileAttributesInModel(loadModel, compactionType, carbonFactDataHandlerModel);
     carbonFactDataHandlerModel.setCompactionFlow(true);
     dataHandler = new CarbonFactDataHandlerColumnar(carbonFactDataHandlerModel);
   }

@@ -478,7 +478,7 @@ public class CarbonLoadModel implements Serializable {
    * @param delimiter
    * @return
    */
-  public CarbonLoadModel getCopyWithPartition(String uniqueId, List<String> filesForPartition,
+  public CarbonLoadModel getCopyWithPartition(String uniqueId,
       String header, String delimiter) {
     CarbonLoadModel copyObj = new CarbonLoadModel();
     copyObj.tableName = tableName;

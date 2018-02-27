@@ -44,7 +44,6 @@ import org.apache.carbondata.core.statusmanager.SegmentStatusManager;
 import org.apache.carbondata.core.statusmanager.SegmentUpdateStatusManager;
 import org.apache.carbondata.core.util.CarbonProperties;
 import org.apache.carbondata.core.util.CarbonUtil;
-import org.apache.carbondata.core.util.path.CarbonStorePath;
 import org.apache.carbondata.core.util.path.CarbonTablePath;
 import org.apache.carbondata.core.writer.CarbonDeleteDeltaWriterImpl;
 import org.apache.carbondata.processing.loading.model.CarbonLoadModel;
@@ -612,10 +611,10 @@ public final class CarbonDataMergerUtil {
       // variable to store one  segment size across partition.
       long sizeOfOneSegmentAcrossPartition;
       if (segment.getSegmentFile() != null) {
-        sizeOfOneSegmentAcrossPartition = CarbonUtil
-            .getSizeOfSegment(carbonTablePath, new Segment(segId, segment.getSegmentFile()));
+        sizeOfOneSegmentAcrossPartition = CarbonUtil.getSizeOfSegment(
+            tablePath, new Segment(segId, segment.getSegmentFile()));
       } else {
-        sizeOfOneSegmentAcrossPartition = getSizeOfSegment(tablePath, tableIdentifier, segId);
+        sizeOfOneSegmentAcrossPartition = getSizeOfSegment(tablePath, segId);
       }
 
       // if size of a segment is greater than the Major compaction size. then ignore it.
@@ -1006,14 +1005,8 @@ public final class CarbonDataMergerUtil {
   /**
    * This method traverses Update Delta Files inside the seg and return true
    * if UpdateDelta Files are more than IUD Compaction threshold.
-   *
-   * @param seg
-   * @param identifier
-   * @param segmentUpdateStatusManager
-   * @param numberDeltaFilesThreshold
-   * @return
    */
-  public static Boolean checkUpdateDeltaFilesInSeg(Segment seg,
+  private static Boolean checkUpdateDeltaFilesInSeg(Segment seg,
       AbsoluteTableIdentifier absoluteTableIdentifier,
       SegmentUpdateStatusManager segmentUpdateStatusManager, int numberDeltaFilesThreshold) {
 

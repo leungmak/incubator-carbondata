@@ -48,8 +48,7 @@ public class RowResultProcessor {
     this.segmentProperties = segProp;
     String tableName = carbonTable.getTableName();
     String carbonStoreLocation = CarbonDataProcessorUtil
-        .createCarbonStoreLocation(carbonTable.getTablePath(), loadModel.getDatabaseName(),
-            tableName, loadModel.getPartitionId(), loadModel.getSegmentId());
+        .createCarbonStoreLocation(loadModel.getDatabaseName(), tableName, loadModel.getSegmentId());
     CarbonFactDataHandlerModel carbonFactDataHandlerModel =
         CarbonFactDataHandlerModel.getCarbonFactDataHandlerModel(loadModel, carbonTable,
             segProp, tableName, tempStoreLocation, carbonStoreLocation);

@@ -38,13 +38,11 @@ import org.apache.carbondata.core.datastore.impl.FileFactory;
 import org.apache.carbondata.core.indexstore.Blocklet;
 import org.apache.carbondata.core.indexstore.BlockletDetailsFetcher;
 import org.apache.carbondata.core.indexstore.ExtendedBlocklet;
+import org.apache.carbondata.core.indexstore.PartitionSpec;
 import org.apache.carbondata.core.indexstore.SegmentPropertiesFetcher;
 import org.apache.carbondata.core.indexstore.TableBlockIndexUniqueIdentifier;
 import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier;
 import org.apache.carbondata.core.metadata.SegmentFileStore;
-import org.apache.carbondata.core.metadata.blocklet.DataFileFooter;
-import org.apache.carbondata.core.metadata.schema.table.column.ColumnSchema;
-import org.apache.carbondata.core.util.DataFileFooterConverter;
 import org.apache.carbondata.core.util.path.CarbonTablePath;
 import org.apache.carbondata.events.Event;
 
@@ -57,8 +55,7 @@ import org.apache.hadoop.fs.RemoteIterator;
  * Table map for blocklet
  */
 public class BlockletDataMapFactory extends AbstractCoarseGrainDataMapFactory
-    implements BlockletDetailsFetcher,
-    SegmentPropertiesFetcher {
+    implements BlockletDetailsFetcher, SegmentPropertiesFetcher {
 
   private AbsoluteTableIdentifier identifier;
 
@@ -75,12 +72,12 @@ public class BlockletDataMapFactory extends AbstractCoarseGrainDataMapFactory
   }
 
   @Override
-  public DataMapWriter createWriter(Segment segment) {
+  public AbstractDataMapWriter createWriter(Segment segment, String writeDirectoryPath) {
     throw new UnsupportedOperationException("not implemented");
   }
 
   @Override
-  public List<DataMap> getDataMaps(Segment segment) throws IOException {
+  public List<AbstractCoarseGrainDataMap> getDataMaps(Segment segment) throws IOException {
     List<TableBlockIndexUniqueIdentifier> tableBlockIndexUniqueIdentifiers =
         getTableBlockIndexUniqueIdentifiers(segment);
     return cache.getAll(tableBlockIndexUniqueIdentifiers);
@@ -262,8 +259,8 @@ public class BlockletDataMapFactory extends AbstractCoarseGrainDataMapFactory
     return null;
   }
 
-  @Override public SegmentProperties getSegmentProperties(String segmentId) throws IOException {
-    List<AbstractCoarseGrainDataMap> dataMaps = getDataMaps(segmentId);
+  @Override public SegmentProperties getSegmentProperties(Segment segment) throws IOException {
+    List<AbstractCoarseGrainDataMap> dataMaps = getDataMaps(segment);
     assert (dataMaps.size() > 0);
     AbstractCoarseGrainDataMap coarseGrainDataMap = dataMaps.get(0);
     assert (coarseGrainDataMap instanceof BlockletDataMap);
@@ -271,12 +268,12 @@ public class BlockletDataMapFactory extends AbstractCoarseGrainDataMapFactory
     return dataMap.getSegmentProperties();
   }
 
-  @Override public List<Blocklet> getAllBlocklets(String segmentId, List<String> partitions)
+  @Override public List<Blocklet> getAllBlocklets(Segment segment, List<PartitionSpec> partitions)
       throws IOException {
     List<Blocklet> blocklets = new ArrayList<>();
-    List<AbstractCoarseGrainDataMap> dataMaps = getDataMaps(segmentId);
+    List<AbstractCoarseGrainDataMap> dataMaps = getDataMaps(segment);
     for (AbstractCoarseGrainDataMap dataMap : dataMaps) {
-      blocklets.addAll(dataMap.prune(null, getSegmentProperties(segmentId), partitions));
+      blocklets.addAll(dataMap.prune(null, getSegmentProperties(segment), partitions));
     }
     return blocklets;
   }
