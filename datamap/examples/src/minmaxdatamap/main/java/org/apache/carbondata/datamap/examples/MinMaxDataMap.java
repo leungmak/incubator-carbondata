@@ -37,6 +37,7 @@ import org.apache.carbondata.core.datastore.impl.FileFactory;
 import org.apache.carbondata.core.fileoperations.AtomicFileOperations;
 import org.apache.carbondata.core.fileoperations.AtomicFileOperationsImpl;
 import org.apache.carbondata.core.indexstore.Blocklet;
+import org.apache.carbondata.core.indexstore.PartitionSpec;
 import org.apache.carbondata.core.indexstore.row.DataMapRow;
 import org.apache.carbondata.core.memory.MemoryException;
 import org.apache.carbondata.core.scan.filter.FilterExpressionProcessor;
@@ -114,7 +115,7 @@ public class MinMaxDataMap extends AbstractCoarseGrainDataMap {
    */
   @Override
   public List<Blocklet> prune(FilterResolverIntf filterExp,
-      SegmentProperties segmentProperties, List<String> partitions) {
+      SegmentProperties segmentProperties, List<PartitionSpec> partitions) {
     List<Blocklet> blocklets = new ArrayList<>();
 
     if (filterExp == null) {

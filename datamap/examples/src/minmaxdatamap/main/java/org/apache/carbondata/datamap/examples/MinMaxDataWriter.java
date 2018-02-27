@@ -28,6 +28,7 @@ import java.util.Map;
 
 import org.apache.carbondata.common.logging.LogService;
 import org.apache.carbondata.common.logging.LogServiceFactory;
+import org.apache.carbondata.core.datamap.Segment;
 import org.apache.carbondata.core.datamap.dev.AbstractDataMapWriter;
 import org.apache.carbondata.core.datastore.impl.FileFactory;
 import org.apache.carbondata.core.datastore.page.ColumnPage;
@@ -35,7 +36,6 @@ import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier;
 import org.apache.carbondata.core.metadata.schema.table.TableInfo;
 import org.apache.carbondata.core.util.ByteUtil;
 import org.apache.carbondata.core.util.CarbonUtil;
-import org.apache.carbondata.core.util.path.CarbonTablePath;
 
 import com.google.gson.Gson;
 
@@ -52,11 +52,11 @@ public class MinMaxDataWriter extends AbstractDataMapWriter {
 
   private String dataWritePath;
 
-  public MinMaxDataWriter(AbsoluteTableIdentifier identifier, String segmentId,
+  public MinMaxDataWriter(AbsoluteTableIdentifier identifier, Segment segment,
       String dataWritePath) {
-    super(identifier, segmentId, dataWritePath);
+    super(identifier, segment, dataWritePath);
     this.identifier = identifier;
-    this.segmentId = segmentId;
+    this.segmentId = segment.getSegmentNo();
     this.dataWritePath = dataWritePath;
   }
 

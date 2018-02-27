@@ -17,7 +17,6 @@
 
 package org.apache.carbondata.datamap.examples;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,6 +24,7 @@ import java.util.List;
 
 import org.apache.carbondata.core.datamap.DataMapDistributable;
 import org.apache.carbondata.core.datamap.DataMapMeta;
+import org.apache.carbondata.core.datamap.Segment;
 import org.apache.carbondata.core.datamap.dev.AbstractDataMapWriter;
 import org.apache.carbondata.core.datamap.dev.DataMapModel;
 import org.apache.carbondata.core.datamap.dev.cgdatamap.AbstractCoarseGrainDataMap;
@@ -32,6 +32,7 @@ import org.apache.carbondata.core.datamap.dev.cgdatamap.AbstractCoarseGrainDataM
 import org.apache.carbondata.core.memory.MemoryException;
 import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier;
 import org.apache.carbondata.core.scan.filter.intf.ExpressionType;
+import org.apache.carbondata.core.util.path.CarbonTablePath;
 import org.apache.carbondata.events.Event;
 
 /**
@@ -48,28 +49,29 @@ public class MinMaxDataMapFactory extends AbstractCoarseGrainDataMapFactory {
   /**
    * createWriter will return the MinMaxDataWriter.
    *
-   * @param segmentId
+   * @param segment
    * @return
    */
-  @Override public AbstractDataMapWriter createWriter(String segmentId, String dataWritePath) {
-    return new MinMaxDataWriter(identifier, segmentId, dataWritePath);
+  @Override public AbstractDataMapWriter createWriter(Segment segment, String dataWritePath) {
+    return new MinMaxDataWriter(identifier, segment, dataWritePath);
   }
 
   /**
    * getDataMaps Factory method Initializes the Min Max Data Map and returns.
    *
-   * @param segmentId
+   * @param segment
    * @return
    * @throws IOException
    */
-  @Override public List<AbstractCoarseGrainDataMap> getDataMaps(String segmentId)
+  @Override public List<AbstractCoarseGrainDataMap> getDataMaps(Segment segment)
       throws IOException {
     List<AbstractCoarseGrainDataMap> dataMapList = new ArrayList<>();
     // Form a dataMap of Type MinMaxDataMap.
     MinMaxDataMap dataMap = new MinMaxDataMap();
     try {
-      dataMap.init(new DataMapModel(
-          identifier.getTablePath() + "/Fact/Part0/Segment_" + segmentId + File.separator));
+      dataMap.init(
+          new DataMapModel(
+              CarbonTablePath.getSegmentPath(identifier.getTablePath(), segment.getSegmentNo())));
     } catch (MemoryException ex) {
 
     }
@@ -78,19 +80,19 @@ public class MinMaxDataMapFactory extends AbstractCoarseGrainDataMapFactory {
   }
 
   /**
-   * @param segmentId
+   * @param segment
    * @return
    */
-  @Override public List<DataMapDistributable> toDistributable(String segmentId) {
+  @Override public List<DataMapDistributable> toDistributable(Segment segment) {
     return null;
   }
 
   /**
    * Clear the DataMap.
    *
-   * @param segmentId
+   * @param segment
    */
-  @Override public void clear(String segmentId) {
+  @Override public void clear(Segment segment) {
   }
 
   /**
