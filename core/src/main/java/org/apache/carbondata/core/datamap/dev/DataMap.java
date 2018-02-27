@@ -38,18 +38,13 @@ public interface DataMap<T extends Blocklet> {
   /**
    * Prune the datamap with filter expression and partition information. It returns the list of
    * blocklets where these filters can exist.
-   *
-   * @param filterExp
-   * @return
    */
-  List<Blocklet> prune(FilterResolverIntf filterExp, SegmentProperties segmentProperties, List<PartitionSpec> partitions);
+  List<Blocklet> prune(FilterResolverIntf filterExp, SegmentProperties segmentProperties,
+      List<PartitionSpec> partitions);
 
   // TODO Move this method to Abstract class
   /**
    * Validate whether the current segment needs to be fetching the required data
-   *
-   * @param filterExp
-   * @return
    */
   boolean isScanRequired(FilterResolverIntf filterExp);
 
