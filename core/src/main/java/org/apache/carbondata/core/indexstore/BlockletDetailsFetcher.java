@@ -53,5 +53,5 @@ public interface BlockletDetailsFetcher {
    * @param segment
    * @return
    */
-  List<Blocklet> getAllBlocklets(Segment segment, List<String> partitions) throws IOException;
+  List<Blocklet> getAllBlocklets(Segment segment, List<PartitionSpec> partitions) throws IOException;
 }

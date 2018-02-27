@@ -19,6 +19,7 @@ package org.apache.carbondata.core.indexstore;
 
 import java.io.IOException;
 
+import org.apache.carbondata.core.datamap.Segment;
 import org.apache.carbondata.core.datastore.block.SegmentProperties;
 
 /**
@@ -32,5 +33,5 @@ public interface SegmentPropertiesFetcher {
    * @return
    * @throws IOException
    */
-  SegmentProperties getSegmentProperties(String segmentId) throws IOException;
+  SegmentProperties getSegmentProperties(Segment segment) throws IOException;
 }
