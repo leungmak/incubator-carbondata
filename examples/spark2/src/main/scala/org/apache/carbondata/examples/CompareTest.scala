@@ -62,17 +62,23 @@ object CompareTest {
   // +-------------+-----------+-------------+-------------+------------+
   // | m4          | double    | NA          | measure     | no         |
   // +-------------+-----------+-------------+-------------+------------+
-  // | m5          | decimal   | NA          | measure     | no         |
+  // | m5          | double    | NA          | measure     | no         |
   // +-------------+-----------+-------------+-------------+------------+
   private def generateDataFrame(spark: SparkSession): DataFrame = {
     val rdd = spark.sparkContext
-        .parallelize(1 to 10 * 1000 * 1000, 4)
+        .parallelize(1 to  10 * 1000 * 1000, 4)
         .map { x =>
-          ("city" + x % 8, "country" + x % 1103, "planet" + x % 10007, "IDENTIFIER" + x.toString,
-              (x % 16).toShort, x / 2, (x << 1).toLong, x.toDouble / 13,
-              BigDecimal.valueOf(x.toDouble / 11))
+          ("city" + x % 8,
+            "country" + x % 1103,
+            "planet" + x % 10007,
+            "IDENTIFIER" + x.toString,
+//            (x % 16).toShort,
+//            x / 2,
+//            (x << 1).toLong,
+//            x.toDouble / 13,
+            x.toDouble / 11)
         }.map { x =>
-      Row(x._1, x._2, x._3, x._4, x._5, x._6, x._7, x._8, x._9)
+      Row(x._1, x._2, x._3, x._4, x._5)
     }
 
     val schema = StructType(
@@ -81,11 +87,11 @@ object CompareTest {
         StructField("country", StringType, nullable = false),
         StructField("planet", StringType, nullable = false),
         StructField("id", StringType, nullable = false),
-        StructField("m1", ShortType, nullable = false),
-        StructField("m2", IntegerType, nullable = false),
-        StructField("m3", LongType, nullable = false),
-        StructField("m4", DoubleType, nullable = false),
-        StructField("m5", DecimalType(30, 10), nullable = false)
+//        StructField("m1", ShortType, nullable = false),
+//        StructField("m2", IntegerType, nullable = false),
+//        StructField("m3", LongType, nullable = false),
+//        StructField("m4", DoubleType, nullable = false),
+        StructField("m5", DoubleType, nullable = false)
       )
     )
 
@@ -97,140 +103,140 @@ object CompareTest {
     // ===========================================================================
     // ==                     FULL SCAN AGGREGATION                             ==
     // ===========================================================================
+//    Query(
+//      "select sum(m1) from $table",
+//      "full scan",
+//      "full scan query, 1 aggregate"
+//    ),
+//    Query(
+//      "select sum(m1), sum(m2) from $table",
+//      "full scan",
+//      "full scan query, 2 aggregate"
+//    ),
+//    Query(
+//      "select sum(m1), sum(m2), sum(m3) from $table",
+//      "full scan",
+//      "full scan query, 3 aggregate"
+//    ),
+//    Query(
+//      "select sum(m1), sum(m2), sum(m3), sum(m4) from $table",
+//      "full scan",
+//      "full scan query, 4 aggregate"
+//    ),
+//    Query(
+//      "select sum(m1), sum(m2), sum(m3), sum(m4), avg(m5) from $table",
+//      "full scan",
+//      "full scan query, 5 aggregate"
+//    ),
+//    Query(
+//      "select count(distinct id) from $table",
+//      "full scan",
+//      "full scan and count distinct of high card column"
+//    ),
+//    Query(
+//      "select count(distinct country) from $table",
+//      "full scan",
+//      "full scan and count distinct of medium card column"
+//    ),
+//    Query(
+//      "select count(distinct city) from $table",
+//      "full scan",
+//      "full scan and count distinct of low card column"
+//    ),
+//    // ===========================================================================
+//    // ==                      FULL SCAN GROUP BY AGGREGATE                     ==
+//    // ===========================================================================
+//    Query(
+//      "select country, sum(m1) as metric from $table group by country order by metric",
+//      "aggregate",
+//      "group by on big data, on medium card column, medium result set,"
+//    ),
+//    Query(
+//      "select city, sum(m1) as metric from $table group by city order by metric",
+//      "aggregate",
+//      "group by on big data, on low card column, small result set,"
+//    ),
+//    Query(
+//      "select id, sum(m1) as metric from $table group by id order by metric desc limit 100",
+//      "topN",
+//      "top N on high card column"
+//    ),
+//    Query(
+//      "select country,sum(m1) as metric from $table group by country order by metric desc limit 10",
+//      "topN",
+//      "top N on medium card column"
+//    ),
+//    Query(
+//      "select city,sum(m1) as metric from $table group by city order by metric desc limit 10",
+//      "topN",
+//      "top N on low card column"
+//    ),
+//    // ===========================================================================
+//    // ==                  FILTER SCAN GROUP BY AGGREGATION                     ==
+//    // ===========================================================================
+//    Query(
+//      "select country, sum(m1) as metric from $table where city='city8' group by country " +
+//          "order by metric",
+//      "filter scan and aggregate",
+//      "group by on large data, small result set"
+//    ),
+//    Query(
+//      "select id, sum(m1) as metric from $table where planet='planet10' group by id " +
+//          "order by metric",
+//      "filter scan and aggregate",
+//      "group by on medium data, large result set"
+//    ),
+//    Query(
+//      "select city, sum(m1) as metric from $table where country='country12' group by city " +
+//          "order by metric",
+//      "filter scan and aggregate",
+//      "group by on medium data, small result set"
+//    ),
+//    // ===========================================================================
+//    // ==                             FILTER SCAN                               ==
+//    // ===========================================================================
+//    Query(
+//      "select * from $table where city = 'city3' limit 10000",
+//      "filter scan",
+//      "filter on low card dimension, limit, medium result set, fetch all columns"
+//    ),
+//    Query(
+//      "select * from $table where country = 'country9' ",
+//      "filter scan",
+//      "filter on low card dimension, medium result set, fetch all columns"
+//    ),
+//    Query(
+//      "select * from $table where planet = 'planet101' ",
+//      "filter scan",
+//      "filter on medium card dimension, small result set, fetch all columns"
+//    ),
     Query(
-      "select sum(m1) from $table",
-      "full scan",
-      "full scan query, 1 aggregate"
-    ),
-    Query(
-      "select sum(m1), sum(m2) from $table",
-      "full scan",
-      "full scan query, 2 aggregate"
-    ),
-    Query(
-      "select sum(m1), sum(m2), sum(m3) from $table",
-      "full scan",
-      "full scan query, 3 aggregate"
-    ),
-    Query(
-      "select sum(m1), sum(m2), sum(m3), sum(m4) from $table",
-      "full scan",
-      "full scan query, 4 aggregate"
-    ),
-    Query(
-      "select sum(m1), sum(m2), sum(m3), sum(m4), avg(m5) from $table",
-      "full scan",
-      "full scan query, 5 aggregate"
-    ),
-    Query(
-      "select count(distinct id) from $table",
-      "full scan",
-      "full scan and count distinct of high card column"
-    ),
-    Query(
-      "select count(distinct country) from $table",
-      "full scan",
-      "full scan and count distinct of medium card column"
-    ),
-    Query(
-      "select count(distinct city) from $table",
-      "full scan",
-      "full scan and count distinct of low card column"
-    ),
-    // ===========================================================================
-    // ==                      FULL SCAN GROUP BY AGGREGATE                     ==
-    // ===========================================================================
-    Query(
-      "select country, sum(m1) as metric from $table group by country order by metric",
-      "aggregate",
-      "group by on big data, on medium card column, medium result set,"
-    ),
-    Query(
-      "select city, sum(m1) as metric from $table group by city order by metric",
-      "aggregate",
-      "group by on big data, on low card column, small result set,"
-    ),
-    Query(
-      "select id, sum(m1) as metric from $table group by id order by metric desc limit 100",
-      "topN",
-      "top N on high card column"
-    ),
-    Query(
-      "select country,sum(m1) as metric from $table group by country order by metric desc limit 10",
-      "topN",
-      "top N on medium card column"
-    ),
-    Query(
-      "select city,sum(m1) as metric from $table group by city order by metric desc limit 10",
-      "topN",
-      "top N on low card column"
-    ),
-    // ===========================================================================
-    // ==                  FILTER SCAN GROUP BY AGGREGATION                     ==
-    // ===========================================================================
-    Query(
-      "select country, sum(m1) as metric from $table where city='city8' group by country " +
-          "order by metric",
-      "filter scan and aggregate",
-      "group by on large data, small result set"
-    ),
-    Query(
-      "select id, sum(m1) as metric from $table where planet='planet10' group by id " +
-          "order by metric",
-      "filter scan and aggregate",
-      "group by on medium data, large result set"
-    ),
-    Query(
-      "select city, sum(m1) as metric from $table where country='country12' group by city " +
-          "order by metric",
-      "filter scan and aggregate",
-      "group by on medium data, small result set"
-    ),
-    // ===========================================================================
-    // ==                             FILTER SCAN                               ==
-    // ===========================================================================
-    Query(
-      "select * from $table where city = 'city3' limit 10000",
-      "filter scan",
-      "filter on low card dimension, limit, medium result set, fetch all columns"
-    ),
-    Query(
-      "select * from $table where country = 'country9' ",
-      "filter scan",
-      "filter on low card dimension, medium result set, fetch all columns"
-    ),
-    Query(
-      "select * from $table where planet = 'planet101' ",
-      "filter scan",
-      "filter on medium card dimension, small result set, fetch all columns"
-    ),
-    Query(
-      "select * from $table where id = '408938' ",
+      "select * from $table where text_match('id:IDENTIFIER408938') ",
       "filter scan",
       "filter on high card dimension"
     ),
+//    Query(
+//      "select * from $table where country='country10000'  ",
+//      "filter scan",
+//      "filter on low card dimension, not exist"
+//    ),
+//    Query(
+//      "select * from $table where country='country2' and city ='city8' ",
+//      "filter scan",
+//      "filter on 2 dimensions, small result set, fetch all columns"
+//    ),
+//    Query(
+//      "select * from $table where city='city1' and country='country2' and planet ='planet3' ",
+//      "filter scan",
+//      "filter on 3 dimensions, small result set, fetch all columns"
+//    ),
+//    Query(
+//      "select * from $table where m1 < 3",
+//      "filter scan",
+//      "filter on measure, small result set, fetch all columns"
+//    ),
     Query(
-      "select * from $table where country='country10000'  ",
-      "filter scan",
-      "filter on low card dimension, not exist"
-    ),
-    Query(
-      "select * from $table where country='country2' and city ='city8' ",
-      "filter scan",
-      "filter on 2 dimensions, small result set, fetch all columns"
-    ),
-    Query(
-      "select * from $table where city='city1' and country='country2' and planet ='planet3' ",
-      "filter scan",
-      "filter on 3 dimensions, small result set, fetch all columns"
-    ),
-    Query(
-      "select * from $table where m1 < 3",
-      "filter scan",
-      "filter on measure, small result set, fetch all columns"
-    ),
-    Query(
-      "select * from $table where id like '1%' ",
+      "select * from $table where id like 'IDENTIFIER1%' ",
       "fuzzy filter scan",
       "like filter, big result set"
     ),
@@ -240,9 +246,14 @@ object CompareTest {
       "like filter, medium result set"
     ),
     Query(
-      "select * from $table where id like 'xyz%' ",
+      "select * from $table where id like 'IDENTIFIERxyz%' ",
       "fuzzy filter scan",
       "like filter, full scan but not exist"
+    ),
+    Query(
+      "select * from $table where id like 'IDENTIFIER1%1' ",
+      "fuzzy filter scan",
+      "like filter, full scan"
     )
   )
 
@@ -268,18 +279,26 @@ object CompareTest {
   private def loadCarbonTable(spark: SparkSession, input: DataFrame, tableName: String): Double = {
     CarbonProperties.getInstance().addProperty(
       CarbonCommonConstants.CARBON_DATA_FILE_VERSION,
-      "3"
+      "V3"
     )
     spark.sql(s"drop table if exists $tableName")
+    val schema = input.schema.fields.map { field =>
+      s"${field.name} ${field.dataType.toString.substring(0, field.dataType.toString.length - 4)}"
+    }.mkString(",")
+    spark.sql(s"CREATE TABLE $tableName ($schema) STORED BY 'carbondata'")
+    spark.sql(
+      s"""
+         |CREATE DATAMAP index ON TABLE $tableName
+         |USING 'org.apache.carbondata.datamap.lucene.LuceneFineGrainDataMapFactory'
+       """.stripMargin)
     time {
       input.write
           .format("carbondata")
           .option("tableName", tableName)
-          .option("tempCSV", "false")
           .option("single_pass", "true")
           .option("dictionary_exclude", "id") // id is high cardinality column
           .option("table_blocksize", "32")
-          .mode(SaveMode.Overwrite)
+          .mode(SaveMode.Append)
           .save()
     }
   }
@@ -377,7 +396,7 @@ object CompareTest {
         .enableHiveSupport()
         .config("spark.driver.host", "127.0.0.1")
         .getOrCreateCarbonSession(storeLocation)
-    spark.sparkContext.setLogLevel("warn")
+    spark.sparkContext.setLogLevel("error")
 
     val table1 = parquetTableName
     val table2 = carbonTableName("3")
