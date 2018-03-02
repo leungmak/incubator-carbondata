@@ -38,13 +38,19 @@ public class LuceneReadIndexExample
 
     List<String> result = new ArrayList<>();
     Random r = new Random();
-    IndexSearcher searcher = createSearcher();
-    TopDocs warm = searchByFirstName("id1", searcher);
 
     long start = System.nanoTime();
+    IndexSearcher searcher = createSearcher();
+    System.out.println("take " + (System.nanoTime() - start)/1000/1000 + " ms");
+
+    start = System.nanoTime();
+    TopDocs warm = searchByFirstName("id19", searcher);
+    System.out.println("take " + (System.nanoTime() - start)/1000/1000 + " ms");
+
+    start = System.nanoTime();
     for (int i = 0; i < 10; i++) {
-      TopDocs foundDocs2 = searchByFirstName("id1", searcher);
-      System.out.println("Total Results :: " + foundDocs2.totalHits);
+      TopDocs foundDocs2 = searchByFirstName("id1999", searcher);
+      //System.out.println("Total Results :: " + foundDocs2.totalHits);
       for (ScoreDoc sd : foundDocs2.scoreDocs) {
         Document d = searcher.doc(sd.doc);
         //System.out.println(String.format(d.get("id")));

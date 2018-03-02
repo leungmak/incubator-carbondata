@@ -420,7 +420,7 @@ object CompareTest {
     val storeLocation = s"$rootPath/examples/spark2/target/store"
     val spark = SparkSession
         .builder()
-        .master("local")
+        .master("local[2]")
         .enableHiveSupport()
         .config("spark.driver.host", "127.0.0.1")
         .getOrCreateCarbonSession(storeLocation)
