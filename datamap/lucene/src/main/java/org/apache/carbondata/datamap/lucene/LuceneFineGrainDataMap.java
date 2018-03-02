@@ -19,6 +19,7 @@ package org.apache.carbondata.datamap.lucene;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.carbondata.common.annotations.InterfaceAudience;
 import org.apache.carbondata.common.logging.LogService;
@@ -73,7 +74,7 @@ public class LuceneFineGrainDataMap extends FineGrainDataMap {
   /**
    * default max values to return
    */
-  private static int MAX_RESULT_NUMBER = 100;
+  private static int MAX_RESULT_NUMBER = 10000000;
 
   /**
    * analyzer for lucene index
@@ -162,6 +163,7 @@ public class LuceneFineGrainDataMap extends FineGrainDataMap {
 
     // use MultiFieldQueryParser to parser query
     QueryParser queryParser = new MultiFieldQueryParser(sFields, analyzer);
+    queryParser.setAllowLeadingWildcard(true);
     Query query;
     try {
       query = queryParser.parse(strQuery);
@@ -169,7 +171,7 @@ public class LuceneFineGrainDataMap extends FineGrainDataMap {
       String errorMessage = String.format(
           "failed to filter block with query %s, detail is %s", strQuery, e.getMessage());
       LOGGER.error(errorMessage);
-      return null;
+      throw new IOException(e);
     }
 
     // execute index search

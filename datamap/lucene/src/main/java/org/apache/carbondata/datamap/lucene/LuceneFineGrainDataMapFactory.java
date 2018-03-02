@@ -28,17 +28,31 @@ import org.apache.carbondata.core.datamap.dev.DataMapModel;
 import org.apache.carbondata.core.datamap.dev.fgdatamap.FineGrainDataMap;
 import org.apache.carbondata.core.memory.MemoryException;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+
 /**
  * CG level of lucene DataMap
  */
 @InterfaceAudience.Internal
 public class LuceneFineGrainDataMapFactory extends LuceneDataMapFactoryBase<FineGrainDataMap> {
 
+  private Cache<String, List<FineGrainDataMap>> cache;
+
+  public LuceneFineGrainDataMapFactory() {
+    cache = CacheBuilder.newBuilder().maximumSize(10).build();
+  }
+
   /**
    * Get the datamap for segmentid
    */
   public List<FineGrainDataMap> getDataMaps(String segmentId) throws IOException {
-    List<FineGrainDataMap> lstDataMap = new ArrayList<>();
+    List<FineGrainDataMap> lstDataMap = cache.getIfPresent(segmentId);
+    if (lstDataMap != null) {
+      return lstDataMap;
+    }
+
+    lstDataMap = new ArrayList<>();
     FineGrainDataMap dataMap = new LuceneFineGrainDataMap(analyzer);
     try {
       dataMap.init(new DataMapModel(
@@ -49,6 +63,7 @@ public class LuceneFineGrainDataMapFactory extends LuceneDataMapFactoryBase<Fine
       return lstDataMap;
     }
     lstDataMap.add(dataMap);
+    cache.put(segmentId, lstDataMap);
     return lstDataMap;
   }
 

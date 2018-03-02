@@ -211,7 +211,7 @@ object CompareTest {
 //      "filter on medium card dimension, small result set, fetch all columns"
 //    ),
     Query(
-      "select * from $table where text_match('id:IDENTIFIER408938') ",
+      "select * from $table where id = 'IDENTIFIER408938' ",
       "filter scan",
       "filter on high card dimension"
     ),
@@ -257,6 +257,33 @@ object CompareTest {
     )
   )
 
+  val lucene_query = Array[Query](
+    Query(
+      "select * from $table where text_match('id:IDENTIFIER408938') ",
+      "filter scan",
+      "filter on high card dimension"
+    ),
+    Query(
+      "select * from $table where text_match('id:IDENTIFIER1*') ",
+      "fuzzy filter scan",
+      "like filter, big result set"
+    ),
+    Query(
+      "select * from $table where text_match('id:*111')",
+      "fuzzy filter scan",
+      "like filter, medium result set"
+    ),
+    Query(
+      "select * from $table where text_match('id:IDENTIFIERxyz*') ",
+      "fuzzy filter scan",
+      "like filter, full scan but not exist"
+    ),
+    Query(
+      "select * from $table where text_match('id:IDENTIFIER1*1') ",
+      "fuzzy filter scan",
+      "like filter, full scan"
+    )
+  )
   private def loadParquetTable(spark: SparkSession, input: DataFrame, table: String)
   : Double = time {
     // partitioned by last 1 digit of id column
@@ -323,7 +350,8 @@ object CompareTest {
   private def runQueries(spark: SparkSession, tableName: String): Array[(Double, Array[Row])] = {
     println(s"start running queries for $tableName...")
     var result: Array[Row] = null
-    queries.zipWithIndex.map { case (query, index) =>
+    val query = if (tableName.contains("carbon")) lucene_query else queries
+    query.zipWithIndex.map { case (query, index) =>
       val sqlText = query.sqlText.replace("$table", tableName)
       print(s"running query ${index + 1}: $sqlText ")
       val rt = time {
