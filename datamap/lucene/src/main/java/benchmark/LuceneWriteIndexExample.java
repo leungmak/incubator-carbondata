@@ -24,7 +24,7 @@ public class LuceneWriteIndexExample
     writer.deleteAll();
 
     for (int i = 0; i < 10 * 1000 * 1000; i++) {
-      Document document1 = createDocument(i, "id" + i, "Gupta", "howtodoinjava.com");
+      Document document1 = createDocument(i, "IDENTIFIER" + i, "Gupta", "howtodoinjava.com");
       writer.addDocument(document1);
     }
 

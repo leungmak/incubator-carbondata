@@ -49,11 +49,11 @@ public class LuceneReadIndexExample
 
     start = System.nanoTime();
     for (int i = 0; i < 10; i++) {
-      TopDocs foundDocs2 = searchByFirstName("id1999", searcher);
-      //System.out.println("Total Results :: " + foundDocs2.totalHits);
+      TopDocs foundDocs2 = searchByFirstName("id1*00000", searcher);
+      System.out.println("Total Results :: " + foundDocs2.totalHits);
       for (ScoreDoc sd : foundDocs2.scoreDocs) {
         Document d = searcher.doc(sd.doc);
-        //System.out.println(String.format(d.get("id")));
+//        System.out.println(String.format(d.get("id")));
         //result.add(d.get("id"));
       }
     }
@@ -68,10 +68,10 @@ public class LuceneReadIndexExample
     return hits;
   }
 
-  private static TopDocs searchById(Integer id, IndexSearcher searcher) throws Exception
+  private static TopDocs searchById(String id, IndexSearcher searcher) throws Exception
   {
     QueryParser qp = new QueryParser("id", new StandardAnalyzer());
-    Query idQuery = qp.parse(id.toString());
+    Query idQuery = qp.parse(id);
     TopDocs hits = searcher.search(idQuery, 10);
     return hits;
   }
