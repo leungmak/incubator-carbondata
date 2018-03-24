@@ -2312,19 +2312,12 @@ public final class CarbonUtil {
   /**
    * This method will read the schema file from a given path
    *
-   * @param schemaFilePath
-   * @return
+   * @return table info containing the schema
    */
   public static org.apache.carbondata.format.TableInfo inferSchema(
-      String carbonDataFilePath, AbsoluteTableIdentifier absoluteTableIdentifier,
+      String carbonDataFilePath, String tableName,
       boolean schemaExists) throws IOException {
-    TBaseCreator createTBase = new ThriftReader.TBaseCreator() {
-      public org.apache.thrift.TBase<org.apache.carbondata.format.TableInfo,
-          org.apache.carbondata.format.TableInfo._Fields> create() {
-        return new org.apache.carbondata.format.TableInfo();
-      }
-    };
-    if (schemaExists == false) {
+    if (!schemaExists) {
       List<String> filePaths =
           getFilePathExternalFilePath(carbonDataFilePath + "/Fact/Part0/Segment_null");
       String fistFilePath = null;
@@ -2334,16 +2327,9 @@ public final class CarbonUtil {
         LOGGER.error("CarbonData file is not present in the table location");
       }
       CarbonHeaderReader carbonHeaderReader = new CarbonHeaderReader(fistFilePath);
-      FileHeader fileHeader = carbonHeaderReader.readHeader();
-      List<ColumnSchema> columnSchemaList = new ArrayList<ColumnSchema>();
-      List<org.apache.carbondata.format.ColumnSchema> table_columns = fileHeader.getColumn_schema();
-      for (int i = 0; i < table_columns.size(); i++) {
-        ColumnSchema col = thriftColumnSchmeaToWrapperColumnSchema(table_columns.get(i));
-        col.setColumnReferenceId(col.getColumnUniqueId());
-        columnSchemaList.add(col);
-      }
+      List<ColumnSchema> columnSchemaList = carbonHeaderReader.readSchema();
       TableSchema tableSchema = new TableSchema();
-      tableSchema.setTableName(absoluteTableIdentifier.getTableName());
+      tableSchema.setTableName(tableName);
       tableSchema.setBucketingInfo(null);
       tableSchema.setSchemaEvalution(null);
       tableSchema.setTableId(UUID.randomUUID().toString());
@@ -2368,6 +2354,12 @@ public final class CarbonUtil {
       tableInfo.setDataMapSchemas(null);
       return tableInfo;
     } else {
+      TBaseCreator createTBase = new ThriftReader.TBaseCreator() {
+        public org.apache.thrift.TBase<org.apache.carbondata.format.TableInfo,
+            org.apache.carbondata.format.TableInfo._Fields> create() {
+          return new org.apache.carbondata.format.TableInfo();
+        }
+      };
       ThriftReader thriftReader = new ThriftReader(carbonDataFilePath, createTBase);
       thriftReader.open();
       org.apache.carbondata.format.TableInfo tableInfo =

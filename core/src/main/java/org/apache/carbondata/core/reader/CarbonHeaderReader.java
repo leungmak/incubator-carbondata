@@ -17,10 +17,15 @@
 package org.apache.carbondata.core.reader;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.apache.carbondata.core.metadata.schema.table.column.ColumnSchema;
 import org.apache.carbondata.format.FileHeader;
 
 import org.apache.thrift.TBase;
+
+import static org.apache.carbondata.core.util.CarbonUtil.thriftColumnSchmeaToWrapperColumnSchema;
 
 /**
  * Below class to read file header of version3
@@ -65,4 +70,18 @@ public class CarbonHeaderReader {
     });
   }
 
+  /**
+   * Read and return the schema in the header
+   */
+  public List<ColumnSchema> readSchema() throws IOException {
+    FileHeader fileHeader = readHeader();
+    List<ColumnSchema> columnSchemaList = new ArrayList<org.apache.carbondata.core.metadata.schema.table.column.ColumnSchema>();
+    List<org.apache.carbondata.format.ColumnSchema> table_columns = fileHeader.getColumn_schema();
+    for (org.apache.carbondata.format.ColumnSchema table_column : table_columns) {
+      ColumnSchema col = thriftColumnSchmeaToWrapperColumnSchema(table_column);
+      col.setColumnReferenceId(col.getColumnUniqueId());
+      columnSchemaList.add(col);
+    }
+    return columnSchemaList;
+  }
 }
