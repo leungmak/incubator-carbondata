@@ -86,8 +86,6 @@ import org.apache.carbondata.core.util.path.CarbonTablePath;
 import org.apache.carbondata.format.BlockletHeader;
 import org.apache.carbondata.format.DataChunk2;
 import org.apache.carbondata.format.DataChunk3;
-import org.apache.carbondata.format.FileHeader;
-
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
