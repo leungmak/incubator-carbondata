@@ -28,6 +28,7 @@ import org.apache.carbondata.core.metadata.schema.table.TableInfo;
 import org.apache.carbondata.core.metadata.schema.table.column.ColumnSchema;
 import org.apache.carbondata.core.reader.CarbonHeaderReader;
 import org.apache.carbondata.core.util.CarbonUtil;
+import org.apache.carbondata.format.FileHeader;
 
 import org.apache.hadoop.mapreduce.RecordReader;
 
@@ -103,5 +104,15 @@ public class CarbonReader<T> {
     org.apache.carbondata.format.TableInfo tableInfo = CarbonUtil.readSchemaFile(schemaFilePath);
     SchemaConverter schemaConverter = new ThriftWrapperSchemaConverterImpl();
     return schemaConverter.fromExternalToWrapperTableInfo(tableInfo, "", "", "");
+  }
+
+  /**
+   * Read carbondata file and return the schema
+   */
+  public static List<ColumnSchema> readHeader(String dataFilePath) throws IOException {
+    CarbonHeaderReader reader = new CarbonHeaderReader(dataFilePath);
+    FileHeader header = reader.readHeader();
+    header.get
+    return reader.readSchema();
   }
 }
