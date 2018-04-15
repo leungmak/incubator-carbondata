@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql
 
+import java.net.InetAddress
 import java.util.concurrent.ConcurrentHashMap
 
 import scala.util.Try
@@ -40,6 +41,7 @@ import org.apache.carbondata.events._
 import org.apache.carbondata.processing.loading.events.LoadEvents.{LoadMetadataEvent, LoadTablePostStatusUpdateEvent, LoadTablePreExecutionEvent, LoadTablePreStatusUpdateEvent}
 import org.apache.carbondata.spark.rdd.SparkReadSupport
 import org.apache.carbondata.spark.readsupport.SparkRowReadSupportImpl
+import org.apache.carbondata.store.master.Master
 
 
 /**
@@ -61,6 +63,14 @@ class CarbonEnv {
   var initialized = false
 
   def init(sparkSession: SparkSession): Unit = {
+    val properties = CarbonProperties.getInstance()
+    var storePath = properties.getProperty(CarbonCommonConstants.STORE_LOCATION)
+    if (storePath == null) {
+      storePath = sparkSession.conf.get("spark.sql.warehouse.dir")
+      properties.addProperty(CarbonCommonConstants.STORE_LOCATION, storePath)
+    }
+    LOGGER.info(s"Initializing CarbonEnv, store location: $storePath")
+
     sparkSession.udf.register("getTupleId", () => "")
     // added for handling preaggregate table creation. when user will fire create ddl for
     // create table we are adding a udf so no need to apply PreAggregate rules.
@@ -93,13 +103,6 @@ class CarbonEnv {
         // add session params after adding DefaultCarbonParams
         config.addDefaultCarbonSessionParams()
         carbonMetastore = {
-          val properties = CarbonProperties.getInstance()
-          var storePath = properties.getProperty(CarbonCommonConstants.STORE_LOCATION)
-          if (storePath == null) {
-            storePath = sparkSession.conf.get("spark.sql.warehouse.dir")
-            properties.addProperty(CarbonCommonConstants.STORE_LOCATION, storePath)
-          }
-          LOGGER.info(s"carbon env initial: $storePath")
           // trigger event for CarbonEnv create
           val operationContext = new OperationContext
           val carbonEnvInitPreEvent: CarbonEnvInitPreEvent =
@@ -112,6 +115,7 @@ class CarbonEnv {
         initialized = true
       }
     }
+    LOGGER.info("Initialize CarbonEnv completed...")
   }
 }
 

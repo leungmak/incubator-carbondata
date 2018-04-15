@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.carbondata.core.datastore.block.Distributable;
 import org.apache.carbondata.core.statusmanager.FileFormat;
 
 import org.apache.hadoop.io.Writable;
@@ -54,6 +55,14 @@ public class CarbonMultiBlockSplit extends InputSplit implements Writable {
     splitList = null;
     locations = null;
     length = 0;
+  }
+
+  public CarbonMultiBlockSplit(List<Distributable> blocks, String hostname) {
+    this.splitList = new ArrayList<>(blocks.size());
+    for (Distributable block : blocks) {
+      this.splitList.add((CarbonInputSplit)block);
+    }
+    this.locations = new String[]{hostname};
   }
 
   public CarbonMultiBlockSplit(List<CarbonInputSplit> splitList,

@@ -44,10 +44,9 @@ import org.apache.carbondata.core.metadata.schema.table.TableInfo;
 import org.apache.carbondata.core.mutate.UpdateVO;
 import org.apache.carbondata.core.readcommitter.ReadCommittedScope;
 import org.apache.carbondata.core.scan.expression.Expression;
-import org.apache.carbondata.core.scan.filter.SingleTableProvider;
-import org.apache.carbondata.core.scan.filter.TableProvider;
 import org.apache.carbondata.core.scan.filter.resolver.FilterResolverIntf;
 import org.apache.carbondata.core.scan.model.QueryModel;
+import org.apache.carbondata.core.scan.model.QueryModelBuilder;
 import org.apache.carbondata.core.stats.QueryStatistic;
 import org.apache.carbondata.core.stats.QueryStatisticsConstants;
 import org.apache.carbondata.core.stats.QueryStatisticsRecorder;
@@ -109,6 +108,7 @@ public abstract class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
   public static final String TABLE_NAME = "mapreduce.input.carboninputformat.tableName";
   private static final String PARTITIONS_TO_PRUNE =
       "mapreduce.input.carboninputformat.partitions.to.prune";
+  private static final String FGDATAMAP_PRUNING = "mapreduce.input.carboninputformat.fgdatamap";
 
   // record segment number and hit blocks
   protected int numSegments = 0;
@@ -220,6 +220,17 @@ public abstract class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
 
   public static String getColumnProjection(Configuration configuration) {
     return configuration.get(COLUMN_PROJECTION);
+  }
+
+  public static void setFgDataMapPruning(Configuration configuration, boolean enable) {
+    configuration.set(FGDATAMAP_PRUNING, String.valueOf(enable));
+  }
+
+  public static boolean isFgDataMapPruningEnable(Configuration configuration) {
+    String enable = configuration.get(FGDATAMAP_PRUNING);
+
+    // if FDDATAMAP_PRUNING is not set, by default we will use FGDataMap
+    return (enable == null) || enable.equalsIgnoreCase("true");
   }
 
   /**
@@ -354,7 +365,9 @@ public abstract class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     DataMapJob dataMapJob = getDataMapJob(job.getConfiguration());
     List<PartitionSpec> partitionsToPrune = getPartitionsToPrune(job.getConfiguration());
     List<ExtendedBlocklet> prunedBlocklets;
-    if (distributedCG || dataMapExprWrapper.getDataMapType() == DataMapLevel.FG) {
+    if (isFgDataMapPruningEnable(job.getConfiguration()) &&
+        (distributedCG || dataMapExprWrapper.getDataMapType() == DataMapLevel.FG) &&
+        dataMapJob != null) {
       DistributableDataMapFormat datamapDstr =
           new DistributableDataMapFormat(carbonTable, dataMapExprWrapper, segmentIds,
               partitionsToPrune, BlockletDataMapFactory.class.getName());
@@ -428,27 +441,20 @@ public abstract class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
       throws IOException {
     Configuration configuration = taskAttemptContext.getConfiguration();
     CarbonTable carbonTable = getOrCreateCarbonTable(configuration);
-    TableProvider tableProvider = new SingleTableProvider(carbonTable);
 
-    // query plan includes projection column
+    // set projection column in the query model
     String projectionString = getColumnProjection(configuration);
-    String[] projectionColumnNames = null;
+    String[] projectColumns;
     if (projectionString != null) {
-      projectionColumnNames = projectionString.split(",");
+      projectColumns = projectionString.split(",");
+    } else {
+      projectColumns = new String[]{};
     }
-    QueryModel queryModel = carbonTable
-        .createQueryWithProjection(projectionColumnNames, getDataTypeConverter(configuration));
-
-    // set the filter to the query model in order to filter blocklet before scan
-    Expression filter = getFilterPredicates(configuration);
-    boolean[] isFilterDimensions = new boolean[carbonTable.getDimensionOrdinalMax()];
-    // getAllMeasures returns list of visible and invisible columns
-    boolean[] isFilterMeasures = new boolean[carbonTable.getAllMeasures().size()];
-    carbonTable.processFilterExpression(filter, isFilterDimensions, isFilterMeasures);
-    queryModel.setIsFilterDimensions(isFilterDimensions);
-    queryModel.setIsFilterMeasures(isFilterMeasures);
-    FilterResolverIntf filterIntf = carbonTable.resolveFilter(filter, tableProvider);
-    queryModel.setFilterExpressionResolverTree(filterIntf);
+    QueryModel queryModel = new QueryModelBuilder(carbonTable)
+        .projectColumns(projectColumns)
+        .filterExpression(getFilterPredicates(configuration))
+        .dataConverter(getDataTypeConverter(configuration))
+        .build();
 
     // update the file level index store if there are invalid segment
     if (inputSplit instanceof CarbonMultiBlockSplit) {

@@ -24,6 +24,10 @@
     <Source name="~.*\.scala" />
   </Match>
 
+  <Match>
+    <Source name="~.*Test\.java" />
+  </Match>
+
   <!-- This method creates stream but the caller methods are responsible for closing the stream -->
   <Match>
     <Class name="org.apache.carbondata.core.datastore.impl.FileFactory"/>
@@ -97,5 +101,10 @@
   </Match>
   <Match>
     <Bug pattern="JLM_JSR166_UTILCONCURRENT_MONITORENTER"/>
+  </Match>
+
+  <Match>
+    <!-- gRPC generated code in search module -->
+    <Package name="org.apache.carbondata.store.protocol"/>
   </Match>
 </FindBugsFilter>

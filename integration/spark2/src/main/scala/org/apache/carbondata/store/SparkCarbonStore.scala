@@ -18,26 +18,29 @@
 package org.apache.carbondata.store
 
 import java.io.IOException
+import java.net.InetAddress
 
 import scala.collection.JavaConverters._
 
-import org.apache.spark.{CarbonInputMetrics, SparkConf}
+import org.apache.spark.SparkConf
 import org.apache.spark.sql.CarbonSession._
 import org.apache.spark.sql.SparkSession
 
 import org.apache.carbondata.common.annotations.InterfaceAudience
 import org.apache.carbondata.core.datastore.row.CarbonRow
+import org.apache.carbondata.core.metadata.schema.table.CarbonTable
 import org.apache.carbondata.core.scan.expression.Expression
-import org.apache.carbondata.hadoop.CarbonProjection
-import org.apache.carbondata.spark.rdd.CarbonScanRDD
+import org.apache.carbondata.store.master.Master
+import org.apache.carbondata.store.worker.Worker
 
 /**
  * A CarbonStore implementation that uses Spark as underlying compute engine
  * with CarbonData query optimization capability
  */
 @InterfaceAudience.Internal
-private[store] class SparkCarbonStore extends MetaCachedCarbonStore {
+class SparkCarbonStore extends MetaCachedCarbonStore {
   private var session: SparkSession = _
+  private var master: Master = _
 
   /**
    * Initialize SparkCarbonStore
@@ -54,10 +57,17 @@ private[store] class SparkCarbonStore extends MetaCachedCarbonStore {
       .getOrCreateCarbonSession()
   }
 
+  def this(sparkSession: SparkSession) = {
+    this()
+    session = sparkSession
+  }
+
   @throws[IOException]
   override def scan(
       path: String,
       projectColumns: Array[String]): java.util.Iterator[CarbonRow] = {
+    require(path != null)
+    require(projectColumns != null)
     scan(path, projectColumns, null)
   }
 
@@ -68,19 +78,10 @@ private[store] class SparkCarbonStore extends MetaCachedCarbonStore {
       filter: Expression): java.util.Iterator[CarbonRow] = {
     require(path != null)
     require(projectColumns != null)
-    val table = getTable(path)
-    val rdd = new CarbonScanRDD[CarbonRow](
-      spark = session,
-      columnProjection = new CarbonProjection(projectColumns),
-      filterExpression = filter,
-      identifier = table.getAbsoluteTableIdentifier,
-      serializedTableInfo = table.getTableInfo.serialize,
-      tableInfo = table.getTableInfo,
-      inputMetricsStats = new CarbonInputMetrics,
-      partitionNames = null,
-      dataTypeConverterClz = null,
-      readSupportClz = classOf[CarbonRowReadSupport])
-    rdd.collect
+    if (master == null) {
+      startSearchMode()
+    }
+    master.search(getTable(path), projectColumns, filter)
       .iterator
       .asJava
   }
@@ -93,6 +94,34 @@ private[store] class SparkCarbonStore extends MetaCachedCarbonStore {
       .collect()
       .iterator
       .asJava
+  }
+
+  def startSearchMode(): Unit = {
+    master = new Master()
+    master.startService()
+    startAllWorkers()
+  }
+
+  def stopSearchMode(): Unit = {
+    master.stopAllWorkers()
+    master.stopService()
+    master = null
+  }
+
+  private def startAllWorkers(): Array[Int] = {
+    // TODO: how to ensure task is sent to every executor?
+    val numExecutors = session.sparkContext.getExecutorMemoryStatus.keySet.size
+    val masterHostname = InetAddress.getLocalHost.getHostName
+    session.sparkContext.parallelize(1 to numExecutors * 10, numExecutors).mapPartitions { f =>
+      // start searcher service and register to master by RPC call
+      val worker: Worker = new Worker()
+      worker.startService()
+      worker.registerToMaster(masterHostname, Master.DEFAULT_PORT)
+      new Iterator[Int] {
+        override def hasNext: Boolean = false
+        override def next(): Int = 1
+      }
+    }.collect()
   }
 
 }
