@@ -17,7 +17,6 @@
 
 package org.apache.carbondata.store.master;
 
-import java.net.InetAddress;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 

@@ -146,11 +146,11 @@ public class Master {
   }
 
   /** A new searcher is trying to register, add it to the map and connect to this searcher */
-  void addWorker(String uuid, String workerHostname, int port, int cores)
+  void addWorker(String workerId, String workerHostname, int port, int cores)
       throws ExecutionException, InterruptedException {
     Objects.requireNonNull(workerHostname);
 
-    LOG.info(String.format("trying to connect to worker %s [%s:%d]", uuid, workerHostname, port));
+    LOG.info(String.format("connecting to worker %s [%s:%d]", workerId, workerHostname, port));
     ManagedChannel channelToWorker = ManagedChannelBuilder.forAddress(workerHostname, port)
         .usePlaintext(true)
         .maxInboundMessageSize(200 * 1000 * 1000)
@@ -160,7 +160,7 @@ public class Master {
     // try to send a message to worker as a test
     tryEcho(futureStub);
     workers.put(workerHostname, futureStub);
-    LOG.info(String.format("worker %s [%s:%d] added", uuid, workerHostname, port));
+    LOG.info(String.format("worker %s [%s:%d] added", workerId, workerHostname, port));
   }
 
   private void tryEcho(WorkerGrpc.WorkerFutureStub stub)
