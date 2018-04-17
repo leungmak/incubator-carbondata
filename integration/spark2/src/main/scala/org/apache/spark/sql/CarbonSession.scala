@@ -17,7 +17,6 @@
 package org.apache.spark.sql
 
 import java.io.File
-import java.util
 import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.JavaConverters._
@@ -26,7 +25,6 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.scheduler.{SparkListener, SparkListenerApplicationEnd}
 import org.apache.spark.sql.SparkSession.Builder
-import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.expressions.{Expression, NamedExpression}
 import org.apache.spark.sql.catalyst.plans.logical._
@@ -39,11 +37,9 @@ import org.apache.spark.sql.profiler.{Profiler, SQLStart}
 import org.apache.spark.util.{CarbonReflectionUtils, Utils}
 
 import org.apache.carbondata.core.constants.CarbonCommonConstants
-import org.apache.carbondata.core.datastore.row.CarbonRow
 import org.apache.carbondata.core.util.{CarbonProperties, CarbonSessionInfo, ThreadLocalSessionInfo}
 import org.apache.carbondata.hadoop.util.CarbonInputFormatUtil
 import org.apache.carbondata.store.SparkCarbonStore
-import org.apache.carbondata.store.master.Master
 import org.apache.carbondata.streaming.CarbonStreamingQueryListener
 
 /**
@@ -158,14 +154,11 @@ class CarbonSession(@transient val sc: SparkContext,
     // otherwise execute in SparkSQL
     val analyzed = qe.analyzed
     analyzed match {
-      case _@Project(columns, _@Filter(expr, _@SubqueryAlias(_, l@LogicalRelation(_, _, _))))
-        if l.relation.isInstanceOf[CarbonDatasourceHadoopRelation] =>
-        runSearch(analyzed, columns, expr, l)
-      case _@Project(columns, _@Filter(expr, l@UnresolvedRelation(_)))
-        if analyzed.asInstanceOf[SubqueryAlias].child
-          .asInstanceOf[LogicalRelation].relation.isInstanceOf[CarbonDatasourceHadoopRelation] =>
-        runSearch(analyzed, columns, expr,
-          analyzed.asInstanceOf[SubqueryAlias].child.asInstanceOf[LogicalRelation])
+      case _@Project(columns, _@Filter(expr, s: SubqueryAlias))
+        if s.child.isInstanceOf[LogicalRelation] &&
+           s.child.asInstanceOf[LogicalRelation].relation
+             .isInstanceOf[CarbonDatasourceHadoopRelation] =>
+        runSearch(analyzed, columns, expr, s.child.asInstanceOf[LogicalRelation])
       case _ =>
         new Dataset[Row](self, qe, RowEncoder(qe.analyzed.schema))
     }
