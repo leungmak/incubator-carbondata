@@ -22,7 +22,7 @@ import java.net.InetAddress
 
 import scala.collection.JavaConverters._
 
-import org.apache.spark.SparkConf
+import org.apache.spark.{CarbonInputMetrics, SparkConf}
 import org.apache.spark.sql.CarbonSession._
 import org.apache.spark.sql.SparkSession
 
@@ -30,6 +30,8 @@ import org.apache.carbondata.common.annotations.InterfaceAudience
 import org.apache.carbondata.core.datastore.row.CarbonRow
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable
 import org.apache.carbondata.core.scan.expression.Expression
+import org.apache.carbondata.hadoop.CarbonProjection
+import org.apache.carbondata.spark.rdd.CarbonScanRDD
 import org.apache.carbondata.store.master.Master
 import org.apache.carbondata.store.worker.Worker
 
@@ -78,10 +80,19 @@ class SparkCarbonStore extends MetaCachedCarbonStore {
       filter: Expression): java.util.Iterator[CarbonRow] = {
     require(path != null)
     require(projectColumns != null)
-    if (master == null) {
-      startSearchMode()
-    }
-    master.search(getTable(path), projectColumns, filter)
+    val table = getTable(path)
+    val rdd = new CarbonScanRDD[CarbonRow](
+      spark = session,
+      columnProjection = new CarbonProjection(projectColumns),
+      filterExpression = filter,
+      identifier = table.getAbsoluteTableIdentifier,
+      serializedTableInfo = table.getTableInfo.serialize,
+      tableInfo = table.getTableInfo,
+      inputMetricsStats = new CarbonInputMetrics,
+      partitionNames = null,
+      dataTypeConverterClz = null,
+      readSupportClz = classOf[CarbonRowReadSupport])
+    rdd.collect
       .iterator
       .asJava
   }
@@ -106,6 +117,19 @@ class SparkCarbonStore extends MetaCachedCarbonStore {
     master.stopAllWorkers()
     master.stopService()
     master = null
+  }
+
+  /** search mode */
+  def search(
+      table: CarbonTable,
+      projectColumns: Array[String],
+      filter: Expression): java.util.Iterator[CarbonRow] = {
+    if (master == null) {
+      throw new IllegalStateException("search mode is not started")
+    }
+    master.search(table, projectColumns, filter)
+      .iterator
+      .asJava
   }
 
   private def startAllWorkers(): Array[Int] = {

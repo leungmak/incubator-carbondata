@@ -194,8 +194,8 @@ class CarbonSession(@transient val sc: SparkContext,
       columns: Seq[NamedExpression],
       expr: Expression,
       relation: LogicalRelation): DataFrame = {
-    val rows = carbonStore.scan(
-        relation.relation.asInstanceOf[CarbonDatasourceHadoopRelation].identifier.getTablePath,
+    val rows = carbonStore.search(
+        relation.relation.asInstanceOf[CarbonDatasourceHadoopRelation].carbonTable,
         columns.map(_.name).toArray,
         if (expr != null) CarbonFilters.transformExpression(expr) else null)
     val output = new java.util.ArrayList[Row]()
