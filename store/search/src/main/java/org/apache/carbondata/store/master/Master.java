@@ -82,7 +82,7 @@ public class Master {
 
   private Random random = new Random();
 
-  /** mapping of worker hostname to rpc stub */
+  /** mapping of worker IP to rpc stub */
   private Map<String, WorkerGrpc.WorkerFutureStub> workers;
 
   public Master() {
@@ -146,11 +146,11 @@ public class Master {
   }
 
   /** A new searcher is trying to register, add it to the map and connect to this searcher */
-  void addWorker(String workerHostname, int port, int cores)
+  void addWorker(String uuid, String workerHostname, int port, int cores)
       throws ExecutionException, InterruptedException {
     Objects.requireNonNull(workerHostname);
 
-    LOG.info("trying to connect to searcher " + workerHostname + ":" + port);
+    LOG.info(String.format("trying to connect to worker %s [%s:%d]", uuid, workerHostname, port));
     ManagedChannel channelToWorker = ManagedChannelBuilder.forAddress(workerHostname, port)
         .usePlaintext(true)
         .maxInboundMessageSize(200 * 1000 * 1000)
@@ -160,6 +160,7 @@ public class Master {
     // try to send a message to worker as a test
     tryEcho(futureStub);
     workers.put(workerHostname, futureStub);
+    LOG.info(String.format("worker %s [%s:%d] added", uuid, workerHostname, port));
   }
 
   private void tryEcho(WorkerGrpc.WorkerFutureStub stub)
@@ -207,9 +208,9 @@ public class Master {
     List<ListenableFuture<SearchResult>> futures = new ArrayList<>(nodeBlockMapping.size());
 
     for (Map.Entry<String, List<Distributable>> entry : nodeBlockMapping.entrySet()) {
-      String hostname = entry.getKey();
+      String workerIP = entry.getKey();
       List<Distributable> blocks = entry.getValue();
-      CarbonMultiBlockSplit mbSplit = new CarbonMultiBlockSplit(blocks, hostname);
+      CarbonMultiBlockSplit mbSplit = new CarbonMultiBlockSplit(blocks, workerIP);
       ByteArrayOutputStream stream = new ByteArrayOutputStream();
       DataOutput dataOutput = new DataOutputStream(stream);
       mbSplit.write(dataOutput);
@@ -218,7 +219,7 @@ public class Master {
       SearchRequest request = builder.build();
 
       // do RPC to worker asynchronously and concurrently
-      ListenableFuture<SearchResult> future = workers.get(hostname).search(request);
+      ListenableFuture<SearchResult> future = workers.get(workerIP).search(request);
       futures.add(future);
     }
 
@@ -266,7 +267,7 @@ public class Master {
     }
   }
 
-  /** return hostname of all workers */
+  /** return IP of all workers */
   public Set<String> getWorkers() {
     return workers.keySet();
   }

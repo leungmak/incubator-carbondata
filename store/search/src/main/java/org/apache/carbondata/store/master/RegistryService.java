@@ -17,6 +17,8 @@
 
 package org.apache.carbondata.store.master;
 
+import java.net.InetAddress;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.carbondata.common.annotations.InterfaceAudience;
@@ -47,14 +49,16 @@ class RegistryService extends MasterGrpc.MasterImplBase {
       RegisterWorkerRequest req,
       StreamObserver<RegisterWorkerResponse> responseObserver) {
     LOG.info(String.format(
-        "Receive RegisterWorkerRequest from %s with %d cores", req.getHostname(), req.getCores()));
+        "Receive Register request from worker [%s:%d] with %d cores",
+        req.getWorkerHostname(), req.getWorkerPort(), req.getCores()));
+    String uuid = UUID.randomUUID().toString();
     try {
-      master.addWorker(req.getHostname(), req.getPort(), req.getCores());
+      master.addWorker(uuid, req.getWorkerHostname(), req.getWorkerPort(), req.getCores());
     } catch (ExecutionException | InterruptedException e) {
       LOG.error(e.getMessage());
     }
     RegisterWorkerResponse reply = RegisterWorkerResponse.newBuilder()
-        .setMessage("Ack: " + req.getHostname())
+        .setWorkerId(uuid)
         .build();
     responseObserver.onNext(reply);
     responseObserver.onCompleted();

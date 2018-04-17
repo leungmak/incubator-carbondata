@@ -135,11 +135,11 @@ class SparkCarbonStore extends MetaCachedCarbonStore {
   private def startAllWorkers(): Array[Int] = {
     // TODO: how to ensure task is sent to every executor?
     val numExecutors = session.sparkContext.getExecutorMemoryStatus.keySet.size
-    val masterHostname = InetAddress.getLocalHost.getHostName
+    val masterIp = InetAddress.getLocalHost.getHostAddress
     session.sparkContext.parallelize(1 to numExecutors * 10, numExecutors).mapPartitions { f =>
       // start worker
       val worker: Worker = Worker.getInstance()
-      worker.init(masterHostname, Master.DEFAULT_PORT)
+      worker.init(masterIp, Master.DEFAULT_PORT)
       new Iterator[Int] {
         override def hasNext: Boolean = false
         override def next(): Int = 1

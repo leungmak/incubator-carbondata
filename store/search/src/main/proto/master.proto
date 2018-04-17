@@ -31,12 +31,13 @@ service Master {
 
 // The request message from worker to driver to register worker
 message RegisterWorkerRequest {
-    string hostname = 1;
-    int32 port = 2;
+    string workerHostname = 1;
+    int32 workerPort = 2;
     int32 cores = 3;
 }
 
 // The response message from driver to worker for register acknowledgement
 message RegisterWorkerResponse {
-    string message = 1;
+    // An UUID that assigned by master
+    string workerId = 1;
 }

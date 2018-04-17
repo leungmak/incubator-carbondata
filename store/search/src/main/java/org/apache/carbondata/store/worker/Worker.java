@@ -73,12 +73,14 @@ public class Worker {
 
   /**
    * start worker service and register to master
+   * @param masterIp IP address of master
+   * @param masterPort port of master service
    */
-  public synchronized void init(String masterHostname, int masterPort) throws IOException {
+  public synchronized void init(String masterIp, int masterPort) throws IOException {
     LOG.info("starting worker service...");
     startService();
     LOG.info("registering to master...");
-    registerToMaster(masterHostname, masterPort);
+    registerToMaster(masterIp, masterPort);
     LOG.info("worker initialization finished");
   }
 
@@ -113,23 +115,23 @@ public class Worker {
   }
 
   /** Send RegisterWorker message to Master. */
-  private void registerToMaster(String masterHostname, int masterPort) throws IOException {
+  private void registerToMaster(String masterIp, int masterPort) throws IOException {
     if (registered) {
       return;
     }
 
-    LOG.info("Registering to driver " + masterHostname + ":" + masterPort);
+    LOG.info("Registering to master " + masterIp + ":" + masterPort);
     // Construct client connecting to Master server at {@code host:port}.
-    this.channelToMaster = ManagedChannelBuilder.forAddress(masterHostname, masterPort)
+    this.channelToMaster = ManagedChannelBuilder.forAddress(masterIp, masterPort)
         .usePlaintext(true)
         .build();
     MasterGrpc.MasterBlockingStub blockingStub = MasterGrpc.newBlockingStub(channelToMaster);
     int cores = Runtime.getRuntime().availableProcessors();
-    String searcherHostname = InetAddress.getLocalHost().getHostName();
+    String workerHostname = InetAddress.getLocalHost().getHostName();
     RegisterWorkerRequest request =
         RegisterWorkerRequest.newBuilder()
-            .setHostname(searcherHostname)
-            .setPort(port)
+            .setWorkerHostname(workerHostname)
+            .setWorkerPort(port)
             .setCores(cores)
             .build();
     RegisterWorkerResponse response;
@@ -140,7 +142,7 @@ public class Worker {
       return;
     }
     registered = true;
-    LOG.info("Register response from master: " + response.getMessage());
+    LOG.info("Register success, workerId " + response.getWorkerId());
   }
 
   /** shutdown the channel and all threads in reader */
@@ -162,9 +164,9 @@ public class Worker {
   }
 
   public static void main(String[] args) throws IOException, InterruptedException {
-    String hostname = InetAddress.getLocalHost().getHostAddress();
+    String ip = InetAddress.getLocalHost().getHostAddress();
     Worker worker = Worker.getInstance();
-    worker.registerToMaster(hostname, Master.DEFAULT_PORT);
+    worker.registerToMaster(ip, Master.DEFAULT_PORT);
     worker.startService();
     worker.blockUntilShutdown();
   }
