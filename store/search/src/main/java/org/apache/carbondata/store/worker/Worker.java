@@ -54,16 +54,36 @@ public class Worker {
 
   private int port;
 
-  public Worker() {
+  private static Worker INSTANCE;
+
+  public static synchronized Worker getInstance() {
+    if (INSTANCE == null) {
+      INSTANCE = new Worker();
+    }
+    return INSTANCE;
+  }
+
+  private Worker() {
     this(DEFAULT_PORT);
   }
 
-  public Worker(int port) {
+  private Worker(int port) {
     this.port = port;
   }
 
+  /**
+   * start worker service and register to master
+   */
+  public synchronized void init(String masterHostname, int masterPort) throws IOException {
+    LOG.info("starting worker service...");
+    startService();
+    LOG.info("registering to master...");
+    registerToMaster(masterHostname, masterPort);
+    LOG.info("worker initialization finished");
+  }
+
   /** It will start listen on the port for search service */
-  public void startService() throws IOException {
+  private void startService() throws IOException {
     if (server == null) {
       /* The port on which the SearchService should run */
       server = ServerBuilder.forPort(port)
@@ -87,11 +107,13 @@ public class Worker {
     if (server != null) {
       LOG.info("Shutting down worker");
       server.shutdown();
+      server = null;
+      registered = false;
     }
   }
 
   /** Send RegisterWorker message to Master. */
-  public void registerToMaster(String masterHostname, int masterPort) throws IOException {
+  private void registerToMaster(String masterHostname, int masterPort) throws IOException {
     if (registered) {
       return;
     }
@@ -141,7 +163,7 @@ public class Worker {
 
   public static void main(String[] args) throws IOException, InterruptedException {
     String hostname = InetAddress.getLocalHost().getHostAddress();
-    Worker worker = new Worker();
+    Worker worker = Worker.getInstance();
     worker.registerToMaster(hostname, Master.DEFAULT_PORT);
     worker.startService();
     worker.blockUntilShutdown();

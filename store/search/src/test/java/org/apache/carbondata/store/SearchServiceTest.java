@@ -34,9 +34,8 @@ public class SearchServiceTest {
     Master master = new Master(9999);
     master.startService();
 
-    Worker worker = new Worker();
-    worker.startService();
-    worker.registerToMaster(InetAddress.getLocalHost().getHostName(), 9999);
+    Worker worker = Worker.getInstance();
+    worker.init(InetAddress.getLocalHost().getHostName(), 9999);
 
     Set<String> workers = master.getWorkers();
     Assert.assertEquals(1, workers.size());

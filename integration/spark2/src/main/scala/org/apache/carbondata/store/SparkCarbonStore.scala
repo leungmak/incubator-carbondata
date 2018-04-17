@@ -113,10 +113,9 @@ class SparkCarbonStore extends MetaCachedCarbonStore {
     val numExecutors = session.sparkContext.getExecutorMemoryStatus.keySet.size
     val masterHostname = InetAddress.getLocalHost.getHostName
     session.sparkContext.parallelize(1 to numExecutors * 10, numExecutors).mapPartitions { f =>
-      // start searcher service and register to master by RPC call
-      val worker: Worker = new Worker()
-      worker.startService()
-      worker.registerToMaster(masterHostname, Master.DEFAULT_PORT)
+      // start worker
+      val worker: Worker = Worker.getInstance()
+      worker.init(masterHostname, Master.DEFAULT_PORT)
       new Iterator[Int] {
         override def hasNext: Boolean = false
         override def next(): Int = 1

@@ -184,7 +184,7 @@ public class Master {
     Objects.requireNonNull(columns);
 
     if (workers.size() == 0) {
-      throw new IOException("No searcher is available");
+      throw new IOException("No worker is available");
     }
 
     int queryId = random.nextInt();
