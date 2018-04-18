@@ -27,7 +27,7 @@ Currently, there are 4 kinds of datamap.
 
 There are two kind of management semantic for DataMaps:
 
-####Incremental refresh
+### Incremental refresh
 
 All datamap except MV datamap (preaggregate/timeseries/lucene) is in this category.
 
@@ -39,7 +39,7 @@ If user perform data update, delete operation, system will return failure. (reje
 
 If user drop the main table, the datamap will be dropped immediately too.
 
-####Manual refresh
+### Manual refresh
 
 For MV datamap, since it involves multiple table, manual refresh is supported.
 
@@ -55,7 +55,7 @@ In future, following feature should be supported in MV datamap (these currently 
 2. Partitioning
 3. Query rewrite on streaming table (union of groupby query on streaming segment and scan query on datamap table)
 
-##DataMap Definition
+## DataMap Definition
 
 There is no restriction on the datamap definition, the only restriction is that the main table need to be created before hand.
 
