@@ -30,11 +30,7 @@ public class QueryExecutorFactory {
 
   public static QueryExecutor getQueryExecutor(QueryModel queryModel) {
     if (queryModel.isVectorReader()) {
-      if (CarbonProperties.isSearchModeEnabled()) {
-        return new SearchModeVectorDetailQueryExecutor();
-      } else {
-        return new VectorDetailQueryExecutor();
-      }
+      return new VectorDetailQueryExecutor();
     } else {
       return new DetailQueryExecutor();
     }
