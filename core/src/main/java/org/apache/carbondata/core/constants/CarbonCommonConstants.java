@@ -1629,6 +1629,11 @@ public final class CarbonCommonConstants {
    */
   public static final String CARBON_SYSTEM_FOLDER_LOCATION = "carbon.system.folder.location";
 
+  /**
+   * If set to true, will use CarbonReader to do distributed scan directly instead of using
+   * compute framework like spark, thus avoiding limitation of compute framework like SQL
+   * optimizer and task scheduling overhead.
+   */
   @CarbonProperty
   public static final String CARBON_SEARCH_MODE_ENABLE = "carbon.search.mode.enable";
 

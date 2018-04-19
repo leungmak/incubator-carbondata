@@ -26,10 +26,10 @@ import java.util.concurrent.{Callable, Executors, Future, TimeUnit}
 import scala.util.Random
 
 import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
-import org.apache.spark.sql.types._
 
 import org.apache.carbondata.core.constants.{CarbonCommonConstants, CarbonVersionConstants}
 import org.apache.carbondata.core.util.{CarbonProperties, CarbonUtil}
+import org.apache.carbondata.spark.util.DataGenerator
 
 // scalastyle:off println
 /**
