@@ -93,10 +93,13 @@ public class SearchRequestHandler {
     List<CarbonRow> rows = new LinkedList<>();
     try {
       while (reader.nextKeyValue()) {
-        rows.add(reader.getCurrentValue());
+        // copy the data as the reader may reuse the same buffer, if unsafe is enabled
+        rows.add(new CarbonRow(reader.getCurrentValue().getData()));
       }
     } catch (InterruptedException e) {
       throw new IOException(e);
+    } finally {
+      reader.close();
     }
     return rows;
   }
