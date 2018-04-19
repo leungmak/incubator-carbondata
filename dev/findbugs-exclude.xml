@@ -102,9 +102,4 @@
   <Match>
     <Bug pattern="JLM_JSR166_UTILCONCURRENT_MONITORENTER"/>
   </Match>
-
-  <Match>
-    <!-- gRPC generated code in search module -->
-    <Package name="org.apache.carbondata.store.protocol"/>
-  </Match>
 </FindBugsFilter>
