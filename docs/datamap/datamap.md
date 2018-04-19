@@ -25,23 +25,23 @@ Currently, there are 4 kinds of datamap.
 
 ## DataMap Management
 
-There are two kind of management semantic for DataMaps:
+There are three kinds of semantic for DataMap management:
 
-### Incremental refresh
+### Automatic Refresh
 
 All datamap except MV datamap (preaggregate/timeseries/lucene) is in this category.
 
 When user creates a datamap on the main table, system will immediately triger a datamap refresh automatically. It is triggered internaly by the system, and user does not need to issue REFRESH command
 
-Afterwards, for every new data loading, system will immediatly trigger an incremental refresh on all related datamap created on the main table. The refresh is incremental based on Segment concept of Carbon.
+Afterwards, for every new data loading, system will immediatly trigger an incremental refresh on all related datamap created on the main table. The refresh is **incremental** based on Segment concept of Carbon.
 
 If user perform data update, delete operation, system will return failure. (reject the operation)
 
 If user drop the main table, the datamap will be dropped immediately too.
 
-### Manual refresh
+### Manual Refresh
 
-For MV datamap, since it involves multiple table, manual refresh is supported.
+MV datamap is in this category. 
 
 When user creates a mv datamap on multiple table, the datamap is created with status *disabled*, then user can issue REFRESH command to build the datamap. Every REFRESH command that user issued, system will trigger a full rebuild of the datamap. After rebuild is done, system will change datamap status to *enabled*, so that it can be used in query rewrite.
 
@@ -54,6 +54,13 @@ In future, following feature should be supported in MV datamap (these currently 
 1. Incremental refresh, for single table case
 2. Partitioning
 3. Query rewrite on streaming table (union of groupby query on streaming segment and scan query on datamap table)
+
+### Manual Management
+
+If you are creating a datamap on external table, you need to do all manual managment of the datamap. It means you should do:
+
+- After you create datamap on the external table, if you again load new data, update data, delete data, drop table, you need to drop the datamap immediately, so that query is consistent with the latest main table data.
+- If you want to use datamap after above mentioned operation, you should create the datamap again. (For MV datamap, create datamap and issue REFRESH explicitly)
 
 ## DataMap Definition
 
