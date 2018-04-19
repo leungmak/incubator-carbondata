@@ -60,7 +60,7 @@ import org.apache.carbondata.spark.util.DataGenerator
 object ConcurrentQueryBenchmark {
 
   // generate number of data
-  var totalNum = 10 * 1000 * 1000
+  var totalNum = 1 * 10 * 1000
   // the number of thread pool
   var threadNum = 16
   // task number of spark sql query
@@ -559,12 +559,8 @@ object ConcurrentQueryBenchmark {
     // 2. prepareTable
     prepareTable(spark, table1, table2)
 
-    spark.asInstanceOf[CarbonSession].startSearchMode()
-
     // 3. runTest
     runTest(spark, table1, table2)
-
-    spark.asInstanceOf[CarbonSession].stopSearchMode()
 
     if (deleteFile) {
       CarbonUtil.deleteFoldersAndFiles(new File(table1))
