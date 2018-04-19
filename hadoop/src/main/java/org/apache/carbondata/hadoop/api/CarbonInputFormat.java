@@ -367,8 +367,8 @@ public abstract class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     List<ExtendedBlocklet> prunedBlocklets;
     DataMapLevel dataMapLevel = dataMapExprWrapper.getDataMapType();
     if (dataMapJob != null &&
-        distributedCG ||
-        (isFgDataMapPruningEnable(job.getConfiguration()) && dataMapLevel == DataMapLevel.FG)) {
+        (distributedCG ||
+        (dataMapLevel == DataMapLevel.FG && isFgDataMapPruningEnable(job.getConfiguration())))) {
       DistributableDataMapFormat datamapDstr =
           new DistributableDataMapFormat(carbonTable, dataMapExprWrapper, segmentIds,
               partitionsToPrune, BlockletDataMapFactory.class.getName());

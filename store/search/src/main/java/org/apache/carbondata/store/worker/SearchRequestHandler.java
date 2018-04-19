@@ -100,7 +100,6 @@ public class SearchRequestHandler {
     } finally {
       reader.close();
     }
-    LOG.error("finished reading");
     return rows;
   }
 

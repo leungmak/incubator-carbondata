@@ -1032,6 +1032,11 @@ public final class CarbonProperties {
     return enableAutoHandoffStr.equalsIgnoreCase("true");
   }
 
+  public boolean isEnableVectorReader() {
+    return getInstance().getProperty(CarbonCommonConstants.ENABLE_VECTOR_READER,
+        CarbonCommonConstants.ENABLE_VECTOR_READER_DEFAULT).equalsIgnoreCase("true");
+  }
+
   /**
    * Validate the restrictions
    *
