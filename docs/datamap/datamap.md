@@ -31,7 +31,7 @@ There are three kinds of semantic for DataMap management:
 
 All datamap except MV datamap (preaggregate/timeseries/lucene) is in this category.
 
-When user creates a datamap on the main table, system will immediately triger a datamap refresh automatically. It is triggered internaly by the system, and user does not need to issue REFRESH command
+When a user creates a datamap on the main table, system will immediately triger a datamap refresh automatically. It is triggered internally by the system, and the user does not need to issue REFRESH command.
 
 Afterwards, for every new data loading, system will immediatly trigger an incremental refresh on all related datamap created on the main table. The refresh is **incremental** based on Segment concept of Carbon.
 
@@ -129,15 +129,20 @@ However, there is still way to support these operations on main table, user can 
 
 
 
-##  requirement
+## Immediate MV requirements
 
-1. Need to put DataMapCatalog into DB instead of HDFS files
-2. Provide an interface for DataMapCatalog to manage the DataMap metadata
-3. Provide a fast way to match the MV, considering 1000s of MV (resuing query result). Idea: 1)signature (like hashcode) of the given table. 2) some ML algorithm like decision tree, etc.
-4. query result MV management: need to know if the MV is becoming stale. Need to consider it in DataMapCatalog also. 
-5. Focus on single table preaggregate advisor. Improve advisor capability like adding table size reduction estimation, query latency reduction estimation, by leveraging statistics in CBO
-6. We need to add tenant information or different place for different tenant in the DataMap Catalog, so that we can retrieve datamap for given tenant.
-7. Migrate preaggregate datamap to MV datamap framework (ModularPlan framework), and move partition/streaming feature to MV datamap.
-8. Extend the Matching capability (depend on customer scenario), like count distinct, more aggregate function, more join support, more complex subquery
-9. Extend the Matching for join (wide table, can benefit BI): should support join rewrite using mv has less join table (mv: F Join D1, D2; query: F Join D1; can work if mv join is lossless)
+0. User scenario: how would a user interact with the system and use MVs?
+1. DataMapCatalog should be place in DB instead of using HDFS files. This includes the MV definition, the owner/creator, the status, and perhaps some stats.  We also need to expose MVs to users so that one can query them as if they are based tables, and yet one cannot update them.
+2. Provide an interface for DataMapCatalog to manage the DataMap metadata, including listing all MVs and updating the status/stats.
+3. We need to add tenant information or different place for different tenant in the DataMap Catalog, so that we can retrieve datamap for given tenant. 
+4. Focus on single table preaggregate advisor. Improve advisor capability like adding table size reduction estimation, query latency reduction estimation, by leveraging statistics in CBO
+5. Migrate preaggregate datamap to MV datamap framework (ModularPlan framework), and move partition/streaming feature to MV datamap.
+6. Testing, including concurrent queries/matching, concurrent create/drop
+7. Left join in MV and extend the matching algorithm.
+8. Provide a fast way to match the MV, considering 1000s of MV (resuing query result). Idea: 1)signature (like hashcode) of the given table. 2) some ML algorithm like decision tree, etc.  We may need a cache of MVs that have been converted into modular plans in order to avoid repeated query compilatin/optimization.
+9. query result MV management: need to know if the MV is becoming stale. Need to consider it in DataMapCatalog also.
+
+Additional future requirements:
+1. Extend the matching capability (depending on customer scenarios), like count distinct, more aggregate functions, more join support, more complex subquery or groupby expressions
+2. Extend the matching for join (wide table, can benefit BI): should support join rewrite using mv with lossless joins (mv: F Join D1 and D2; query: F Join D1; can rewrite the query to using mv if mv joins are lossless)
 
