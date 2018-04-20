@@ -17,10 +17,8 @@
 package org.apache.carbondata.core.scan.executor;
 
 import org.apache.carbondata.core.scan.executor.impl.DetailQueryExecutor;
-import org.apache.carbondata.core.scan.executor.impl.SearchModeVectorDetailQueryExecutor;
 import org.apache.carbondata.core.scan.executor.impl.VectorDetailQueryExecutor;
 import org.apache.carbondata.core.scan.model.QueryModel;
-import org.apache.carbondata.core.util.CarbonProperties;
 
 /**
  * Factory class to get the query executor from RDD
