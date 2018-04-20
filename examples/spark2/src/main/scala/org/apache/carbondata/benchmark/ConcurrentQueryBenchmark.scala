@@ -60,7 +60,7 @@ import org.apache.carbondata.spark.util.DataGenerator
 object ConcurrentQueryBenchmark {
 
   // generate number of data
-  var totalNum = 1 * 10 * 1000
+  var totalNum = 10 * 1000 * 1000
   // the number of thread pool
   var threadNum = 16
   // task number of spark sql query
@@ -417,7 +417,7 @@ object ConcurrentQueryBenchmark {
    */
   def runTest(spark: SparkSession, table1: String, table2: String): Unit = {
     // run queries on parquet and carbon
-    //runQueries(spark, table1)
+    runQueries(spark, table1)
     // do GC and sleep for some time before running next table
     System.gc()
     Thread.sleep(1000)
