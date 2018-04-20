@@ -132,10 +132,12 @@ However, there is still way to support these operations on main table, user can 
 ##  requirement
 
 1. Need to put DataMapCatalog into DB instead of HDFS files
-2. Provide an interface for DataMapCatalog to retrieve datamap for given main table. This operation should be fast leveraging 1)signature (like hashcode) of the given table. 2) some ML algorithm like decision tree, etc.
-3. Focus on single table preaggregate advisor. Improve advisor capability like adding table size reduction estimation, query latency reduction estimation, by leveraging statistics in CBO
-4. We need to add tenant information or different place for different tenant in the DataMap Catalog, so that we can retrieve datamap for given tenant.
+2. Provide an interface for DataMapCatalog to manage the DataMap metadata
+3. Provide a fast way to match the MV, considering 1000s of MV (resuing query result). Idea: 1)signature (like hashcode) of the given table. 2) some ML algorithm like decision tree, etc.
+4. query result MV management: need to know if the MV is becoming stale. Need to consider it in DataMapCatalog also. 
+5. Focus on single table preaggregate advisor. Improve advisor capability like adding table size reduction estimation, query latency reduction estimation, by leveraging statistics in CBO
+6. We need to add tenant information or different place for different tenant in the DataMap Catalog, so that we can retrieve datamap for given tenant.
 
-5. Extend the Matching capability (depend on customer scenario), like count distinct, more aggregate function, more join support, more complex subquery
-6. Extend the Matching for join (wide table, can benefit BI): should support join rewrite using mv has less join table (mv: F Join D1, D2; query: F Join D1; can work if mv join is lossless)
+7. Extend the Matching capability (depend on customer scenario), like count distinct, more aggregate function, more join support, more complex subquery
+8. Extend the Matching for join (wide table, can benefit BI): should support join rewrite using mv has less join table (mv: F Join D1, D2; query: F Join D1; can work if mv join is lossless)
 
