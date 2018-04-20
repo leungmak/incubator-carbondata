@@ -137,7 +137,7 @@ However, there is still way to support these operations on main table, user can 
 4. query result MV management: need to know if the MV is becoming stale. Need to consider it in DataMapCatalog also. 
 5. Focus on single table preaggregate advisor. Improve advisor capability like adding table size reduction estimation, query latency reduction estimation, by leveraging statistics in CBO
 6. We need to add tenant information or different place for different tenant in the DataMap Catalog, so that we can retrieve datamap for given tenant.
-
-7. Extend the Matching capability (depend on customer scenario), like count distinct, more aggregate function, more join support, more complex subquery
-8. Extend the Matching for join (wide table, can benefit BI): should support join rewrite using mv has less join table (mv: F Join D1, D2; query: F Join D1; can work if mv join is lossless)
+7. Migrate preaggregate datamap to MV datamap framework (ModularPlan framework), and move partition/streaming feature to MV datamap.
+8. Extend the Matching capability (depend on customer scenario), like count distinct, more aggregate function, more join support, more complex subquery
+9. Extend the Matching for join (wide table, can benefit BI): should support join rewrite using mv has less join table (mv: F Join D1, D2; query: F Join D1; can work if mv join is lossless)
 
