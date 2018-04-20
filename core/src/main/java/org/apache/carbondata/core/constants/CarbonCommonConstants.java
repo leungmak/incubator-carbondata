@@ -1635,7 +1635,7 @@ public final class CarbonCommonConstants {
    * optimizer and task scheduling overhead.
    */
   @CarbonProperty
-  public static final String CARBON_SEARCH_MODE_ENABLE = "carbon.search.mode.enable";
+  public static final String CARBON_SEARCH_MODE_ENABLE = "carbon.search.enabled";
 
   public static final String CARBON_SEARCH_MODE_ENABLE_DEFAULT = "false";
 
@@ -1646,9 +1646,16 @@ public final class CarbonCommonConstants {
    * will call Executors.newFixedThreadPool(int nThreads) instead
    */
   @CarbonProperty
-  public static final String CARBON_SEARCH_MODE_SCAN_THREAD = "carbon.search.mode.scan.thread";
+  public static final String CARBON_SEARCH_MODE_SCAN_THREAD = "carbon.search.scan.thread";
 
   public static final String CARBON_SEARCH_MODE_SCAN_THREAD_DEFAULT = "-1";
+
+  /**
+   * In search mode, Master will listen on this port for worker registration
+   */
+  public static final String CARBON_SEARCH_MODE_MASTER_PORT = "carbon.search.master.port";
+
+  public static final String CARBON_SEARCH_MODE_MASTER_PORT_DEFAULT = "10020";
 
   /*
    * whether to enable prefetch for rowbatch to enhance row reconstruction during compaction

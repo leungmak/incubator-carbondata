@@ -25,7 +25,7 @@ import java.util.concurrent.{Callable, Executors, Future, TimeUnit}
 
 import scala.util.Random
 
-import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
+import org.apache.spark.sql.{CarbonSession, DataFrame, Row, SaveMode, SparkSession}
 
 import org.apache.carbondata.core.constants.{CarbonCommonConstants, CarbonVersionConstants}
 import org.apache.carbondata.core.util.{CarbonProperties, CarbonUtil}
@@ -560,8 +560,10 @@ object ConcurrentQueryBenchmark {
     // 2. prepareTable
     prepareTable(spark, table1, table2)
 
+    spark.asInstanceOf[CarbonSession].startSearchMode()
     // 3. runTest
     runTest(spark, table1, table2)
+    spark.asInstanceOf[CarbonSession].stopSearchMode()
 
     if (deleteFile) {
       CarbonUtil.deleteFoldersAndFiles(new File(table1))

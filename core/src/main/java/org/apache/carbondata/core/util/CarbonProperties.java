@@ -1479,4 +1479,15 @@ public final class CarbonProperties {
     getInstance().addProperty(
         CarbonCommonConstants.CARBON_SEARCH_MODE_ENABLE, String.valueOf(enable));
   }
+
+  public static int getSearchMasterPort() {
+    try {
+      return Integer.valueOf(
+          getInstance().getProperty(
+              CarbonCommonConstants.CARBON_SEARCH_MODE_MASTER_PORT,
+              CarbonCommonConstants.CARBON_SEARCH_MODE_MASTER_PORT_DEFAULT));
+    } catch (NumberFormatException e) {
+      return Integer.valueOf(CarbonCommonConstants.CARBON_SEARCH_MODE_MASTER_PORT_DEFAULT);
+    }
+  }
 }

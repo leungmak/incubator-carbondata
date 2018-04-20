@@ -19,7 +19,7 @@ package org.apache.spark.rpc
 
 import java.io.IOException
 import java.net.InetAddress
-import java.util.{List => JList, Map => JMap, Objects, Random, Set => JSet, UUID}
+import java.util.{Objects, Random, UUID, List => JList, Map => JMap, Set => JSet}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -42,6 +42,7 @@ import org.apache.carbondata.core.datastore.block.Distributable
 import org.apache.carbondata.core.datastore.row.CarbonRow
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable
 import org.apache.carbondata.core.scan.expression.Expression
+import org.apache.carbondata.core.util.CarbonProperties
 import org.apache.carbondata.hadoop.CarbonMultiBlockSplit
 import org.apache.carbondata.hadoop.util.CarbonInputFormatUtil
 import org.apache.carbondata.processing.util.CarbonLoaderUtil
@@ -64,7 +65,7 @@ class Master(sparkConf: SparkConf, port: Int) {
   private var rpcEnv: RpcEnv = _
 
   def this(sparkConf: SparkConf) = {
-    this(sparkConf, Master.DEFAULT_PORT)
+    this(sparkConf, CarbonProperties.getSearchMasterPort)
   }
 
   /** start service and listen on port passed in constructor */
@@ -126,7 +127,16 @@ class Master(sparkConf: SparkConf, port: Int) {
     RegisterWorkerResponse(workerId)
   }
 
-  private def getEndpoint(workerIP: String) = workers(workerIP)
+  private def getEndpoint(workerIP: String) = {
+    try {
+      workers(workerIP)
+    } catch {
+      case e: NoSuchElementException =>
+        // no local worker available, choose one worker randomly
+        val index = new Random().nextInt(workers.size)
+        workers.toSeq(index)._2
+    }
+  }
 
   /**
    * Execute search by firing RPC call to worker, return the result rows
@@ -140,14 +150,14 @@ class Master(sparkConf: SparkConf, port: Int) {
     // prune data and get a mapping of worker hostname to list of blocks,
     // then add these blocks to the SearchRequest and fire the RPC call
     val nodeBlockMapping: JMap[String, JList[Distributable]] = pruneBlock(table, columns, filter)
-    val futures = nodeBlockMapping.asScala.map { case (workerIP, blocks) =>
+    val futures = nodeBlockMapping.asScala.map { case (hostname, blocks) =>
       // Build a SearchRequest
       val split = new SerializableWritable[CarbonMultiBlockSplit](
-        new CarbonMultiBlockSplit(blocks, workerIP))
+        new CarbonMultiBlockSplit(blocks, hostname))
       val request = SearchRequest(queryId, split, table.getTableInfo, columns, filter)
 
       // fire RPC to worker asynchronously
-      getEndpoint(workerIP).ask[SearchResult](request)
+      getEndpoint(hostname).ask[SearchResult](request)
     }
     // get all results from RPC response and return to caller
     val output = new ArrayBuffer[CarbonRow]
