@@ -1482,12 +1482,12 @@ public final class CarbonProperties {
 
   public static int getSearchMasterPort() {
     try {
-      return Integer.valueOf(
+      return Integer.parseInt(
           getInstance().getProperty(
               CarbonCommonConstants.CARBON_SEARCH_MODE_MASTER_PORT,
               CarbonCommonConstants.CARBON_SEARCH_MODE_MASTER_PORT_DEFAULT));
     } catch (NumberFormatException e) {
-      return Integer.valueOf(CarbonCommonConstants.CARBON_SEARCH_MODE_MASTER_PORT_DEFAULT);
+      return Integer.parseInt(CarbonCommonConstants.CARBON_SEARCH_MODE_MASTER_PORT_DEFAULT);
     }
   }
 }
